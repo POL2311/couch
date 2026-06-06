@@ -78,7 +78,7 @@ export default function TemplatesPage() {
                 <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
                   <h3 className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>{diet.name}</h3>
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums text-zinc-600 bg-white border border-[var(--border-subtle)] px-2.5 py-0.5 rounded-full">
-                    <Flame size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                    <Flame size={14} strokeWidth={1.75} style={{ color: "var(--color-danger)" }} />
                     {diet.totalCalories} kcal
                   </span>
                 </div>
