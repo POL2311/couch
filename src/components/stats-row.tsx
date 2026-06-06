@@ -49,14 +49,14 @@ export default function StatsRow({
           style={{ background: "var(--bg-surface)" }}
         >
           <span
-            className="text-2xl lg:text-3xl font-light tabular-nums tracking-tight"
-            style={{ color: item.accent || "var(--text-primary)" }}
+            className="text-[30px] font-semibold tabular-nums tracking-tight leading-none"
+            style={{ color: item.accent || (item.value === 0 ? "var(--text-tertiary)" : "var(--text-primary)") }}
           >
             {item.value}
           </span>
           <span
-            className="text-[11px] mt-1 uppercase tracking-[0.1em]"
-            style={{ color: "var(--text-tertiary)" }}
+            className="text-[11px] mt-2 uppercase"
+            style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}
           >
             {item.label}
           </span>

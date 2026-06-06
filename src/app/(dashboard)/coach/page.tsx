@@ -101,16 +101,17 @@ export default function CoachDashboard() {
           
           {/* MRR Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Ingresos Recurrentes (MRR)
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${stats.mrr.toLocaleString("es-MX")} MXN`}
+            {/* Valor: nunca "—"; cero real → formateado en terciario */}
+            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              ${stats.mrr.toLocaleString("es-MX")} MXN
             </p>
-            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] mt-2 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
               <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
               Cobros automáticos activos
             </span>
@@ -118,48 +119,49 @@ export default function CoachDashboard() {
 
           {/* Compliance Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Adherencia Promedio
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `${stats.avgAdherence}%`}
+            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              {stats.avgAdherence}%
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
               Objetivo: mantener &gt;80%
             </span>
           </div>
 
           {/* Active Students Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Alumnos Activos
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : stats.active}
+            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              {stats.active}
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
               De {stats.total} alumnos registrados
             </span>
           </div>
 
           {/* Alerts Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Alertas de Suspensión
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : stats.grace + stats.inactive}
+            {/* Cero alertas → terciario (estado tranquilo); >0 → danger (señal semántica) */}
+            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+              {stats.grace + stats.inactive}
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
               {stats.grace} en gracia · {stats.inactive} suspendidos
             </span>
           </div>
