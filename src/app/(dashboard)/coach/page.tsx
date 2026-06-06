@@ -112,16 +112,17 @@ export default function CoachDashboard() {
             className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Ingresos Recurrentes (MRR)
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">MRR</span>
+              <span className="hidden md:inline">Ingresos recurrentes (MRR)</span>
             </span>
-            {/* Valor: nunca "—"; cero real → formateado en terciario */}
-            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
-              ${stats.mrr.toLocaleString("es-MX")} MXN
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              ${stats.mrr.toLocaleString("es-MX")}
+              <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
             </p>
-            <span className="text-[12px] mt-2 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+            <span className="text-[12px] mt-2 flex items-center gap-1.5 min-w-0" style={{ color: "var(--text-secondary)" }}>
               <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
-              Cobros automáticos activos
+              <span className="truncate">AutoCobro activo</span>
             </span>
           </div>
 
@@ -130,15 +131,23 @@ export default function CoachDashboard() {
             className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Adherencia Promedio
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Adherencia</span>
+              <span className="hidden md:inline">Adherencia promedio</span>
             </span>
-            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               {stats.avgAdherence}%
             </p>
-            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
-              Objetivo: mantener &gt;80%
-            </span>
+            {/* Objetivo 80% visualizado: barra + tick */}
+            <div className="relative mt-3" title="Objetivo: 80%">
+              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min(stats.avgAdherence, 100)}%`, background: stats.avgAdherence >= 80 ? "var(--color-success)" : "var(--color-warning)", transition: "width 0.6s ease-out" }}
+                />
+              </div>
+              <div className="absolute top-0 bottom-0" style={{ left: "80%", width: 1, background: "var(--text-tertiary)" }} />
+            </div>
           </div>
 
           {/* Active Students Card */}
@@ -146,33 +155,34 @@ export default function CoachDashboard() {
             className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Alumnos Activos
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Activos</span>
+              <span className="hidden md:inline">Alumnos activos</span>
             </span>
-            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               {stats.active}
+              <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>de {stats.total}</span>
             </p>
-            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
-              De {stats.total} alumnos registrados
-            </span>
           </div>
 
-          {/* Alerts Card */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in flex flex-col"
+          {/* Alerts Card — clickable → filtro de atención */}
+          <Link
+            href="/coach/students?estado=atencion"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Alertas de Suspensión
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Alertas</span>
+              <span className="hidden md:inline">Alertas de suspensión</span>
             </span>
-            {/* Cero alertas → terciario (estado tranquilo); >0 → danger (señal semántica) */}
-            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+            {/* Cero alertas → terciario (tranquilo); >0 → danger (señal) */}
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
               {stats.grace + stats.inactive}
             </p>
-            <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
-              {stats.grace} en gracia · {stats.inactive} suspendidos
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              {stats.grace} gracia · {stats.inactive} suspendidos
             </span>
-          </div>
+          </Link>
 
         </div>
 
@@ -185,10 +195,10 @@ export default function CoachDashboard() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Curva de Adherencia (Alumnos)
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Curva de adherencia
               </h3>
-              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Orden: Mayor a Menor</span>
+              <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Orden: mayor a menor</span>
             </div>
             
             <div className="p-5 flex flex-col justify-end" style={{ height: "180px" }}>
@@ -248,8 +258,8 @@ export default function CoachDashboard() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Próximos Cambios Programados
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Cambios programados
               </h3>
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(255, 255, 255, 0.08)", color: "var(--text-secondary)" }}>AutoCron</span>
             </div>
