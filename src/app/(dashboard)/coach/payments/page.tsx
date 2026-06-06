@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plug, ChevronRight, X, CreditCard } from "lucide-react";
 import { Skeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { DetailOverlay } from "@/components/detail-overlay";
 import { type Student } from "@/lib/mock-data";
 
 /* ── Secciones por estado (iOS grouped list) ── */
@@ -149,16 +150,6 @@ export default function PaymentsPage() {
       })).filter((sec) => sec.items.length > 0),
     [students]
   );
-
-  // Cerrar el detalle con Esc.
-  useEffect(() => {
-    if (!selected) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelected(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selected]);
 
   const remind = useCallback((s: Student) => {
     alert(`Recordatorio de pago enviado a ${s.name}`);
@@ -516,36 +507,21 @@ export default function PaymentsPage() {
 
       </div>
 
-      {/* ═══ Detalle de cobro — bottom sheet (móvil) / dialog (escritorio) ═══ */}
+      {/* ═══ Detalle de cobro — DetailOverlay (sheet móvil / dialog desktop) ═══ */}
       {selected && (() => {
         const status = getStatusStyle(selected.paymentStatus);
         const dueDate = calculateDueDate(selected.joinedDate, selected.paymentStatus);
         const close = () => setSelected(null);
-        const onRemind = () => { remind(selected); close(); };
         return (
-          <div role="dialog" aria-modal="true" aria-label={`Cobro de ${selected.name}`} className="fixed inset-0 z-[60]">
-            {/* Scrim */}
-            <div className="absolute inset-0 animate-scrim-in" style={{ background: "var(--scrim)" }} onClick={close} />
-
-            {/* Bottom sheet (móvil) */}
-            <div
-              className="md:hidden absolute bottom-0 left-0 right-0 rounded-t-[20px] animate-sheet-up px-5 pt-3"
-              style={{ background: "var(--bg-surface-raised)", borderTop: "1px solid var(--border-subtle)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}
-            >
-              <div className="mx-auto mb-4 rounded-full" style={{ width: 36, height: 4, background: "rgba(255, 255, 255, 0.20)" }} />
-              <PaymentDetailBody student={selected} status={status} dueDate={dueDate} onClose={close} onRemind={onRemind} />
-            </div>
-
-            {/* Dialog centrado (escritorio) */}
-            <div className="hidden md:flex absolute inset-0 items-center justify-center p-4 pointer-events-none">
-              <div
-                className="pointer-events-auto w-full max-w-md rounded-2xl animate-float-up p-6"
-                style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)", boxShadow: "var(--shadow-lg)" }}
-              >
-                <PaymentDetailBody student={selected} status={status} dueDate={dueDate} onClose={close} onRemind={onRemind} />
-              </div>
-            </div>
-          </div>
+          <DetailOverlay onClose={close} ariaLabel={`Cobro de ${selected.name}`} desktop="dialog">
+            <PaymentDetailBody
+              student={selected}
+              status={status}
+              dueDate={dueDate}
+              onClose={close}
+              onRemind={() => { remind(selected); close(); }}
+            />
+          </DetailOverlay>
         );
       })()}
     </>
