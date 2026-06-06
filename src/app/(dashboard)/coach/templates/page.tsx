@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Flame, Clock, Zap } from "lucide-react";
 import { DIET_TEMPLATES, ROUTINE_TEMPLATES } from "@/lib/templates";
 
 export default function TemplatesPage() {
@@ -76,8 +77,9 @@ export default function TemplatesPage() {
               >
                 <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
                   <h3 className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>{diet.name}</h3>
-                  <span className="text-[11px] font-semibold tabular-nums text-zinc-600 bg-white border border-[var(--border-subtle)] px-2.5 py-0.5 rounded-full">
-                    🔥 {diet.totalCalories} kcal
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums text-zinc-600 bg-white border border-[var(--border-subtle)] px-2.5 py-0.5 rounded-full">
+                    <Flame size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                    {diet.totalCalories} kcal
                   </span>
                 </div>
 
@@ -112,8 +114,9 @@ export default function TemplatesPage() {
                             {meal.items[0]}... ({meal.items.length} alimentos)
                           </span>
                         </div>
-                        <span className="text-[11px] font-medium text-zinc-400 tabular-nums shrink-0 ml-2">
-                          🕒 {meal.time} · {meal.calories} kcal
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 tabular-nums shrink-0 ml-2">
+                          <Clock size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                          {meal.time} · {meal.calories} kcal
                         </span>
                       </div>
                     ))}
@@ -135,8 +138,9 @@ export default function TemplatesPage() {
               >
                 <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
                   <h3 className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>{routine.name}</h3>
-                  <span className="text-[11px] font-semibold tabular-nums text-zinc-600 bg-white border border-[var(--border-subtle)] px-2.5 py-0.5 rounded-full">
-                    ⚡ {routine.daysPerWeek} días
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums text-zinc-600 bg-white border border-[var(--border-subtle)] px-2.5 py-0.5 rounded-full">
+                    <Zap size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                    {routine.daysPerWeek} días
                   </span>
                 </div>
 
@@ -160,8 +164,9 @@ export default function TemplatesPage() {
                         </p>
                         <div className="mt-2 text-[11px] space-y-0.5 text-zinc-400 pl-2 border-l border-zinc-200">
                           {day.exercises.slice(0, 2).map((ex, exIdx) => (
-                            <div key={exIdx}>
-                              • {ex.name} ({ex.sets}x{ex.reps})
+                            <div key={exIdx} className="flex items-center gap-1.5">
+                              <span className="inline-block rounded-full shrink-0" style={{ width: 3, height: 3, background: "currentColor" }} />
+                              {ex.name} ({ex.sets}x{ex.reps})
                             </div>
                           ))}
                           {day.exercises.length > 2 && (

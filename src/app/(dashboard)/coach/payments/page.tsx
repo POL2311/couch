@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { Plug } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 
 export default function PaymentsPage() {
@@ -122,8 +123,9 @@ export default function PaymentsPage() {
             <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
               {isLoading ? "—" : metrics.active}
             </p>
-            <span className="text-[9px] mt-1 block text-emerald-600">
-              ● Acceso habilitado a la app
+            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
+              Acceso habilitado a la app
             </span>
           </div>
 
@@ -154,8 +156,9 @@ export default function PaymentsPage() {
             <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-primary)" }}>
               {isLoading ? "—" : metrics.inactive}
             </p>
-            <span className="text-[9px] mt-1 block text-red-500">
-              ● Acceso denegado temporalmente
+            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-danger)" }} />
+              Acceso denegado temporalmente
             </span>
           </div>
 
@@ -281,7 +284,7 @@ export default function PaymentsPage() {
               </h3>
               
               <div className="mt-4 flex items-center gap-3">
-                <span className="text-2xl">🔌</span>
+                <Plug size={20} strokeWidth={1.75} style={{ color: "var(--color-success)" }} />
                 <div>
                   <p className="text-[12px] font-semibold" style={{ color: "var(--color-success)" }}>
                     Conectado con éxito

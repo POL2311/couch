@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { Calendar } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 
 export default function PeriodizationPage() {
@@ -136,7 +137,7 @@ export default function PeriodizationPage() {
                 <p className="text-[12px] text-zinc-400 text-center py-6">Cargando cronograma...</p>
               ) : metrics.scheduled.length === 0 ? (
                 <div className="text-center py-12">
-                  <span className="text-2xl">📅</span>
+                  <Calendar size={16} strokeWidth={1.75} className="mx-auto" style={{ color: "var(--text-secondary)" }} />
                   <p className="text-[13px] mt-2 font-medium" style={{ color: "var(--text-secondary)" }}>Sin planificaciones programadas</p>
                   <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                     Usa las acciones en lote de la lista de alumnos para automatizar cambios.

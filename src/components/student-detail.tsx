@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Flame } from "lucide-react";
+import { Flame, Calendar, Ruler, ArrowLeft, Droplet } from "lucide-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   type Student,
@@ -593,8 +593,9 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           <p className="text-[15px] font-medium" style={{ color: "var(--text-secondary)" }}>
             {error || "Alumno no encontrado"}
           </p>
-          <Link href="/coach/students" className="text-[13px] mt-3 inline-block hover:underline" style={{ color: "var(--text-tertiary)" }}>
-            ← Volver a alumnos
+          <Link href="/coach/students" className="text-[13px] mt-3 inline-flex items-center gap-1 hover:underline" style={{ color: "var(--text-tertiary)" }}>
+            <ArrowLeft size={14} strokeWidth={1.75} />
+            Volver a alumnos
           </Link>
         </div>
       </div>
@@ -694,10 +695,16 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
             </span>
           )}
           {detail.height && (
-            <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>📏 {detail.height} cm</span>
+            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
+              <Ruler size={14} strokeWidth={1.75} />
+              <span className="tabular-nums">{detail.height}</span> cm
+            </span>
           )}
           {detail.bodyFat && (
-            <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>💧 {detail.bodyFat}% grasa</span>
+            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
+              <Droplet size={14} strokeWidth={1.75} />
+              <span className="tabular-nums">{detail.bodyFat}</span>% grasa
+            </span>
           )}
         </div>
       </header>
@@ -712,7 +719,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           }}
         >
           <div className="flex items-center gap-3">
-            <span className="text-xl">📅</span>
+            <Calendar size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
             <div>
               <p className="text-[13px] font-semibold" style={{ color: "var(--color-warning)" }}>
                 Cambio de Etapa Programado
