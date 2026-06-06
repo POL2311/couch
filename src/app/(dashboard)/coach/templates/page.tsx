@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Flame, Zap, Clock, Search, X, SearchX } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Flame, Zap, Clock, Search, X, SearchX, Plus } from "lucide-react";
 import { DIET_TEMPLATES, ROUTINE_TEMPLATES, type DietTemplate, type RoutineTemplate } from "@/lib/templates";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { EmptyState } from "@/components/empty-state";
@@ -165,56 +165,83 @@ export default function TemplatesPage() {
   const diets = useMemo(() => DIET_TEMPLATES.filter((d) => d.name.toLowerCase().includes(q)), [q]);
   const routines = useMemo(() => ROUTINE_TEMPLATES.filter((r) => r.name.toLowerCase().includes(q)), [q]);
 
+  /* ── Tab activo en la URL (?tipo=alimentacion|entrenamiento, default alimentación) ── */
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tipo");
+    if (t === "entrenamiento") setActiveTab("routines");
+    else if (t === "alimentacion") setActiveTab("diets");
+  }, []);
+
+  const firstWrite = useRef(true);
+  useEffect(() => {
+    if (firstWrite.current) { firstWrite.current = false; return; }
+    const sp = new URLSearchParams(window.location.search);
+    if (activeTab === "routines") sp.set("tipo", "entrenamiento");
+    else sp.delete("tipo");
+    const qs = sp.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [activeTab]);
+
   return (
     <>
       {/* Header */}
-      <header className="px-4 md:px-8 py-5 flex flex-col gap-4 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-        <div className="flex items-center justify-between">
+      <header className="px-4 md:px-8 py-5 flex flex-col gap-3 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+        {/* Fila 1: título + InfoHint + CTA (único elemento blanco) */}
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Plantillas Predeterminadas
+            <h1 className="text-[16px] font-semibold tracking-tight whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+              Plantillas
             </h1>
             <InfoHint text="Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos." />
           </div>
 
           <button
             onClick={() => alert("Crear nueva plantilla [Esta funcionalidad requiere base de datos de plantillas dinámicas]")}
-            className="px-3.5 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer shrink-0"
+            aria-label="Nueva plantilla"
+            className="shrink-0 inline-flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-85 rounded-full md:rounded-xl w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2"
             style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            Nueva Plantilla
+            <Plus size={18} strokeWidth={2} className="shrink-0" />
+            <span className="hidden md:inline text-[13px] font-medium">Nueva plantilla</span>
           </button>
         </div>
 
-        {/* Tabs + búsqueda */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
-          <div className="flex gap-2.5 overflow-x-auto flex-nowrap min-w-0" style={{ WebkitOverflowScrolling: "touch" }}>
-            {([["diets", "Planes de Alimentación"], ["routines", "Planes de Entrenamiento"]] as const).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className="px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0"
-                style={{
-                  background: activeTab === key ? "var(--accent-primary)" : "var(--bg-surface-raised)",
-                  color: activeTab === key ? "var(--text-inverse)" : "var(--text-secondary)",
-                  border: activeTab === key ? "1px solid var(--accent-primary)" : "1px solid var(--border-subtle)",
-                }}
-              >
-                {label}
-              </button>
-            ))}
+        {/* Fila 2 (+3 en móvil): segmented control + buscador */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 min-w-0">
+          {/* Segmented control */}
+          <div
+            className="grid grid-cols-2 md:inline-flex w-full md:w-auto rounded-xl shrink-0"
+            style={{ background: "rgba(255, 255, 255, 0.05)", height: 36, padding: 2 }}
+          >
+            {([["diets", "Alimentación"], ["routines", "Entrenamiento"]] as const).map(([key, label]) => {
+              const active = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  aria-pressed={active}
+                  className="px-4 text-[13px] font-medium rounded-[10px] cursor-pointer whitespace-nowrap flex items-center justify-center transition-all duration-200 md:min-w-[120px]"
+                  style={{
+                    background: active ? "rgba(255, 255, 255, 0.10)" : "transparent",
+                    color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                    boxShadow: active ? "0 1px 2px rgba(0, 0, 0, 0.3)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="relative sm:ml-auto">
+          {/* Buscador */}
+          <div className="relative md:ml-auto w-full md:w-auto">
             <Search size={14} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar plantilla..."
-              className="pl-9 pr-3 py-2 rounded-xl text-[13px] w-full sm:w-64 outline-none"
+              className="pl-9 pr-3 py-2 rounded-xl text-[13px] w-full md:w-[280px] outline-none"
               style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
             />
           </div>
