@@ -108,7 +108,7 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
-              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
                 ${metrics.mrr.toLocaleString("es-MX")} MXN
               </p>
             )}
@@ -128,7 +128,7 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-16 mt-2" />
             ) : (
-              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
                 {metrics.active}
               </p>
             )}
@@ -149,7 +149,7 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
-              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
                 ${metrics.atRisk.toLocaleString("es-MX")} MXN
               </p>
             )}
@@ -169,7 +169,7 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-16 mt-2" />
             ) : (
-              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
                 {metrics.inactive}
               </p>
             )}

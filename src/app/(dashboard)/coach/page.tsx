@@ -149,7 +149,7 @@ export default function CoachDashboard() {
               Ingresos Recurrentes (MRR)
             </span>
             {/* Valor: nunca "—"; cero real → formateado en terciario */}
-            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               ${stats.mrr.toLocaleString("es-MX")} MXN
             </p>
             <span className="text-[12px] mt-2 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -166,7 +166,7 @@ export default function CoachDashboard() {
             <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Adherencia Promedio
             </span>
-            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               {stats.avgAdherence}%
             </p>
             <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
@@ -182,7 +182,7 @@ export default function CoachDashboard() {
             <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Alumnos Activos
             </span>
-            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               {stats.active}
             </p>
             <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>
@@ -199,7 +199,7 @@ export default function CoachDashboard() {
               Alertas de Suspensión
             </span>
             {/* Cero alertas → terciario (estado tranquilo); >0 → danger (señal semántica) */}
-            <p className="text-[30px] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
               {stats.grace + stats.inactive}
             </p>
             <span className="text-[12px] mt-2" style={{ color: "var(--text-secondary)" }}>

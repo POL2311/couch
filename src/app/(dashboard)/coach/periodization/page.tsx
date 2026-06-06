@@ -176,7 +176,7 @@ export default function PeriodizationPage() {
                           </span>
                           <button
                             onClick={() => cancelScheduledChange(change.id)}
-                            className="p-1 rounded-md transition-colors cursor-pointer hover:bg-[color:var(--color-danger-subtle)]"
+                            className="p-2.5 rounded-md transition-colors cursor-pointer hover:bg-[color:var(--color-danger-subtle)]"
                             style={{ color: "var(--color-danger)" }}
                             title="Cancelar programación"
                           >

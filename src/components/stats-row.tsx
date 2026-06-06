@@ -49,7 +49,7 @@ export default function StatsRow({
           style={{ background: "var(--bg-surface)" }}
         >
           <span
-            className="text-[30px] font-semibold tabular-nums tracking-tight leading-none"
+            className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums tracking-tight leading-none"
             style={{ color: item.accent || (item.value === 0 ? "var(--text-tertiary)" : "var(--text-primary)") }}
           >
             {item.value}
