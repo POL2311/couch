@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyStageChange } from "@/lib/db";
+import { getSessionUser } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user || (user.role !== "COACH" && user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
     const body = await request.json();
     const {
       studentIds,

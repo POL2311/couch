@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Users, FileText, CalendarRange, CreditCard } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { LayoutGrid, Users, FileText, CalendarRange, CreditCard, LogOut } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    Navegación — Iconos Lucide (líneas finas)
@@ -28,8 +29,15 @@ function isActiveRoute(pathname: string, href: string) {
    Desktop Sidebar — Minimal, weightless
    ═══════════════════════════════════════════ */
 
+const ROLE_LABELS: Record<string, string> = { COACH: "Coach", ADMIN: "Administrador", CLIENT: "Cliente" };
+
 export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const user = session?.user;
+  const initials = user?.name
+    ? user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "CO";
 
   return (
     <aside
@@ -110,7 +118,7 @@ export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
       </nav>
 
       {/* ── Profile ── */}
-      <div className="px-3 py-4 shrink-0" style={{ borderTop: "1px solid var(--border-sidebar-subtle)" }}>
+      <div className="px-3 py-4 shrink-0 space-y-1" style={{ borderTop: "1px solid var(--border-sidebar-subtle)" }}>
         <button
           onClick={onToggleCollapse}
           aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -128,18 +136,30 @@ export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
               border: "1px solid var(--border-sidebar-subtle)",
             }}
           >
-            CA
+            {initials}
           </div>
           {!collapsed && (
             <div className="animate-fade-in text-left overflow-hidden flex-1 min-w-0">
               <p className="text-[13px] font-medium truncate" style={{ color: "var(--text-sidebar-primary)" }}>
-                Coach Alejandro
+                {user?.name ?? "Coach"}
               </p>
               <p className="text-[11px] truncate" style={{ color: "var(--text-sidebar-secondary)" }}>
-                Pro · 47 alumnos
+                {ROLE_LABELS[user?.role ?? "COACH"] ?? "Coach"}
               </p>
             </div>
           )}
+        </button>
+
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          aria-label="Cerrar sesión"
+          className={`flex items-center gap-3 py-2 w-full rounded-xl cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)] ${collapsed ? "justify-center px-0" : "px-3"}`}
+          style={{ color: "var(--text-sidebar-secondary)", transition: "all var(--transition-fast)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sidebar-hover)"; e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}
+        >
+          <LogOut strokeWidth={1.5} className="w-[18px] h-[18px] shrink-0 opacity-60" />
+          {!collapsed && <span className="text-[13px]">Cerrar sesión</span>}
         </button>
       </div>
     </aside>

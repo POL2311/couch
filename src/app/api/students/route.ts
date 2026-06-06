@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudents, addStudent } from "@/lib/db";
+import { getSessionUser } from "@/lib/session";
 import { type Student, type Stage } from "@/lib/mock-data";
 import fs from "fs/promises";
 import path from "path";
 
 export async function GET() {
   try {
-    const students = await getStudents();
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+    // Coach: solo sus alumnos. Admin: todos. Cliente: ninguno por esta vía.
+    if (user.role === "CLIENT") {
+      return NextResponse.json([]);
+    }
+    const students = await getStudents(user.role === "COACH" ? user.coachId ?? undefined : undefined);
     return NextResponse.json(students);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -15,6 +23,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user || (user.role !== "COACH" && user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
     const contentType = request.headers.get("content-type") || "";
     let data: any = {};
     let photoName: string | undefined = undefined;
@@ -84,8 +96,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nombre y correo son requeridos" }, { status: 400 });
     }
 
-    const students = await getStudents();
-    
     // Generate avatar initials
     const words = data.name.trim().split(/\s+/);
     const initials = words.length > 1 
@@ -94,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     // Create the new student model
     const newStudent: Student = {
-      id: `s${students.length + 1}`,
+      id: "",
       name: data.name,
       email: data.email,
       avatarInitials: initials,
@@ -145,9 +155,10 @@ export async function POST(request: NextRequest) {
       photoName: data.photoName
     };
 
-    await addStudent(newStudent, detail);
+    const coachId = user.role === "COACH" ? user.coachId ?? undefined : undefined;
+    const created = await addStudent(newStudent, detail, coachId);
 
-    return NextResponse.json(newStudent);
+    return NextResponse.json(created);
   } catch (error: any) {
     console.error("Error creating student:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

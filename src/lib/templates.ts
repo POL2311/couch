@@ -1,4 +1,4 @@
-import { type Meal, type RoutineDay } from "./mock-data";
+import type { Meal, RoutineDay } from "./mock-data";
 
 export interface DietTemplate {
   id: string;
