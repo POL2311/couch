@@ -119,7 +119,8 @@ export default function StudentsPage() {
     const alerts = students.filter(
       (s) => s.paymentStatus === "grace_period" || s.paymentStatus === "inactive"
     ).length;
-    return { total, active, alerts, scheduledChanges: 3 };
+    const scheduledChanges = students.filter((s: any) => s.scheduledChange != null).length;
+    return { total, active, alerts, scheduledChanges };
   }, [students]);
 
   /* ── Selection Handlers ── */

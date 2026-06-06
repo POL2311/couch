@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { Flame, Zap, Clock, Search, X, SearchX } from "lucide-react";
-import { DIET_TEMPLATES, ROUTINE_TEMPLATES, type DietTemplate, type RoutineTemplate } from "@/lib/templates";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { Flame, Zap, Clock, Search, X, SearchX, Trash2, Loader2 } from "lucide-react";
+import { type DietTemplate, type RoutineTemplate } from "@/lib/templates";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader, AddButton } from "@/components/page-header";
+import TemplateEditorModal from "@/components/template-editor";
 
 /* ── Helpers ── */
 const STAGE_WORDS = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
@@ -35,6 +36,7 @@ function DaysChip({ days }: { days: number }) {
 }
 
 function MacrosBar({ macros, totalCalories }: { macros: { protein: number; carbs: number; fat: number }; totalCalories: number }) {
+  const total = totalCalories || 1;
   return (
     <div>
       <div className="flex justify-between text-[11px] font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -43,9 +45,9 @@ function MacrosBar({ macros, totalCalories }: { macros: { protein: number; carbs
         <span>G: {macros.fat}g</span>
       </div>
       <div className="h-2 rounded-full overflow-hidden flex" style={{ background: "var(--bg-surface-overlay)" }}>
-        <div style={{ width: `${(macros.protein * 4 / totalCalories) * 100}%`, background: "var(--color-success)" }} title="Proteína" />
-        <div style={{ width: `${(macros.carbs * 4 / totalCalories) * 100}%`, background: "var(--color-info)" }} title="Carbos" />
-        <div style={{ width: `${(macros.fat * 9 / totalCalories) * 100}%`, background: "var(--color-warning)" }} title="Grasa" />
+        <div style={{ width: `${(macros.protein * 4 / total) * 100}%`, background: "var(--color-success)" }} title="Proteína" />
+        <div style={{ width: `${(macros.carbs * 4 / total) * 100}%`, background: "var(--color-info)" }} title="Carbos" />
+        <div style={{ width: `${(macros.fat * 9 / total) * 100}%`, background: "var(--color-warning)" }} title="Grasa" />
       </div>
     </div>
   );
@@ -59,20 +61,30 @@ function DetailClose({ onClose }: { onClose: () => void }) {
   );
 }
 
-function EditButton() {
+function DetailActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   return (
-    <button
-      onClick={() => alert("Editar plantilla [requiere base de datos de plantillas dinámicas]")}
-      className="mt-5 w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
-      style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
-    >
-      Editar plantilla
-    </button>
+    <div className="mt-5 flex gap-2">
+      <button
+        onClick={onEdit}
+        className="flex-1 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-85"
+        style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+      >
+        Editar plantilla
+      </button>
+      <button
+        onClick={onDelete}
+        aria-label="Eliminar plantilla"
+        className="px-3 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--color-danger-subtle)]"
+        style={{ border: "1px solid var(--border-subtle)", color: "var(--color-danger)" }}
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
   );
 }
 
 /* ── Detalle: dieta ── */
-function DietDetailBody({ diet, onClose }: { diet: DietTemplate; onClose: () => void }) {
+function DietDetailBody({ diet, onClose, onEdit, onDelete }: { diet: DietTemplate; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
   const goal = dietGoal(diet.name);
   return (
     <div className="relative">
@@ -111,13 +123,13 @@ function DietDetailBody({ diet, onClose }: { diet: DietTemplate; onClose: () => 
         ))}
       </div>
 
-      <EditButton />
+      <DetailActions onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 }
 
 /* ── Detalle: rutina ── */
-function RoutineDetailBody({ routine, onClose }: { routine: RoutineTemplate; onClose: () => void }) {
+function RoutineDetailBody({ routine, onClose, onEdit, onDelete }: { routine: RoutineTemplate; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
   return (
     <div className="relative">
       <DetailClose onClose={onClose} />
@@ -150,7 +162,7 @@ function RoutineDetailBody({ routine, onClose }: { routine: RoutineTemplate; onC
         ))}
       </div>
 
-      <EditButton />
+      <DetailActions onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 }
@@ -158,14 +170,40 @@ function RoutineDetailBody({ routine, onClose }: { routine: RoutineTemplate; onC
 export default function TemplatesPage() {
   const [activeTab, setActiveTab] = useState<"diets" | "routines">("diets");
   const [search, setSearch] = useState("");
+  const [diets, setDiets] = useState<DietTemplate[]>([]);
+  const [routines, setRoutines] = useState<RoutineTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedDiet, setSelectedDiet] = useState<DietTemplate | null>(null);
   const [selectedRoutine, setSelectedRoutine] = useState<RoutineTemplate | null>(null);
 
-  const q = search.trim().toLowerCase();
-  const diets = useMemo(() => DIET_TEMPLATES.filter((d) => d.name.toLowerCase().includes(q)), [q]);
-  const routines = useMemo(() => ROUTINE_TEMPLATES.filter((r) => r.name.toLowerCase().includes(q)), [q]);
+  // Editor: { mode: "create"|"edit", type, initial? }
+  const [editor, setEditor] = useState<{ type: "diet" | "routine"; initial?: any; id?: string } | null>(null);
 
-  /* ── Tab activo en la URL (?tipo=alimentacion|entrenamiento, default alimentación) ── */
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const [d, r] = await Promise.all([
+        fetch("/api/templates?type=diet").then((res) => res.json()),
+        fetch("/api/templates?type=routine").then((res) => res.json()),
+      ]);
+      setDiets(Array.isArray(d) ? d : []);
+      setRoutines(Array.isArray(r) ? r : []);
+    } catch {
+      /* noop */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const q = search.trim().toLowerCase();
+  const filteredDiets = useMemo(() => diets.filter((d) => d.name.toLowerCase().includes(q)), [q, diets]);
+  const filteredRoutines = useMemo(() => routines.filter((r) => r.name.toLowerCase().includes(q)), [q, routines]);
+
+  /* ── Tab activo en la URL ── */
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tipo");
     if (t === "entrenamiento") setActiveTab("routines");
@@ -182,24 +220,48 @@ export default function TemplatesPage() {
     window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
   }, [activeTab]);
 
+  /* ── Persistencia ── */
+  const saveTemplate = async (data: any) => {
+    if (!editor) return;
+    if (editor.id) {
+      await fetch(`/api/templates/${editor.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data }),
+      });
+    } else {
+      await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: editor.type, ...data }),
+      });
+    }
+    setEditor(null);
+    setSelectedDiet(null);
+    setSelectedRoutine(null);
+    await fetchTemplates();
+  };
+
+  const deleteTemplate = async (id: string) => {
+    if (!confirm("¿Eliminar esta plantilla? Esta acción no se puede deshacer.")) return;
+    await fetch(`/api/templates/${id}`, { method: "DELETE" });
+    setSelectedDiet(null);
+    setSelectedRoutine(null);
+    await fetchTemplates();
+  };
+
   return (
     <>
-      {/* Header canónico: solo identidad + acción */}
       <PageHeader
         title="Plantillas"
-        hint="Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos."
-        cta={<AddButton label="Nueva plantilla" onClick={() => alert("Crear nueva plantilla [Esta funcionalidad requiere base de datos de plantillas dinámicas]")} />}
+        hint="Crea y edita los planes globales de nutrición y entrenamiento para tus alumnos."
+        cta={<AddButton label="Nueva plantilla" onClick={() => setEditor({ type: activeTab === "diets" ? "diet" : "routine" })} />}
       />
 
-      {/* Content */}
       <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
-        {/* Controles (segmented + buscador) — scrollean con el contenido */}
+        {/* Controles */}
         <div className="flex flex-col md:flex-row md:items-center gap-3 min-w-0 mb-6">
-          {/* Segmented control */}
-          <div
-            className="grid grid-cols-2 md:inline-flex w-full md:w-auto rounded-xl shrink-0"
-            style={{ background: "rgba(255, 255, 255, 0.05)", height: 36, padding: 2 }}
-          >
+          <div className="grid grid-cols-2 md:inline-flex w-full md:w-auto rounded-xl shrink-0" style={{ background: "rgba(255, 255, 255, 0.05)", height: 36, padding: 2 }}>
             {([["diets", "Alimentación"], ["routines", "Entrenamiento"]] as const).map(([key, label]) => {
               const active = activeTab === key;
               return (
@@ -208,11 +270,7 @@ export default function TemplatesPage() {
                   onClick={() => setActiveTab(key)}
                   aria-pressed={active}
                   className="px-4 text-[13px] font-medium rounded-[10px] cursor-pointer whitespace-nowrap flex items-center justify-center transition-all duration-200 md:min-w-[120px]"
-                  style={{
-                    background: active ? "rgba(255, 255, 255, 0.10)" : "transparent",
-                    color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                    boxShadow: active ? "0 1px 2px rgba(0, 0, 0, 0.3)" : "none",
-                  }}
+                  style={{ background: active ? "rgba(255, 255, 255, 0.10)" : "transparent", color: active ? "var(--text-primary)" : "var(--text-secondary)", boxShadow: active ? "0 1px 2px rgba(0, 0, 0, 0.3)" : "none" }}
                 >
                   {label}
                 </button>
@@ -220,7 +278,6 @@ export default function TemplatesPage() {
             })}
           </div>
 
-          {/* Buscador */}
           <div className="relative md:ml-auto w-full md:w-auto">
             <Search size={14} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
             <input
@@ -234,73 +291,79 @@ export default function TemplatesPage() {
           </div>
         </div>
 
-        {/* Diet templates */}
-        {activeTab === "diets" && (
-          diets.length === 0 ? (
-            <EmptyState icon={SearchX} message="Sin resultados" hint="Prueba con otro nombre de plantilla." className="py-16" />
+        {loading ? (
+          <div className="flex items-center justify-center py-20" style={{ color: "var(--text-tertiary)" }}>
+            <Loader2 size={20} className="animate-spin" />
+          </div>
+        ) : activeTab === "diets" ? (
+          filteredDiets.length === 0 ? (
+            <EmptyState icon={SearchX} message="Sin plantillas de dieta" hint="Crea una nueva plantilla con el botón superior." className="py-16" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
-              {diets.map((diet) => {
+              {filteredDiets.map((diet) => {
                 const goal = dietGoal(diet.name);
                 return (
-                  <button
-                    key={diet.id}
-                    onClick={() => setSelectedDiet(diet)}
-                    className="text-left rounded-xl border p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-[color:var(--border-strong)]"
-                    style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-                  >
+                  <button key={diet.id} onClick={() => setSelectedDiet(diet)} className="text-left rounded-xl border p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-[color:var(--border-strong)]" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-[13px] font-semibold leading-snug flex-1 min-w-0" style={{ color: "var(--text-primary)" }}>{diet.name}</h3>
                       <KcalChip kcal={diet.totalCalories} />
                     </div>
                     <MacrosBar macros={diet.macros} totalCalories={diet.totalCalories} />
-                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                      {diet.meals.length} comidas{goal ? ` · ${goal}` : ""}
-                    </p>
+                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{diet.meals.length} comidas{goal ? ` · ${goal}` : ""}</p>
                   </button>
                 );
               })}
             </div>
           )
-        )}
-
-        {/* Routine templates */}
-        {activeTab === "routines" && (
-          routines.length === 0 ? (
-            <EmptyState icon={SearchX} message="Sin resultados" hint="Prueba con otro nombre de plantilla." className="py-16" />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
-              {routines.map((routine) => (
-                <button
-                  key={routine.id}
-                  onClick={() => setSelectedRoutine(routine)}
-                  className="text-left rounded-xl border p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-[color:var(--border-strong)]"
-                  style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>{routine.name}</h3>
-                    <DaysChip days={routine.daysPerWeek} />
-                  </div>
-                  <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                    {routine.daysPerWeek} días · {totalExercises(routine)} ejercicios
-                  </p>
-                </button>
-              ))}
-            </div>
-          )
+        ) : filteredRoutines.length === 0 ? (
+          <EmptyState icon={SearchX} message="Sin plantillas de rutina" hint="Crea una nueva plantilla con el botón superior." className="py-16" />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+            {filteredRoutines.map((routine) => (
+              <button key={routine.id} onClick={() => setSelectedRoutine(routine)} className="text-left rounded-xl border p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-[color:var(--border-strong)]" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>{routine.name}</h3>
+                  <DaysChip days={routine.daysPerWeek} />
+                </div>
+                <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{routine.daysPerWeek} días · {totalExercises(routine)} ejercicios</p>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Detalle — panel lateral (desktop) / bottom sheet (móvil) */}
+      {/* Detalle */}
       {selectedDiet && (
         <DetailOverlay onClose={() => setSelectedDiet(null)} desktop="panel" ariaLabel={`Plantilla ${selectedDiet.name}`}>
-          <DietDetailBody diet={selectedDiet} onClose={() => setSelectedDiet(null)} />
+          <DietDetailBody
+            diet={selectedDiet}
+            onClose={() => setSelectedDiet(null)}
+            onEdit={() => setEditor({ type: "diet", initial: selectedDiet, id: selectedDiet.id })}
+            onDelete={() => deleteTemplate(selectedDiet.id)}
+          />
         </DetailOverlay>
       )}
       {selectedRoutine && (
         <DetailOverlay onClose={() => setSelectedRoutine(null)} desktop="panel" ariaLabel={`Plantilla ${selectedRoutine.name}`}>
-          <RoutineDetailBody routine={selectedRoutine} onClose={() => setSelectedRoutine(null)} />
+          <RoutineDetailBody
+            routine={selectedRoutine}
+            onClose={() => setSelectedRoutine(null)}
+            onEdit={() => setEditor({ type: "routine", initial: selectedRoutine, id: selectedRoutine.id })}
+            onDelete={() => deleteTemplate(selectedRoutine.id)}
+          />
         </DetailOverlay>
+      )}
+
+      {/* Editor */}
+      {editor && (
+        <TemplateEditorModal
+          type={editor.type}
+          initial={editor.initial}
+          title={editor.id ? "Editar plantilla" : editor.type === "diet" ? "Nueva plantilla de dieta" : "Nueva plantilla de rutina"}
+          saveLabel={editor.id ? "Guardar cambios" : "Crear plantilla"}
+          onClose={() => setEditor(null)}
+          onSave={saveTemplate}
+        />
       )}
     </>
   );

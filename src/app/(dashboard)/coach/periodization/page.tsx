@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
+import { Calendar, CalendarRange } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { RowSkeleton, Skeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import BulkPeriodizationWizard from "@/components/bulk-periodization-wizard";
 
 export default function PeriodizationPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const fetchStudents = async () => {
     try {
@@ -74,6 +76,17 @@ export default function PeriodizationPage() {
       <PageHeader
         title="Periodización y Ciclos"
         hint="Supervisa la distribución de tus alumnos por objetivos y los cambios de etapa programados."
+        cta={
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="shrink-0 inline-flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-85 rounded-full md:rounded-xl w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)]"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+            aria-label="Programación masiva"
+          >
+            <CalendarRange size={18} strokeWidth={2} className="shrink-0" />
+            <span className="hidden md:inline text-[13px] font-medium">Programación masiva</span>
+          </button>
+        }
       />
 
       {/* Content */}
@@ -225,6 +238,14 @@ export default function PeriodizationPage() {
         </div>
 
       </div>
+
+      {wizardOpen && (
+        <BulkPeriodizationWizard
+          students={students}
+          onClose={() => setWizardOpen(false)}
+          onSuccess={fetchStudents}
+        />
+      )}
     </>
   );
 }
