@@ -18,6 +18,13 @@ const NAV_ITEMS: { label: string; shortLabel?: string; href: string; icon: typeo
   { label: "Pagos", href: "/coach/payments", icon: CreditCard },
 ];
 
+/* Fuente única del estado activo: la raíz (/coach) solo por igualdad exacta;
+   el resto por igualdad o prefijo de segmento. */
+function isActiveRoute(pathname: string, href: string) {
+  if (href === "/coach") return pathname === "/coach";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 /* ═══════════════════════════════════════════
    Desktop Sidebar — Minimal, weightless
    ═══════════════════════════════════════════ */
@@ -57,7 +64,7 @@ export function DesktopSidebar() {
       {/* ── Nav ── */}
       <nav className="flex-1 px-3 pt-6 space-y-0.5">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = isActiveRoute(pathname, item.href);
           const Icon = item.icon;
 
           return (
