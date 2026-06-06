@@ -363,8 +363,9 @@ export default function PaymentsPage() {
                               key={student.id}
                               onClick={() => setSelected(student)}
                               className="cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
+                              style={{ height: "var(--row-h-compact)" }}
                             >
-                              <td className="px-5 py-3.5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td className="px-5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                                 <div className="flex items-center gap-3">
                                   <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium" style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                                     {student.avatarInitials}
@@ -375,10 +376,10 @@ export default function PaymentsPage() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-5 py-3.5 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)", borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td className="px-5 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)", borderBottom: "1px solid var(--border-subtle)" }}>
                                 $1,200
                               </td>
-                              <td className="px-5 py-3.5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td className="px-5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5" style={{ color: status.color, background: status.bg }}>
                                     <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />

@@ -91,6 +91,10 @@
   --sidebar-width: 240px;
   --sidebar-collapsed-width: 64px;
   --header-height: 56px;
+
+  /* ── Densidad de superficies de trabajo (tablas/listas) ── */
+  --row-h-compact: 56px;
+  --row-h-comfortable: 72px;
 }
 
 @theme inline {

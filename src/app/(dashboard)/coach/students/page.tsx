@@ -199,6 +199,7 @@ export default function StudentsPage() {
           onStageFilterChange={setStageFilter}
           totalStudents={students.length}
           filteredCount={filteredStudents.length}
+          students={students}
         />
 
         {/* ── Student Table ── */}

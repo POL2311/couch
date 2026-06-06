@@ -236,14 +236,14 @@ export default function StudentTable({
         <table id="students-table" className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th className="w-12 pl-6 pr-2 py-4 text-left" style={{ background: "var(--bg-surface)" }}>
+              <th className="sticky top-0 z-10 w-12 pl-6 pr-2 py-4 text-left" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
                 <Checkbox checked={allSelected} indeterminate={someSelected} onChange={onToggleAll} id="select-all-students" />
               </th>
               {["Nombre", "Peso", "Etapa", "Estado", "Adherencia", ""].map((h, i, arr) => (
                 <th
                   key={i}
-                  className={`px-4 py-4 text-left text-[11px] font-normal tracking-[0.06em] uppercase whitespace-nowrap ${i === arr.length - 1 ? "pr-6" : ""}`}
-                  style={{ color: "var(--text-tertiary)", background: "var(--bg-surface)" }}
+                  className={`sticky top-0 z-10 px-4 py-4 text-left text-[11px] font-normal tracking-[0.06em] uppercase whitespace-nowrap ${i === arr.length - 1 ? "pr-6" : ""}`}
+                  style={{ color: "var(--text-tertiary)", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}
                 >
                   {h}
                 </th>
@@ -264,6 +264,7 @@ export default function StudentTable({
                   className="group animate-fade-in"
                   style={{
                     animationDelay: `${idx * 25}ms`,
+                    height: "var(--row-h-compact)",
                     background: isSelected ? "var(--bg-active)" : "transparent",
                     transition: "background var(--transition-fast)",
                   }}
@@ -275,12 +276,12 @@ export default function StudentTable({
                   }}
                 >
                   {/* Checkbox */}
-                  <td className="w-12 pl-6 pr-2 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="w-12 pl-6 pr-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <Checkbox checked={isSelected} onChange={() => onToggleSelect(student.id)} />
                   </td>
 
                   {/* Name — clickable link to detail */}
-                  <td className="px-4 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <Link href={`/coach/students/${student.id}`} className="flex items-center gap-3.5 group/name">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium"
@@ -304,7 +305,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Weight */}
-                  <td className="px-4 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <span className="text-[13px] tabular-nums" style={{ color: "var(--text-primary)" }}>
                       {student.currentWeight}
                     </span>
@@ -318,7 +319,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Stage */}
-                  <td className="px-4 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <span
                       className="text-[11px] px-2.5 py-1 rounded-full font-medium"
                       style={{ color: stage.color, background: stage.bg }}
@@ -328,7 +329,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Payment */}
-                  <td className="px-4 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${student.paymentStatus === "grace_period" ? "animate-subtle-pulse" : ""}`}
@@ -341,7 +342,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Adherence */}
-                  <td className="px-4 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <div className="flex items-center gap-2.5">
                       <div className="w-14 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
                         <div
@@ -372,7 +373,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Actions */}
-                  <td className="pl-4 pr-6 py-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="pl-4 pr-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <button
                       id={`actions-${student.id}`}
                       className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 cursor-pointer"

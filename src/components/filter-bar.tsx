@@ -1,6 +1,6 @@
 "use client";
 
-import { type PaymentStatus, type Stage } from "@/lib/mock-data";
+import { type PaymentStatus, type Stage, type Student } from "@/lib/mock-data";
 
 interface FilterBarProps {
   activePaymentFilter: PaymentStatus | "all";
@@ -9,6 +9,7 @@ interface FilterBarProps {
   onStageFilterChange: (filter: Stage | "all") => void;
   totalStudents: number;
   filteredCount: number;
+  students: Student[];
 }
 
 const PAYMENT_FILTERS: { label: string; value: PaymentStatus | "all" }[] = [
@@ -33,7 +34,14 @@ export default function FilterBar({
   onStageFilterChange,
   totalStudents,
   filteredCount,
+  students,
 }: FilterBarProps) {
+  // Conteos reales por filtro — un número invita a saltar en vez de scrollear.
+  const paymentCount = (value: PaymentStatus | "all") =>
+    value === "all" ? students.length : students.filter((s) => s.paymentStatus === value).length;
+  const stageCount = (value: Stage | "all") =>
+    value === "all" ? students.length : students.filter((s) => s.stage === value).length;
+
   return (
     <div
       id="filter-bar"
@@ -64,6 +72,7 @@ export default function FilterBar({
               }}
             >
               {filter.label}
+              <span className="ml-1 tabular-nums" style={{ opacity: 0.55 }}>· {paymentCount(filter.value)}</span>
             </button>
           );
         })}
@@ -96,6 +105,7 @@ export default function FilterBar({
               }}
             >
               {filter.label}
+              <span className="ml-1 tabular-nums" style={{ opacity: 0.55 }}>· {stageCount(filter.value)}</span>
             </button>
           );
         })}
