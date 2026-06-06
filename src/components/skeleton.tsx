@@ -30,22 +30,23 @@ export function ChartSkeleton({ className = "" }: { className?: string }) {
   );
 }
 
-/* ── Filas tipo lista (timeline, tabla) ── */
+/* ── Filas tipo celda de lista iOS (avatar + 2 líneas + trailing, separador inset) ── */
 export function RowSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="space-y-3" aria-hidden="true">
+    <div aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 p-3 rounded-lg"
-          style={{ border: "1px solid var(--border-subtle)" }}
-        >
+        <div key={i} className="flex items-center gap-3 px-1">
           <Skeleton className="h-9 w-9 rounded-full shrink-0" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-2.5 w-1/3" />
+          <div
+            className="flex-1 flex items-center gap-3 py-3.5"
+            style={{ borderBottom: i === count - 1 ? "none" : "1px solid var(--border-subtle)" }}
+          >
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-2.5 w-1/3" />
+            </div>
+            <Skeleton className="h-5 w-14 rounded-md shrink-0" />
           </div>
-          <Skeleton className="h-5 w-14 rounded-md shrink-0" />
         </div>
       ))}
     </div>

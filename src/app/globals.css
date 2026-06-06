@@ -181,6 +181,23 @@ input::placeholder {
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 
+/* ── Bottom sheet / scrim (estilo iOS) ── */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-scrim-in {
+  animation: scrim-in 0.2s ease-out both;
+}
+
 /* ═══════════════════════════════════════════
    Mobile Bottom Navigation
    ═══════════════════════════════════════════ */

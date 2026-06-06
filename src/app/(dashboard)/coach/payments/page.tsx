@@ -1,10 +1,107 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
-import { Plug } from "lucide-react";
-import { Skeleton } from "@/components/skeleton";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Plug, ChevronRight, X, CreditCard } from "lucide-react";
+import { Skeleton, RowSkeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { type Student } from "@/lib/mock-data";
+
+/* ── Secciones por estado (iOS grouped list) ── */
+const PAYMENT_SECTIONS: { key: string; title: string; statuses: string[] }[] = [
+  { key: "action", title: "Requieren acción", statuses: ["grace_period"] },
+  { key: "active", title: "Al día", statuses: ["active"] },
+  { key: "disabled", title: "Inhabilitadas", statuses: ["inactive"] },
+];
+
+function KVRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div
+      className="flex items-center justify-between gap-4 px-4 py-3 text-[13px]"
+      style={{ borderBottom: last ? "none" : "1px solid var(--border-subtle)" }}
+    >
+      <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+      <span className="tabular-nums text-right truncate" style={{ color: "var(--text-primary)" }}>{value}</span>
+    </div>
+  );
+}
+
+/* Contenido compartido por el bottom sheet (móvil) y el dialog (escritorio) */
+function PaymentDetailBody({
+  student,
+  status,
+  dueDate,
+  onClose,
+  onRemind,
+}: {
+  student: Student;
+  status: { label: string; color: string; bg: string };
+  dueDate: string;
+  onClose: () => void;
+  onRemind: () => void;
+}) {
+  const needsAction = student.paymentStatus === "grace_period";
+  return (
+    <div className="relative">
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        className="absolute -top-1 right-0 p-2 rounded-full transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        <X size={18} strokeWidth={1.75} />
+      </button>
+
+      {/* Header */}
+      <div className="flex items-center gap-3 pr-10">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[12px] font-medium"
+          style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}
+        >
+          {student.avatarInitials}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+          <p className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>{student.email}</p>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: status.color, background: status.bg }}>
+          <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
+          {status.label}
+        </span>
+      </div>
+
+      {/* Pares clave-valor */}
+      <div className="mt-5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+        <KVRow label="Cuota" value="$1,200 MXN" />
+        <KVRow label="Estado" value={status.label} />
+        <KVRow label="Próximo vencimiento" value={new Date(dueDate + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })} />
+        <KVRow label="Correo" value={student.email} last />
+      </div>
+
+      {/* Acciones apiladas */}
+      <div className="mt-5 space-y-2.5">
+        {needsAction && (
+          <button
+            onClick={onRemind}
+            className="w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-85"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+          >
+            Recordar pago
+          </button>
+        )}
+        <button
+          onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
+          className="w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
+          style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+        >
+          Ver en Stripe
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function PaymentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -40,6 +137,32 @@ export default function PaymentsPage() {
 
     return { total, active, grace, inactive, mrr, atRisk };
   }, [students]);
+
+  const [selected, setSelected] = useState<Student | null>(null);
+
+  // Agrupación por estado; secciones vacías se descartan.
+  const grouped = useMemo(
+    () =>
+      PAYMENT_SECTIONS.map((sec) => ({
+        ...sec,
+        items: students.filter((s) => sec.statuses.includes(s.paymentStatus)),
+      })).filter((sec) => sec.items.length > 0),
+    [students]
+  );
+
+  // Cerrar el detalle con Esc.
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected]);
+
+  const remind = useCallback((s: Student) => {
+    alert(`Recordatorio de pago enviado a ${s.name}`);
+  }, []);
 
   const getStatusStyle = (status: string) => {
     const map: Record<string, { label: string; color: string; bg: string }> = {
@@ -186,7 +309,7 @@ export default function PaymentsPage() {
         {/* Tables & Integrations Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           
-          {/* Subscriptions Table (Col 1 & 2) */}
+          {/* Cobros y Alumnos — agrupado por estado (lista iOS en móvil, tabla en desktop) */}
           <div
             className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
@@ -198,99 +321,127 @@ export default function PaymentsPage() {
               <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Facturación Mensual</span>
             </div>
 
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)]">
-                    {["Alumno", "Cuota (MXN)", "Estado", "Próximo Vencimiento", ""].map((h, i) => (
-                      <th
-                        key={i}
-                        className="px-5 py-3 text-left text-[10px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
-                        style={{ color: "var(--text-tertiary)", background: "var(--bg-surface-raised)" }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={i}>
-                        <td colSpan={5} className="px-5 py-3">
-                          <Skeleton className="h-9 w-full" />
-                        </td>
+            {isLoading ? (
+              <div className="p-4"><RowSkeleton count={6} /></div>
+            ) : students.length === 0 ? (
+              <EmptyState
+                icon={CreditCard}
+                message="Sin alumnos registrados"
+                hint="Registra alumnos para gestionar sus cobros mensuales."
+                className="py-12"
+              />
+            ) : (
+              <>
+                {/* ═══ DESKTOP TABLE (≥768px) ═══ */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+                    <thead>
+                      <tr>
+                        {["Alumno", "Cuota (MXN)", "Estado"].map((h, i) => (
+                          <th
+                            key={i}
+                            className="sticky top-0 z-10 px-5 py-3 text-left text-[10px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
+                            style={{ color: "var(--text-tertiary)", background: "var(--bg-surface-raised)", borderBottom: "1px solid var(--border-subtle)" }}
+                          >
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))
-                  ) : (
-                    students.map((student) => {
-                      const status = getStatusStyle(student.paymentStatus);
-                      const dueDate = calculateDueDate(student.joinedDate, student.paymentStatus);
-
-                      return (
-                        <tr key={student.id} className="hover:bg-[var(--bg-hover)] transition-colors">
-                          {/* Student */}
-                          <td className="px-5 py-4 text-[12px]">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium"
-                                style={{
-                                  background: "var(--bg-surface-raised)",
-                                  color: "var(--text-secondary)",
-                                  border: "1px solid var(--border-default)",
-                                }}
-                              >
-                                {student.avatarInitials}
-                              </div>
-                              <div>
-                                <Link href={`/coach/students/${student.id}`} className="font-medium hover:underline text-[12px]" style={{ color: "var(--text-primary)" }}>
-                                  {student.name}
-                                </Link>
-                                <span className="block text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{student.email}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Fee — moneda en el header de columna; celda solo el monto */}
-                          <td className="px-5 py-4 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-                            $1,200
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-5 py-4 text-[12px]">
-                            <span
-                              className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5"
-                              style={{ color: status.color, background: status.bg }}
-                            >
-                              <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
-                              {status.label}
-                            </span>
-                          </td>
-
-                          {/* Due Date */}
-                          <td className="px-5 py-4 text-[12px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {new Date(dueDate + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
-                          </td>
-
-                          {/* Action */}
-                          <td className="px-5 py-4 text-[12px] text-right">
-                            {student.paymentStatus !== "active" && (
-                              <button
-                                onClick={() => alert(`Recordatorio de pago enviado a ${student.name}`)}
-                                className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-default)] transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
-                                style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)" }}
-                              >
-                                Recordar
-                              </button>
-                            )}
+                    </thead>
+                    {grouped.map((sec) => (
+                      <tbody key={sec.key}>
+                        <tr>
+                          <td colSpan={3} className="px-5 pt-5 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                            {sec.title} · {sec.items.length}
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        {sec.items.map((student) => {
+                          const status = getStatusStyle(student.paymentStatus);
+                          const needsAction = student.paymentStatus === "grace_period";
+                          return (
+                            <tr
+                              key={student.id}
+                              onClick={() => setSelected(student)}
+                              className="cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
+                            >
+                              <td className="px-5 py-3.5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium" style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                                    {student.avatarInitials}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-[12px] truncate max-w-[200px]" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+                                    <p className="text-[10px] truncate max-w-[200px]" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)", borderBottom: "1px solid var(--border-subtle)" }}>
+                                $1,200
+                              </td>
+                              <td className="px-5 py-3.5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5" style={{ color: status.color, background: status.bg }}>
+                                    <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
+                                    {status.label}
+                                  </span>
+                                  {needsAction && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); remind(student); }}
+                                      className="px-2.5 py-1 text-[10px] rounded-lg whitespace-nowrap transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+                                      style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                                    >
+                                      Recordar
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    ))}
+                  </table>
+                </div>
+
+                {/* ═══ MOBILE LIST (<768px) ═══ */}
+                <div className="md:hidden">
+                  {grouped.map((sec) => (
+                    <div key={sec.key}>
+                      <div className="px-4 pt-4 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                        {sec.title} · {sec.items.length}
+                      </div>
+                      {sec.items.map((student, idx) => {
+                        const status = getStatusStyle(student.paymentStatus);
+                        const isLast = idx === sec.items.length - 1;
+                        return (
+                          <button
+                            key={student.id}
+                            onClick={() => setSelected(student)}
+                            className="w-full flex items-center gap-3 pl-4 pr-4 min-h-[60px] text-left transition-colors active:bg-[var(--bg-hover)]"
+                          >
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium" style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                              {student.avatarInitials}
+                            </div>
+                            {/* Separador inset: empieza después del avatar */}
+                            <div className="flex-1 min-w-0 flex items-center gap-3 py-3" style={{ borderBottom: isLast ? "none" : "1px solid var(--border-subtle)" }}>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+                                <p className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>{student.email}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className="text-[15px] tabular-nums" style={{ color: "var(--text-primary)" }}>$1,200</span>
+                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ color: status.color, background: status.bg }}>{status.label}</span>
+                              </div>
+                              <ChevronRight size={14} strokeWidth={1.75} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Stripe & SaaS Billing Status (Col 3) */}
@@ -363,6 +514,39 @@ export default function PaymentsPage() {
         </div>
 
       </div>
+
+      {/* ═══ Detalle de cobro — bottom sheet (móvil) / dialog (escritorio) ═══ */}
+      {selected && (() => {
+        const status = getStatusStyle(selected.paymentStatus);
+        const dueDate = calculateDueDate(selected.joinedDate, selected.paymentStatus);
+        const close = () => setSelected(null);
+        const onRemind = () => { remind(selected); close(); };
+        return (
+          <div role="dialog" aria-modal="true" aria-label={`Cobro de ${selected.name}`} className="fixed inset-0 z-[60]">
+            {/* Scrim */}
+            <div className="absolute inset-0 animate-scrim-in" style={{ background: "var(--scrim)" }} onClick={close} />
+
+            {/* Bottom sheet (móvil) */}
+            <div
+              className="md:hidden absolute bottom-0 left-0 right-0 rounded-t-[20px] animate-sheet-up px-5 pt-3"
+              style={{ background: "var(--bg-surface-raised)", borderTop: "1px solid var(--border-subtle)", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}
+            >
+              <div className="mx-auto mb-4 rounded-full" style={{ width: 36, height: 4, background: "rgba(255, 255, 255, 0.20)" }} />
+              <PaymentDetailBody student={selected} status={status} dueDate={dueDate} onClose={close} onRemind={onRemind} />
+            </div>
+
+            {/* Dialog centrado (escritorio) */}
+            <div className="hidden md:flex absolute inset-0 items-center justify-center p-4 pointer-events-none">
+              <div
+                className="pointer-events-auto w-full max-w-md rounded-2xl animate-float-up p-6"
+                style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)", boxShadow: "var(--shadow-lg)" }}
+              >
+                <PaymentDetailBody student={selected} status={status} dueDate={dueDate} onClose={close} onRemind={onRemind} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
