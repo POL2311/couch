@@ -61,6 +61,38 @@ export default function StudentsPage() {
     });
   }, [students, paymentFilter, stageFilter]);
 
+  /* ── Paginación (50 por página, estado en ?page; filtros operan sobre el total) ── */
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+
+  // Leer ?page al montar (sobrevive refresh).
+  useEffect(() => {
+    const p = parseInt(new URLSearchParams(window.location.search).get("page") || "1", 10);
+    if (p > 1) setPage(p);
+  }, []);
+
+  // Volver a la primera página al cambiar filtros.
+  useEffect(() => {
+    setPage(1);
+  }, [paymentFilter, stageFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageStudents = useMemo(
+    () => filteredStudents.slice(pageStart, pageStart + PAGE_SIZE),
+    [filteredStudents, pageStart]
+  );
+
+  // Reflejar la página en la URL sin recargar.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (safePage > 1) params.set("page", String(safePage));
+    else params.delete("page");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [safePage]);
+
   /* ── Stats ── */
   const stats = useMemo(() => {
     const total = students.length;
@@ -86,14 +118,15 @@ export default function StudentsPage() {
 
   const handleToggleAll = useCallback(() => {
     setSelectedIds((prev) => {
-      const allFilteredIds = filteredStudents.map((s) => s.id);
-      const allSelected = allFilteredIds.every((id) => prev.has(id));
+      // "Seleccionar todo" opera sobre la página visible.
+      const ids = pageStudents.map((s) => s.id);
+      const allSelected = ids.length > 0 && ids.every((id) => prev.has(id));
       if (allSelected) {
         return new Set();
       }
-      return new Set(allFilteredIds);
+      return new Set(ids);
     });
-  }, [filteredStudents]);
+  }, [pageStudents]);
 
   const handleClearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -209,11 +242,38 @@ export default function StudentsPage() {
           </div>
         ) : (
           <StudentTable
-            students={filteredStudents}
+            students={pageStudents}
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
             onToggleAll={handleToggleAll}
           />
+        )}
+
+        {/* ── Paginación (50/pág) ── */}
+        {!isLoading && filteredStudents.length > 0 && (
+          <div className="flex items-center justify-end gap-3 px-5 py-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+            <span className="text-[11px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+              {pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, filteredStudents.length)} de {filteredStudents.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(safePage - 1)}
+                disabled={safePage <= 1}
+                className="px-2.5 py-1 rounded-lg text-[12px] cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage(safePage + 1)}
+                disabled={safePage >= totalPages}
+                className="px-2.5 py-1 rounded-lg text-[12px] cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

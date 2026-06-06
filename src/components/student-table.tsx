@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Flame, SearchX } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { EmptyState } from "@/components/empty-state";
@@ -122,89 +123,60 @@ function StudentCard({
 
   return (
     <div
-      className="px-5 py-5 animate-fade-in"
+      className="flex items-center gap-3 px-4 animate-fade-in"
       style={{
+        minHeight: 64,
         background: isSelected ? "var(--bg-active)" : "transparent",
         borderBottom: "1px solid var(--border-subtle)",
         transition: "background var(--transition-fast)",
       }}
     >
-      <div className="flex items-start gap-4">
-        {/* Avatar — checkbox on tap */}
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium cursor-pointer"
-          style={{
-            background: isSelected ? "var(--text-primary)" : "var(--bg-surface-overlay)",
-            color: isSelected ? "var(--text-inverse)" : "var(--text-secondary)",
-            border: `1px solid ${isSelected ? "var(--text-primary)" : "var(--border-default)"}`,
-            transition: "all var(--transition-fast)",
-          }}
-          onClick={(e) => { e.preventDefault(); onToggle(); }}
-        >
-          {isSelected ? (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          ) : (
-            student.avatarInitials
-          )}
+      {/* Avatar — checkbox on tap */}
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium cursor-pointer"
+        style={{
+          background: isSelected ? "var(--text-primary)" : "var(--bg-surface-overlay)",
+          color: isSelected ? "var(--text-inverse)" : "var(--text-secondary)",
+          border: `1px solid ${isSelected ? "var(--text-primary)" : "var(--border-default)"}`,
+          transition: "all var(--transition-fast)",
+        }}
+        onClick={(e) => { e.preventDefault(); onToggle(); }}
+      >
+        {isSelected ? (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        ) : (
+          student.avatarInitials
+        )}
+      </div>
+
+      {/* Content — links to detail (una línea por dato) */}
+      <Link href={`/coach/students/${student.id}`} className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+            {student.name}
+          </span>
+          <span className="text-[11px] shrink-0" style={{ color: payment.color }}>
+            {payment.label}
+          </span>
         </div>
 
-        {/* Content — links to detail */}
-        <Link href={`/coach/students/${student.id}`} className="flex-1 min-w-0">
-          {/* Name + Payment */}
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-              {student.name}
-            </p>
-            <span
-              className="text-[11px] shrink-0"
-              style={{ color: payment.color }}
-            >
-              {payment.label}
+        <div className="flex items-center gap-2 mt-0.5 text-[12px] tabular-nums overflow-hidden">
+          <span className="shrink-0" style={{ color: "var(--text-secondary)" }}>{student.currentWeight} kg</span>
+          <span className="shrink-0" style={{ color: weight.color }}>{weight.text}</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] shrink-0" style={{ color: stage.color, background: stage.bg }}>
+            {student.stage}
+          </span>
+          <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>{student.completionRate}%</span>
+          {student.streak > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] shrink-0" style={{ color: "var(--color-warning)" }}>
+              <Flame size={12} strokeWidth={1.75} />
+              <span className="tabular-nums">{student.streak}</span>
             </span>
-          </div>
-
-          {/* Meta row */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-[12px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
-              {student.currentWeight} kg
-            </span>
-            <span className="text-[11px] tabular-nums" style={{ color: weight.color }}>
-              {weight.text}
-            </span>
-            <span
-              className="text-[11px] px-2 py-0.5 rounded-full"
-              style={{ color: stage.color, background: stage.bg }}
-            >
-              {student.stage}
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div className="flex items-center gap-2 mt-3">
-            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${student.completionRate}%`,
-                  background: "var(--text-tertiary)",
-                  transition: "width 0.6s ease-out",
-                }}
-              />
-            </div>
-            <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-              {student.completionRate}%
-            </span>
-            {student.streak > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: "var(--color-warning)" }}>
-                <Flame size={14} strokeWidth={1.75} />
-                <span className="tabular-nums">{student.streak}</span>
-              </span>
-            )}
-          </div>
-        </Link>
-      </div>
+          )}
+        </div>
+      </Link>
     </div>
   );
 }
@@ -226,6 +198,7 @@ export default function StudentTable({
   onToggleSelect,
   onToggleAll,
 }: StudentTableProps) {
+  const router = useRouter();
   const allSelected = students.length > 0 && students.every((s) => selectedIds.has(s.id));
   const someSelected = students.some((s) => selectedIds.has(s.id)) && !allSelected;
 
@@ -261,7 +234,8 @@ export default function StudentTable({
                 <tr
                   key={student.id}
                   id={`student-row-${student.id}`}
-                  className="group animate-fade-in"
+                  onClick={() => router.push(`/coach/students/${student.id}`)}
+                  className="group animate-fade-in cursor-pointer"
                   style={{
                     animationDelay: `${idx * 25}ms`,
                     height: "var(--row-h-compact)",
@@ -275,14 +249,14 @@ export default function StudentTable({
                     if (!isSelected) e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  {/* Checkbox */}
-                  <td className="w-12 pl-6 pr-2" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  {/* Checkbox — no dispara la navegación de la fila */}
+                  <td className="w-12 pl-6 pr-2" onClick={(e) => e.stopPropagation()} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <Checkbox checked={isSelected} onChange={() => onToggleSelect(student.id)} />
                   </td>
 
-                  {/* Name — clickable link to detail */}
+                  {/* Nombre · email en una sola línea */}
                   <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <Link href={`/coach/students/${student.id}`} className="flex items-center gap-3.5 group/name">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium"
                         style={{
@@ -293,19 +267,19 @@ export default function StudentTable({
                       >
                         {student.avatarInitials}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium truncate max-w-[180px] group-hover/name:underline underline-offset-2 decoration-[color:var(--underline-on-dark)]" style={{ color: "var(--text-primary)" }}>
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <span className="text-[15px] font-medium truncate group-hover:underline underline-offset-2 decoration-[color:var(--underline-on-dark)]" style={{ color: "var(--text-primary)", maxWidth: "200px" }}>
                           {student.name}
-                        </p>
-                        <p className="text-[11px] truncate max-w-[180px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                          {student.email}
-                        </p>
+                        </span>
+                        <span className="text-[12px] truncate" style={{ color: "var(--text-tertiary)" }} title={student.email}>
+                          · {student.email}
+                        </span>
                       </div>
-                    </Link>
+                    </div>
                   </td>
 
-                  {/* Weight */}
-                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  {/* Peso · delta · fecha en una línea */}
+                  <td className="px-4 whitespace-nowrap" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <span className="text-[13px] tabular-nums" style={{ color: "var(--text-primary)" }}>
                       {student.currentWeight}
                     </span>
@@ -376,7 +350,8 @@ export default function StudentTable({
                   <td className="pl-4 pr-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <button
                       id={`actions-${student.id}`}
-                      className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-2 rounded-md opacity-0 group-hover:opacity-100 cursor-pointer"
                       style={{
                         color: "var(--text-tertiary)",
                         transition: "all var(--transition-fast)",
