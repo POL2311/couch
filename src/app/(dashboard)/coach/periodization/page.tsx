@@ -131,8 +131,8 @@ export default function PeriodizationPage() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Cronograma de Cambios Programados
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Cronograma de cambios
               </h3>
               <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Ejecución automática</span>
             </div>
@@ -198,8 +198,8 @@ export default function PeriodizationPage() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Distribución de Alumnos
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Distribución de alumnos
               </h3>
             </div>
             

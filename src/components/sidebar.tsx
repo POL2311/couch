@@ -179,7 +179,8 @@ export function MobileBottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            className="flex flex-col items-center justify-center gap-1 py-2 px-1 min-w-0"
+            aria-label={item.label}
+            className="flex flex-col items-center justify-center gap-1 py-2 px-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
             style={{
               color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
               transition: "color var(--transition-fast)",

@@ -864,7 +864,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       >
         <Link
           href="/coach/students"
-          className="flex flex-col items-center justify-center p-3 transition-colors"
+          className="flex flex-col items-center justify-center p-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
           style={{ color: "var(--text-sidebar-secondary)" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}
@@ -876,7 +876,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           onClick={() => {
             document.getElementById("progreso")?.scrollIntoView({ behavior: "smooth" });
           }}
-          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors"
+          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
           style={{ color: "var(--text-sidebar-secondary)" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}
@@ -888,7 +888,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           onClick={() => {
             document.getElementById("dieta")?.scrollIntoView({ behavior: "smooth" });
           }}
-          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors"
+          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
           style={{ color: "var(--text-sidebar-secondary)" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}
@@ -900,7 +900,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           onClick={() => {
             document.getElementById("rutina")?.scrollIntoView({ behavior: "smooth" });
           }}
-          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors"
+          className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
           style={{ color: "var(--text-sidebar-secondary)" }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}

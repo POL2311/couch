@@ -408,8 +408,8 @@ export default function PaymentsPage() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-4 md:px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between gap-3 bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] shrink-0" style={{ color: "var(--text-secondary)" }}>
-                Cobros y Alumnos
+              <h3 className="text-[14px] font-medium shrink-0" style={{ color: "var(--text-primary)" }}>
+                Cobros y alumnos
               </h3>
               <div className="relative min-w-0 w-full max-w-[220px]">
                 <Search size={14} strokeWidth={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
@@ -554,10 +554,10 @@ export default function PaymentsPage() {
             {/* Stripe */}
             <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <div className="flex items-center gap-1.5 border-b border-[var(--border-subtle)] pb-3">
-                <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                  Pasarela de Pagos (Stripe)
+                <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                  Pasarela de pagos
                 </h3>
-                <InfoHint text={STRIPE_HINT} />
+                <InfoHint text={`Stripe · ${STRIPE_HINT}`} />
               </div>
               <div className="mt-4 flex items-center gap-3">
                 <Plug size={20} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
@@ -571,8 +571,8 @@ export default function PaymentsPage() {
 
             {/* SaaS */}
             <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
-                Tu cuenta SaaS (MyCoach)
+              <h3 className="text-[14px] font-medium border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-primary)" }}>
+                Tu cuenta SaaS
               </h3>
               <div className="mt-4">
                 <SaaSDetails />
@@ -581,7 +581,7 @@ export default function PaymentsPage() {
 
             {/* ═══ MÓVIL: una card "Facturación" con dos grupos ═══ */}
             <div className="md:hidden rounded-xl border overflow-hidden" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
-              <h3 className="px-5 py-4 border-b border-[var(--border-subtle)] text-[12px] font-semibold uppercase tracking-[0.06em] bg-[var(--bg-surface-raised)]" style={{ color: "var(--text-secondary)" }}>
+              <h3 className="px-5 py-4 border-b border-[var(--border-subtle)] text-[14px] font-medium bg-[var(--bg-surface-raised)]" style={{ color: "var(--text-primary)" }}>
                 Facturación
               </h3>
               {/* Grupo 1: estado Stripe */}
