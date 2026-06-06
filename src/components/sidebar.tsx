@@ -49,7 +49,7 @@ export function DesktopSidebar() {
           className="text-[13px] font-semibold tracking-[0.2em] uppercase shrink-0"
           style={{ color: "var(--text-primary)" }}
         >
-          {collapsed ? "M" : "MYCOUCH"}
+          {collapsed ? "M" : "MYCOACH"}
         </span>
       </div>
 

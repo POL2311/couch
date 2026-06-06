@@ -11,7 +11,7 @@ const hankenGrotesk = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "MyCouch — Plataforma Fitness Integral",
+  title: "MyCoach — Plataforma Fitness Integral",
   description:
     "Dashboard de gestión de alumnos, dietas, rutinas y pagos para coaches de fitness.",
 };

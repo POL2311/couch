@@ -316,7 +316,7 @@ export default function PaymentsPage() {
               </div>
               
               <button
-                onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCouch...")}
+                onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
                 className="mt-5 w-full py-2 border rounded-xl text-[11px] font-medium transition-all cursor-pointer hover:bg-[color:var(--bg-hover)]"
                 style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
               >
@@ -330,7 +330,7 @@ export default function PaymentsPage() {
               style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
             >
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
-                Tu cuenta SaaS (MyCouch)
+                Tu cuenta SaaS (MyCoach)
               </h3>
               
               <div className="mt-4 space-y-3 text-[12px]">

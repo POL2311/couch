@@ -430,7 +430,7 @@ const isBrowser = typeof window !== "undefined";
 
 export function getStoredStudents(): Student[] {
   if (!isBrowser) return MOCK_STUDENTS;
-  const stored = localStorage.getItem("mycouch_students");
+  const stored = localStorage.getItem("mycoach_students");
   if (stored) {
     try {
       return JSON.parse(stored);
@@ -438,13 +438,13 @@ export function getStoredStudents(): Student[] {
       return MOCK_STUDENTS;
     }
   }
-  localStorage.setItem("mycouch_students", JSON.stringify(MOCK_STUDENTS));
+  localStorage.setItem("mycoach_students", JSON.stringify(MOCK_STUDENTS));
   return MOCK_STUDENTS;
 }
 
 export function saveStudents(students: Student[]) {
   if (isBrowser) {
-    localStorage.setItem("mycouch_students", JSON.stringify(students));
+    localStorage.setItem("mycoach_students", JSON.stringify(students));
   }
 }
 
