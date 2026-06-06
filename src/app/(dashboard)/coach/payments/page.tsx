@@ -125,6 +125,46 @@ function Facepile({ items }: { items: Student[] }) {
   );
 }
 
+const STRIPE_HINT = "Las mensualidades se cobran automáticamente los días de corte del cliente.";
+
+/* Botón compacto (atajo, no acción primaria) */
+function StripeButton() {
+  return (
+    <button
+      onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
+      className="px-3 py-1.5 rounded-lg border text-[11px] font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+      style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
+    >
+      Ver Dashboard de Stripe
+    </button>
+  );
+}
+
+/* Pares clave-valor del plan + línea de tarjeta (compartido desktop/móvil) */
+function SaaSDetails() {
+  const rows: [string, string][] = [
+    ["Plan actual", "Coach PRO"],
+    ["Costo mensual", "$49.00 USD"],
+    ["Próximo cargo", "24 de junio, 2026"],
+  ];
+  return (
+    <>
+      <div className="space-y-2.5 text-[13px]">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-center justify-between gap-3">
+            <span style={{ color: "var(--text-secondary)" }}>{k}</span>
+            <span className="font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>{v}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+        <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>Tarjeta de débito · termina en 4242</span>
+      </div>
+    </>
+  );
+}
+
 export default function PaymentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -495,67 +535,51 @@ export default function PaymentsPage() {
           </div>
 
           {/* Stripe & SaaS Billing Status (Col 3) */}
-          <div className="space-y-5 flex flex-col">
-            
-            {/* Stripe Integration */}
-            <div
-              className="rounded-xl border overflow-hidden p-5"
-              style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-            >
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
-                Pasarela de Pagos (Stripe)
-              </h3>
-              
-              <div className="mt-4 flex items-center gap-3">
-                <Plug size={20} strokeWidth={1.75} style={{ color: "var(--color-success)" }} />
-                <div>
-                  <p className="text-[12px] font-semibold" style={{ color: "var(--color-success)" }}>
-                    Conectado con éxito
-                  </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Las mensualidades se cobran automáticamente los días de corte del cliente.
-                  </p>
-                </div>
+          <div className="flex flex-col gap-5">
+
+            {/* ═══ DESKTOP: dos cards ═══ */}
+            {/* Stripe */}
+            <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <div className="flex items-center gap-1.5 border-b border-[var(--border-subtle)] pb-3">
+                <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
+                  Pasarela de Pagos (Stripe)
+                </h3>
+                <InfoHint text={STRIPE_HINT} />
               </div>
-              
-              <button
-                onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
-                className="mt-5 w-full py-2 border rounded-xl text-[11px] font-medium transition-all cursor-pointer hover:bg-[color:var(--bg-hover)]"
-                style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
-              >
-                Ver Dashboard de Stripe
-              </button>
+              <div className="mt-4 flex items-center gap-3">
+                <Plug size={20} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+                  <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Conectado con éxito</span>
+                </div>
+                <div className="ml-auto"><StripeButton /></div>
+              </div>
             </div>
 
-            {/* SaaS Subscription Info */}
-            <div
-              className="rounded-xl border overflow-hidden p-5"
-              style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-            >
+            {/* SaaS */}
+            <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
                 Tu cuenta SaaS (MyCoach)
               </h3>
-              
-              <div className="mt-4 space-y-3 text-[12px]">
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Plan Actual</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Coach PRO</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Costo Mensual</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>$49.00 USD</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Próximo Cargo</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>24 de Junio, 2026</span>
-                </div>
+              <div className="mt-4">
+                <SaaSDetails />
               </div>
+            </div>
 
-              <div style={{ borderBottom: "1px solid var(--border-subtle)", margin: "15px 0" }} />
-
-              <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--color-success)" }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-subtle-pulse" style={{ background: "var(--color-success)" }} />
-                <span>Tarjeta de débito activa (termina en 4242)</span>
+            {/* ═══ MÓVIL: una card "Facturación" con dos grupos ═══ */}
+            <div className="md:hidden rounded-xl border overflow-hidden" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <h3 className="px-5 py-4 border-b border-[var(--border-subtle)] text-[12px] font-semibold uppercase tracking-[0.06em] bg-[var(--bg-surface-raised)]" style={{ color: "var(--text-secondary)" }}>
+                Facturación
+              </h3>
+              {/* Grupo 1: estado Stripe */}
+              <div className="px-5 py-4 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+                <span className="text-[13px] truncate min-w-0" style={{ color: "var(--text-primary)" }}>Stripe conectado</span>
+                <div className="ml-auto"><StripeButton /></div>
+              </div>
+              {/* Grupo 2: plan + tarjeta */}
+              <div className="px-5 py-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                <SaaSDetails />
               </div>
             </div>
 
