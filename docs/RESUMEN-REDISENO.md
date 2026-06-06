@@ -1,12 +1,29 @@
 # Resumen del rediseño — rama `new_design`
 
-Rediseño visual completo a estética "SF Dark Pro" (App de Apple) sobre el MVP de
-MyCoach, guiado por `ROADMAP.md §3`. QA de cierre: `tsc --noEmit` EXIT=0 y
-`npm run build` compila correctamente.
+Dos fases sobre el MVP de MyCoach:
+1. **Rediseño visual** a estética "SF Dark Pro" (App de Apple), guiado por `ROADMAP.md §3`.
+2. **Densidad y escalabilidad** para que la app aguante cientos de registros sin
+   volverse inusable (filas compactas, paginación, divulgación progresiva, techos).
+
+QA de cierre: `tsc --noEmit` EXIT=0 y `npm run build` compila correctamente.
 
 ## Historial (git log --oneline)
 
+**Fase 2 — Densidad y escalabilidad**
 ```
+cd62b8d densidad: techos y paginación de secciones
+6104a74 densidad: tabla de alumnos
+5a6c449 densidad: plantillas resumen + detalle
+8e86290 densidad: fundación
+e6be7a0 rediseño iOS: cobros y alumnos
+```
+
+**Fase 1 — Rediseño visual + QA**
+```
+59d1c50 fix: estado activo de navegación
+b45e149 fixes responsive: bottom bar 344px + tabla pagos + dev indicator
+c436b26 QA: UX + datos expuestos + responsive
+c676c6f QA + resumen
 c5a373e rebrand: MyCoach
 52b8787 pulido final + auditoría de color
 098f059 coherencia de datos
@@ -50,9 +67,12 @@ f85989d migración emoji → lucide completa
 | `--scrim` | `rgba(0,0,0,0.6)` | Overlay único: modales + scrim de imágenes |
 | `--glass` | `rgba(8,8,10,0.72)` | Cristal de chrome (sidebar, header, bottom-bar) |
 | `--glass-strong` | `rgba(5,5,5,0.95)` | Cristal del bulk-action-bar flotante |
+| `--row-h-compact` | `56px` | Altura de fila de tablas/listas de trabajo (Fase 2) |
+| `--row-h-comfortable` | `72px` | Altura de fila cómoda alternativa (Fase 2) |
 
 `--bg-sidebar` ahora referencia `--glass`. Los `*-subtle` (success/warning/danger
-/info al 10%) ya existían y se reutilizan para los fondos de estado.
+/info al 10%) ya existían y se reutilizan para los fondos de estado. Animaciones CSS
+nuevas: `sheet-up` (bottom sheet), `scrim-in`, `panel-in` (panel lateral).
 
 ## Barridos de regresión (QA)
 - **Emojis en `src/`:** cero en UI (solo `→` en comentarios).
@@ -61,6 +81,40 @@ f85989d migración emoji → lucide completa
   icono del feed `white/4`, fade blanco del chart de peso, sombra/inset del
   bulk-bar, y una mención en comentario de `skeleton.tsx`.
 - **`"—"` como valor de KPI:** cero en stat-cards.
+
+## Fase 2 — Densidad y escalabilidad
+
+Principio: **densidad por capas** — los resúmenes (KPIs, dashboard) conservan su
+aire; las superficies de trabajo (tablas, listas) se compactan y acotan.
+
+### Fundación
+- Tokens de altura de fila `--row-h-compact` (56px) / `--row-h-comfortable` (72px),
+  aplicados como altura de fila en las tablas (reemplazan los `py-*` fijos).
+- **Headers de columna sticky** (`sticky top-0` + superficie + hairline) en toda tabla.
+- **Chips de filtro con contador real** (`filter-bar`): "Activo · 9", "Volumen · 4"…
+  calculados desde `students`.
+
+### Componentes reutilizables nuevos
+| Componente | Uso |
+|---|---|
+| `components/detail-overlay.tsx` | Shell de detalle: bottom sheet (móvil) + variante desktop `dialog` (Pagos) o `panel` lateral (Plantillas); cierra con Esc / scrim / X. Reutilizado, sin duplicar. |
+| `lib/activity.ts` (`buildFeedItems`) | Deriva el feed de actividad desde `students` (pesajes + altas). |
+| `components/feed-row.tsx` (`FeedRow`) | Fila del feed compartida por dashboard y `/coach/activity`. |
+| `components/skeleton.tsx` (`RowSkeleton`) | Aplanado a forma de celda iOS (avatar + 2 líneas + trailing, separador inset). |
+
+### Cambios por vista (Fase 2)
+| Vista | Cambios |
+|---|---|
+| **Pagos (Cobros y Alumnos)** | Rediseño iOS: lista agrupada por estado ("Requieren acción" → "Al día" → "Inhabilitadas", con contador; secciones vacías ocultas). Móvil = celdas iOS (separador inset, sin scroll horizontal); desktop = tabla `ALUMNO · CUOTA (MXN) · ESTADO`, fila clickeable → detalle. Detalle en `DetailOverlay` (sheet/dialog) con acciones en contexto ("Recordar pago" solo en gracia, "Ver en Stripe"). **Techo:** "Requieren acción" completa; el resto cap 10 + "Mostrar 50 más" (revelado incremental). |
+| **Alumnos (student-table)** | Fila compacta 56px: nombre 15px · email 12px terciario en una línea (truncate + `title`). Fila completa clickeable (checkbox/acciones con `stopPropagation`). **Paginación 50/pág** con estado en `?page` (vía `history.replaceState`); filtros/conteos sobre el total. Card móvil compacta a 64px (una línea por dato). |
+| **Plantillas** | Card resumen (nombre, badge kcal, barra de macros, "N comidas · objetivo") + **detalle por divulgación progresiva** en panel lateral (desktop) / bottom sheet (móvil) con la lista completa y "Editar plantilla". **Búsqueda** por nombre que filtra el grid en vivo. Empty state de búsqueda. |
+| **Dashboard** | Feed capeado a **6** + "Ver toda la actividad" → nueva ruta. Timeline "Próximos Cambios Programados" capeado a 5 + "Ver todos (N)" → periodización. |
+| **`/coach/activity`** (ruta nueva) | Lista completa del feed, **paginada 50/pág** (`?page`), con `FeedRow` + skeleton + empty state. |
+
+### Auditoría de listas sin techo
+- Cronograma de periodización: es la vista destino completa → sin cap.
+- Comidas/ejercicios de plantillas: acotadas por plantilla y dentro del detalle → no crecen sin límite.
+- Sin virtualización (la paginación pone el techo); se virtualizaría solo si una página renderizara >100 filas.
 
 ## Pendientes / decisiones abiertas
 
