@@ -9,6 +9,7 @@ import StudentTable from "@/components/student-table";
 import BulkActionBar from "@/components/bulk-action-bar";
 import AddStudentModal from "@/components/add-student-modal";
 import ChangeStageModal from "@/components/change-stage-modal";
+import { RowSkeleton } from "@/components/skeleton";
 import { type Student, type PaymentStatus, type Stage } from "@/lib/mock-data";
 
 /* ═══════════════════════════════════════════
@@ -202,10 +203,8 @@ export default function StudentsPage() {
 
         {/* ── Student Table ── */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <p className="text-[13px] animate-pulse" style={{ color: "var(--text-tertiary)" }}>
-              Cargando lista de alumnos...
-            </p>
+          <div className="p-5">
+            <RowSkeleton count={6} />
           </div>
         ) : (
           <StudentTable

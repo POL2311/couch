@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Scale, Dumbbell, UserPlus, CreditCard, ArrowDownRight, CalendarClock } from "lucide-react";
+import { Scale, Dumbbell, UserPlus, CreditCard, ArrowDownRight, CalendarClock, Activity } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 export default function CoachDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -184,39 +186,53 @@ export default function CoachDashboard() {
             </div>
             
             <div className="p-5 flex flex-col justify-end" style={{ height: "180px" }}>
-              {isLoading || students.length < 2 ? (
-                <div className="flex-1 flex items-center justify-center text-zinc-300 text-[12px]">
-                  Cargando gráfica...
-                </div>
+              {isLoading ? (
+                <ChartSkeleton className="flex-1" />
+              ) : students.length < 2 ? (
+                <EmptyState
+                  icon={Activity}
+                  message="Aún no hay datos de adherencia"
+                  hint="Registra alumnos y sus check-ins para ver la curva."
+                  cta={
+                    stats.total === 0 ? (
+                      <Link href="/coach/students" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                        Registrar primer alumno
+                      </Link>
+                    ) : undefined
+                  }
+                  className="flex-1 py-0"
+                />
               ) : (
-                <svg viewBox="0 0 400 100" preserveAspectRatio="none" className="w-full h-24 overflow-visible">
-                  <polyline
-                    fill="none"
-                    stroke="var(--text-secondary)"
-                    strokeWidth="1.5"
-                    points={adherencePoints}
-                  />
-                  {students.map((s, idx) => {
-                    const sorted = [...students].sort((a, b) => b.completionRate - a.completionRate);
-                    const x = (idx / (sorted.length - 1)) * 400;
-                    const y = 100 - (s.completionRate / 100) * 80;
-                    return (
-                      <circle
-                        key={s.id}
-                        cx={x}
-                        cy={y}
-                        r="3"
-                        fill={s.completionRate >= 80 ? "var(--color-success)" : "var(--color-warning)"}
-                      />
-                    );
-                  })}
-                </svg>
+                <>
+                  <svg viewBox="0 0 400 100" preserveAspectRatio="none" className="w-full h-24 overflow-visible">
+                    <polyline
+                      fill="none"
+                      stroke="var(--text-secondary)"
+                      strokeWidth="1.5"
+                      points={adherencePoints}
+                    />
+                    {students.map((s, idx) => {
+                      const sorted = [...students].sort((a, b) => b.completionRate - a.completionRate);
+                      const x = (idx / (sorted.length - 1)) * 400;
+                      const y = 100 - (s.completionRate / 100) * 80;
+                      return (
+                        <circle
+                          key={s.id}
+                          cx={x}
+                          cy={y}
+                          r="3"
+                          fill={s.completionRate >= 80 ? "var(--color-success)" : "var(--color-warning)"}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="flex justify-between mt-3 border-t border-[var(--border-subtle)] pt-2 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                    <span>100% Adherencia</span>
+                    <span>Promedio</span>
+                    <span>0% Adherencia</span>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between mt-3 border-t border-[var(--border-subtle)] pt-2 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                <span>100% Adherencia</span>
-                <span>Promedio</span>
-                <span>0% Adherencia</span>
-              </div>
             </div>
           </div>
 
@@ -234,14 +250,17 @@ export default function CoachDashboard() {
             
             <div className="p-5 flex-1 overflow-y-auto max-h-[180px] space-y-3">
               {isLoading ? (
-                <p className="text-[12px] text-zinc-400 text-center py-6">Buscando planificaciones...</p>
+                <RowSkeleton count={3} />
               ) : stats.upcomingChanges.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Sin cambios programados para este mes</p>
-                  <Link href="/coach/students" className="text-[10px] text-zinc-400 hover:underline mt-1 inline-block">
-                    Programar cambio de etapa +
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={CalendarClock}
+                  message="No hay cambios programados"
+                  cta={
+                    <Link href="/coach/students" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                      Programar cambio de etapa
+                    </Link>
+                  }
+                />
               ) : (
                 stats.upcomingChanges.map((change) => (
                   <div key={change.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] text-[12px]">

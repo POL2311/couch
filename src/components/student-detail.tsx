@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Flame, Calendar, Ruler, ArrowLeft, Droplet } from "lucide-react";
+import { Flame, Calendar, Ruler, ArrowLeft, Droplet, UserX } from "lucide-react";
+import { Skeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   type Student,
@@ -576,12 +578,14 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center animate-pulse">
-          <p className="text-[14px] font-medium" style={{ color: "var(--text-secondary)" }}>
-            Cargando expediente...
-          </p>
+      <div className="flex-1 p-4 lg:p-8 space-y-5">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
         </div>
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     );
   }
@@ -589,15 +593,17 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
   if (error || !student || !detail) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center animate-fade-in px-4">
-          <p className="text-[15px] font-medium" style={{ color: "var(--text-secondary)" }}>
-            {error || "Alumno no encontrado"}
-          </p>
-          <Link href="/coach/students" className="text-[13px] mt-3 inline-flex items-center gap-1 hover:underline" style={{ color: "var(--text-tertiary)" }}>
-            <ArrowLeft size={14} strokeWidth={1.75} />
-            Volver a alumnos
-          </Link>
-        </div>
+        <EmptyState
+          icon={UserX}
+          message={error || "Alumno no encontrado"}
+          cta={
+            <Link href="/coach/students" className="text-[13px] inline-flex items-center gap-1 hover:underline" style={{ color: "var(--text-primary)" }}>
+              <ArrowLeft size={14} strokeWidth={1.75} />
+              Volver a alumnos
+            </Link>
+          }
+          className="animate-fade-in px-4"
+        />
       </div>
     );
   }

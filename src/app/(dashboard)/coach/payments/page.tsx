@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Plug } from "lucide-react";
+import { Skeleton } from "@/components/skeleton";
 import { type Student } from "@/lib/mock-data";
 
 export default function PaymentsPage() {
@@ -196,11 +197,13 @@ export default function PaymentsPage() {
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center text-[12px] text-zinc-400">
-                        Cargando registros de cobros...
-                      </td>
-                    </tr>
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i}>
+                        <td colSpan={5} className="px-5 py-3">
+                          <Skeleton className="h-9 w-full" />
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     students.map((student) => {
                       const status = getStatusStyle(student.paymentStatus);

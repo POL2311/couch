@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Flame } from "lucide-react";
+import { Flame, SearchX } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { EmptyState } from "@/components/empty-state";
 
 /* ═══════════════════════════════════════════
    Helpers
@@ -414,14 +415,12 @@ export default function StudentTable({
 
       {/* ═══ EMPTY STATE ═══ */}
       {students.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-          <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
-            Sin resultados
-          </p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)", opacity: 0.6 }}>
-            Ajusta los filtros
-          </p>
-        </div>
+        <EmptyState
+          icon={SearchX}
+          message="Sin resultados"
+          hint="Ajusta los filtros para ver más alumnos."
+          className="py-16 animate-fade-in"
+        />
       )}
     </>
   );

@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { RowSkeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 export default function PeriodizationPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -134,15 +136,13 @@ export default function PeriodizationPage() {
 
             <div className="p-5 flex-1 space-y-4">
               {isLoading ? (
-                <p className="text-[12px] text-zinc-400 text-center py-6">Cargando cronograma...</p>
+                <RowSkeleton count={4} />
               ) : metrics.scheduled.length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar size={16} strokeWidth={1.75} className="mx-auto" style={{ color: "var(--text-secondary)" }} />
-                  <p className="text-[13px] mt-2 font-medium" style={{ color: "var(--text-secondary)" }}>Sin planificaciones programadas</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Usa las acciones en lote de la lista de alumnos para automatizar cambios.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  message="No hay cambios programados"
+                  hint="Usa las acciones en lote de la lista de alumnos para automatizar cambios."
+                />
               ) : (
                 <div className="relative border-l border-zinc-200 pl-4 ml-2 space-y-6">
                   {metrics.scheduled.map((change) => (
