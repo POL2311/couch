@@ -23,7 +23,7 @@ function getStageStyle(stage: string) {
 function getPaymentLabel(status: string) {
   const map: Record<string, { label: string; color: string }> = {
     active: { label: "Activo", color: "var(--color-success)" },
-    inactive: { label: "Inactivo", color: "var(--color-danger)" },
+    inactive: { label: "Suspendido", color: "var(--color-danger)" },
     grace_period: { label: "Gracia", color: "var(--color-warning)" },
   };
   return map[status] || { label: status, color: "var(--text-secondary)" };

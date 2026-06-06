@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plug, ChevronRight, X, CreditCard } from "lucide-react";
+import { Plug, ChevronRight, X, CreditCard, Search, CheckCircle2 } from "lucide-react";
 import { Skeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { DetailOverlay } from "@/components/detail-overlay";
@@ -12,7 +12,7 @@ import { type Student } from "@/lib/mock-data";
 const PAYMENT_SECTIONS: { key: string; title: string; statuses: string[] }[] = [
   { key: "action", title: "Requieren acción", statuses: ["grace_period"] },
   { key: "active", title: "Al día", statuses: ["active"] },
-  { key: "disabled", title: "Inhabilitadas", statuses: ["inactive"] },
+  { key: "disabled", title: "Suspendidos", statuses: ["inactive"] },
 ];
 
 function KVRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
@@ -105,6 +105,26 @@ function PaymentDetailBody({
   );
 }
 
+/* Facepile: hasta 5 avatares de 20px solapados + "+N" */
+function Facepile({ items }: { items: Student[] }) {
+  const shown = items.slice(0, 5);
+  const extra = items.length - shown.length;
+  return (
+    <div className="flex items-center">
+      {shown.map((s, i) => (
+        <div
+          key={s.id}
+          className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium"
+          style={{ marginLeft: i === 0 ? 0 : -8, background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--bg-surface)" }}
+        >
+          {s.avatarInitials}
+        </div>
+      ))}
+      {extra > 0 && <span className="text-[11px] ml-1.5 shrink-0" style={{ color: "var(--text-tertiary)" }}>+{extra}</span>}
+    </div>
+  );
+}
+
 export default function PaymentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,26 +162,47 @@ export default function PaymentsPage() {
 
   const [selected, setSelected] = useState<Student | null>(null);
 
-  // Agrupación por estado; secciones vacías se descartan.
-  const grouped = useMemo(
-    () =>
-      PAYMENT_SECTIONS.map((sec) => ({
-        ...sec,
-        items: students.filter((s) => sec.statuses.includes(s.paymentStatus)),
-      })).filter((sec) => sec.items.length > 0),
-    [students]
-  );
+  // ── Estado del acordeón + búsqueda (compartido por desktop y móvil) ──
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set()); // sin persistencia: arranca colapsado
+  const SECTION_CAP = 10;
+  const [shown, setShown] = useState<Record<string, number>>({});
 
   const remind = useCallback((s: Student) => {
     alert(`Recordatorio de pago enviado a ${s.name}`);
   }, []);
 
-  // Techo por sección: "Requieren acción" siempre completa; el resto cap 10
-  // y revela de a 50 (paginación incremental dentro de la sección).
-  const SECTION_CAP = 10;
-  const [shown, setShown] = useState<Record<string, number>>({});
-  const visibleCount = (sec: { key: string; items: Student[] }) =>
-    sec.key === "action" ? sec.items.length : Math.min(sec.items.length, shown[sec.key] ?? SECTION_CAP);
+  const q = search.trim().toLowerCase();
+  const isSearching = q.length > 0;
+
+  // Secciones por estado (filtradas por búsqueda). "Requieren acción" siempre primera.
+  const sections = useMemo(() => {
+    const match = (s: Student) =>
+      !isSearching || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
+    return PAYMENT_SECTIONS.map((sec) => ({
+      key: sec.key,
+      title: sec.title,
+      collapsible: sec.key !== "action",
+      items: students.filter((s) => sec.statuses.includes(s.paymentStatus) && match(s)),
+    }));
+  }, [students, q, isSearching]);
+
+  const toggleSection = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Expandida si: no colapsable (acción), o hay búsqueda activa, o el usuario la abrió.
+  const isExpanded = (sec: { key: string; collapsible: boolean }) =>
+    !sec.collapsible || isSearching || expanded.has(sec.key);
+
+  // Techo: acción siempre completa; en búsqueda mostramos todas las coincidencias;
+  // si no, cap 10 con revelado incremental de 50.
+  const sectionLimit = (sec: { key: string; collapsible: boolean; items: Student[] }) =>
+    !sec.collapsible || isSearching ? sec.items.length : Math.min(sec.items.length, shown[sec.key] ?? SECTION_CAP);
   const revealMore = (key: string, total: number) =>
     setShown((p) => ({ ...p, [key]: Math.min(total, (p[key] ?? SECTION_CAP) + 50) }));
 
@@ -288,7 +329,7 @@ export default function PaymentsPage() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Cuentas Inhabilitadas
+              Cuentas suspendidas
             </span>
             {isLoading ? (
               <Skeleton className="h-[30px] w-16 mt-2" />
@@ -313,11 +354,21 @@ export default function PaymentsPage() {
             className="md:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
+            <div className="px-4 md:px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between gap-3 bg-[var(--bg-surface-raised)]">
+              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] shrink-0" style={{ color: "var(--text-secondary)" }}>
                 Cobros y Alumnos
               </h3>
-              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Facturación Mensual</span>
+              <div className="relative min-w-0 w-full max-w-[220px]">
+                <Search size={14} strokeWidth={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar alumno..."
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-lg text-[12px] outline-none"
+                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                />
+              </div>
             </div>
 
             {isLoading ? (
@@ -330,135 +381,116 @@ export default function PaymentsPage() {
                 className="py-12"
               />
             ) : (
-              <>
-                {/* ═══ DESKTOP TABLE (≥768px) ═══ */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-                    <thead>
-                      <tr>
-                        {["Alumno", "Cuota (MXN)", "Estado"].map((h, i) => (
-                          <th
-                            key={i}
-                            className="sticky top-0 z-10 px-5 py-3 text-left text-[10px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
-                            style={{ color: "var(--text-tertiary)", background: "var(--bg-surface-raised)", borderBottom: "1px solid var(--border-subtle)" }}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    {grouped.map((sec) => (
-                      <tbody key={sec.key}>
-                        <tr>
-                          <td colSpan={3} className="px-5 pt-5 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-                            {sec.title} · {sec.items.length}
-                          </td>
-                        </tr>
-                        {sec.items.slice(0, visibleCount(sec)).map((student) => {
-                          const status = getStatusStyle(student.paymentStatus);
-                          const needsAction = student.paymentStatus === "grace_period";
-                          return (
-                            <tr
-                              key={student.id}
-                              onClick={() => setSelected(student)}
-                              className="cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
-                              style={{ height: "var(--row-h-compact)" }}
-                            >
-                              <td className="px-5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium" style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
-                                    {student.avatarInitials}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-[12px] truncate max-w-[200px]" style={{ color: "var(--text-primary)" }}>{student.name}</p>
-                                    <p className="text-[10px] truncate max-w-[200px]" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-5 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)", borderBottom: "1px solid var(--border-subtle)" }}>
-                                $1,200
-                              </td>
-                              <td className="px-5 text-[12px]" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5" style={{ color: status.color, background: status.bg }}>
-                                    <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
-                                    {status.label}
-                                  </span>
-                                  {needsAction && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); remind(student); }}
-                                      className="px-2.5 py-1 text-[10px] rounded-lg whitespace-nowrap transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
-                                      style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
-                                    >
-                                      Recordar
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {visibleCount(sec) < sec.items.length && (
-                          <tr>
-                            <td colSpan={3} className="px-5 py-2.5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <button onClick={() => revealMore(sec.key, sec.items.length)} className="text-[12px] hover:underline cursor-pointer" style={{ color: "var(--text-primary)" }}>
-                                {sec.items.length - visibleCount(sec) <= 50 ? `Mostrar los ${sec.items.length}` : "Mostrar 50 más"}
-                              </button>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    ))}
-                  </table>
-                </div>
+              <div>
+                {sections.map((sec) => {
+                  // "Requieren acción" siempre visible (empty state positivo si no hay y no se busca).
+                  // Colapsables solo si tienen items (en búsqueda, solo con coincidencias).
+                  if (sec.key === "action") {
+                    if (isSearching && sec.items.length === 0) return null;
+                  } else if (sec.items.length === 0) {
+                    return null;
+                  }
 
-                {/* ═══ MOBILE LIST (<768px) ═══ */}
-                <div className="md:hidden">
-                  {grouped.map((sec) => (
-                    <div key={sec.key}>
-                      <div className="px-4 pt-4 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-                        {sec.title} · {sec.items.length}
-                      </div>
-                      {sec.items.slice(0, visibleCount(sec)).map((student, idx, arr) => {
-                        const status = getStatusStyle(student.paymentStatus);
-                        const isLast = idx === arr.length - 1;
-                        return (
-                          <button
-                            key={student.id}
-                            onClick={() => setSelected(student)}
-                            className="w-full flex items-center gap-3 pl-4 pr-4 min-h-[60px] text-left transition-colors active:bg-[var(--bg-hover)]"
-                          >
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium" style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
-                              {student.avatarInitials}
-                            </div>
-                            {/* Separador inset: empieza después del avatar */}
-                            <div className="flex-1 min-w-0 flex items-center gap-3 py-3" style={{ borderBottom: isLast ? "none" : "1px solid var(--border-subtle)" }}>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
-                                <p className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>{student.email}</p>
-                              </div>
-                              <div className="flex flex-col items-end gap-1 shrink-0">
-                                <span className="text-[15px] tabular-nums" style={{ color: "var(--text-primary)" }}>$1,200</span>
-                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ color: status.color, background: status.bg }}>{status.label}</span>
-                              </div>
-                              <ChevronRight size={14} strokeWidth={1.75} className="shrink-0" style={{ color: "var(--text-tertiary)" }} />
-                            </div>
-                          </button>
-                        );
-                      })}
-                      {visibleCount(sec) < sec.items.length && (
+                  const open = isExpanded(sec);
+                  const limit = sectionLimit(sec);
+                  const remaining = sec.items.length - limit;
+
+                  return (
+                    <div key={sec.key} style={{ borderTop: sec.key === "action" ? "none" : "1px solid var(--border-subtle)" }}>
+                      {/* ── Header de sección ── */}
+                      {sec.collapsible ? (
                         <button
-                          onClick={() => revealMore(sec.key, sec.items.length)}
-                          className="w-full text-left pl-4 pr-4 py-3 text-[12px] cursor-pointer active:bg-[var(--bg-hover)]"
-                          style={{ color: "var(--text-primary)" }}
+                          onClick={() => toggleSection(sec.key)}
+                          aria-expanded={open}
+                          className="w-full flex items-center gap-3 px-4 md:px-5 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                          style={{ height: 48 }}
                         >
-                          {sec.items.length - visibleCount(sec) <= 50 ? `Mostrar los ${sec.items.length}` : "Mostrar 50 más"}
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)", transform: open ? "rotate(90deg)" : "none", transition: "transform 200ms ease-out" }}
+                          />
+                          <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                            {sec.title} · {sec.items.length}
+                          </span>
+                          <div className="ml-auto"><Facepile items={sec.items} /></div>
                         </button>
+                      ) : (
+                        <div className="px-4 md:px-5 pt-4 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                          {sec.title} · {sec.items.length}
+                        </div>
                       )}
+
+                      {/* Empty state positivo de "Requieren acción" */}
+                      {sec.key === "action" && sec.items.length === 0 && !isSearching && (
+                        <div className="flex items-center gap-2 px-4 md:px-5 pb-4">
+                          <CheckCircle2 size={16} strokeWidth={1.75} style={{ color: "var(--color-success)" }} />
+                          <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>Sin pagos pendientes</span>
+                        </div>
+                      )}
+
+                      {/* ── Cuerpo (animado en colapsables) ── */}
+                      <div
+                        style={sec.collapsible ? { display: "grid", gridTemplateRows: open ? "1fr" : "0fr", transition: "grid-template-rows 200ms ease-out" } : undefined}
+                      >
+                        <div
+                          className={sec.collapsible ? "overflow-hidden" : ""}
+                          style={sec.collapsible ? { opacity: open ? 1 : 0, transition: "opacity 200ms ease-out" } : undefined}
+                        >
+                          {sec.items.slice(0, limit).map((student) => {
+                            const status = getStatusStyle(student.paymentStatus);
+                            const needsAction = student.paymentStatus === "grace_period";
+                            return (
+                              <div
+                                key={student.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelected(student)}
+                                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(student); } }}
+                                className="w-full flex items-center gap-3 px-4 md:px-5 text-left cursor-pointer transition-colors hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)]"
+                                style={{ minHeight: "var(--row-h-compact)", borderTop: "1px solid var(--border-subtle)" }}
+                              >
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium" style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                                  {student.avatarInitials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+                                  <p className="text-[12px] truncate" style={{ color: "var(--text-tertiary)" }} title={student.email}>{student.email}</p>
+                                </div>
+                                <span className="hidden md:inline text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-primary)" }}>$1,200</span>
+                                <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5 shrink-0" style={{ color: status.color, background: status.bg }}>
+                                  <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
+                                  {status.label}
+                                </span>
+                                {needsAction && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); remind(student); }}
+                                    className="hidden md:inline-flex px-2.5 py-1 text-[10px] rounded-lg whitespace-nowrap transition-colors cursor-pointer hover:bg-[color:var(--bg-surface-raised)] shrink-0"
+                                    style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                                  >
+                                    Recordar
+                                  </button>
+                                )}
+                                <ChevronRight size={14} strokeWidth={1.75} className="md:hidden shrink-0" style={{ color: "var(--text-tertiary)" }} />
+                              </div>
+                            );
+                          })}
+                          {remaining > 0 && (
+                            <button
+                              onClick={() => revealMore(sec.key, sec.items.length)}
+                              className="w-full text-left px-4 md:px-5 py-3 text-[12px] cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                              style={{ color: "var(--text-primary)", borderTop: "1px solid var(--border-subtle)" }}
+                            >
+                              {remaining <= 50 ? `Mostrar los ${remaining} restantes` : "Mostrar 50 más"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </>
+                  );
+                })}
+              </div>
             )}
           </div>
 

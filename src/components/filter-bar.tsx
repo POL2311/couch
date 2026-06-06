@@ -15,7 +15,7 @@ interface FilterBarProps {
 const PAYMENT_FILTERS: { label: string; value: PaymentStatus | "all" }[] = [
   { label: "Todos", value: "all" },
   { label: "Activo", value: "active" },
-  { label: "Inactivo", value: "inactive" },
+  { label: "Suspendido", value: "inactive" },
   { label: "Gracia", value: "grace_period" },
 ];
 
