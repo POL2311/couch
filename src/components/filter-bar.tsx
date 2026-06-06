@@ -45,11 +45,11 @@ export default function FilterBar({
   return (
     <div
       id="filter-bar"
-      className="flex flex-col lg:flex-row lg:items-center gap-3 px-5 py-3"
+      className="flex flex-col md:flex-row md:items-center gap-3 px-5 py-3"
       style={{ borderBottom: "1px solid var(--border-subtle)" }}
     >
-      {/* ── Payment Filters ── */}
-      <div className="flex items-center gap-0.5">
+      {/* ── Payment Filters — tira con scroll horizontal propio (pills iOS) ── */}
+      <div className="flex items-center gap-0.5 overflow-x-auto flex-nowrap min-w-0" style={{ WebkitOverflowScrolling: "touch" }}>
         {PAYMENT_FILTERS.map((filter) => {
           const isActive = activePaymentFilter === filter.value;
           return (
@@ -57,7 +57,7 @@ export default function FilterBar({
               key={filter.value}
               id={`filter-payment-${filter.value}`}
               onClick={() => onPaymentFilterChange(filter.value)}
-              className="px-3 py-1.5 rounded-md text-[12px] cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-[12px] cursor-pointer shrink-0 whitespace-nowrap"
               style={{
                 color: isActive ? "var(--text-primary)" : "var(--text-tertiary)",
                 background: isActive ? "var(--bg-active)" : "transparent",
@@ -79,10 +79,10 @@ export default function FilterBar({
       </div>
 
       {/* ── Separator ── */}
-      <div className="hidden lg:block w-px h-4" style={{ background: "var(--border-default)" }} />
+      <div className="hidden md:block w-px h-4" style={{ background: "var(--border-default)" }} />
 
-      {/* ── Stage Filters ── */}
-      <div className="flex items-center gap-0.5 overflow-x-auto">
+      {/* ── Stage Filters — tira con scroll horizontal propio (pills iOS) ── */}
+      <div className="flex items-center gap-0.5 overflow-x-auto flex-nowrap min-w-0" style={{ WebkitOverflowScrolling: "touch" }}>
         {STAGE_FILTERS.map((filter) => {
           const isActive = activeStageFilter === filter.value;
           return (
@@ -90,7 +90,7 @@ export default function FilterBar({
               key={filter.value}
               id={`filter-stage-${filter.value}`}
               onClick={() => onStageFilterChange(filter.value)}
-              className="px-3 py-1.5 rounded-md text-[12px] whitespace-nowrap cursor-pointer"
+              className="px-3 py-1.5 rounded-md text-[12px] whitespace-nowrap cursor-pointer shrink-0"
               style={{
                 color: isActive ? "var(--text-primary)" : "var(--text-tertiary)",
                 background: isActive ? "var(--bg-active)" : "transparent",
@@ -112,7 +112,7 @@ export default function FilterBar({
       </div>
 
       {/* ── Count ── */}
-      <div className="lg:ml-auto">
+      <div className="md:ml-auto">
         <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
           {filteredCount}
           <span className="mx-1">/</span>

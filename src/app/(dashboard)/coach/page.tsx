@@ -79,7 +79,7 @@ export default function CoachDashboard() {
     <>
       {/* Header */}
       <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
+        className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
         <div>
@@ -103,10 +103,10 @@ export default function CoachDashboard() {
       </header>
 
       {/* Main Grid */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* KPI Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           
           {/* MRR Card */}
           <div
@@ -178,7 +178,7 @@ export default function CoachDashboard() {
         </div>
 
         {/* Center Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* Adherence Graph */}
           <div

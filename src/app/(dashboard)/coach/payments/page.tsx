@@ -201,7 +201,7 @@ export default function PaymentsPage() {
     <>
       {/* Header */}
       <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
+        className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
         <div>
@@ -215,10 +215,10 @@ export default function PaymentsPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* KPI Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           
           {/* MRR */}
           <div
@@ -307,11 +307,11 @@ export default function PaymentsPage() {
         </div>
 
         {/* Tables & Integrations Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           
           {/* Cobros y Alumnos — agrupado por estado (lista iOS en móvil, tabla en desktop) */}
           <div
-            className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
+            className="md:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">

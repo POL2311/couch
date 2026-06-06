@@ -12,7 +12,7 @@ export default function DashboardLayout({
       <Sidebar />
 
       <main
-        className="main-content flex-1 flex flex-col min-h-screen md:ml-[var(--sidebar-width)] ml-0 transition-[margin-left] duration-350"
+        className="main-content flex-1 flex flex-col min-h-screen md:ml-[var(--sidebar-width)] ml-0 overflow-x-clip transition-[margin-left] duration-350"
       >
         {children}
       </main>

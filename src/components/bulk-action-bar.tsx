@@ -28,7 +28,7 @@ export default function BulkActionBar({
   return (
     <div
       id="bulk-action-bar"
-      className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-50 animate-float-up"
+      className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 animate-float-up"
       style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div

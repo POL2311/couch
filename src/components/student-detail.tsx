@@ -512,7 +512,7 @@ function MeasurementsSection({ detail }: { detail: any }) {
           Última medición: {formatDateLong(latest.date)}
         </p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px" style={{ background: "var(--border-subtle)" }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ background: "var(--border-subtle)" }}>
         {fields.map((f) => {
           const val = latest[f.key] as number;
           const prevVal = prev ? (prev[f.key] as number) : null;
@@ -578,9 +578,9 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 lg:p-8 space-y-5">
+      <div className="flex-1 p-4 md:p-8 space-y-5">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
@@ -615,7 +615,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
     <>
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-30 px-4 lg:px-8 shrink-0"
+        className="sticky top-0 z-30 px-4 md:px-8 shrink-0"
         style={{
           /* Mismo cristal oscuro que la navegación (sidebar/bottom-bar) */
           background: "var(--bg-sidebar)",
@@ -663,7 +663,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           {/* Actions */}
           <button
             onClick={() => setIsChangeStageModalOpen(true)}
-            className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer animate-fade-in"
+            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer animate-fade-in"
             style={{
               background: "var(--text-primary)",
               color: "var(--text-inverse)",
@@ -720,7 +720,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       {/* ── Banner de Cambio Programado ── */}
       {detail.scheduledChange && (
         <div
-          className="mx-4 lg:mx-8 mt-5 p-4 rounded-2xl flex items-center justify-between border animate-fade-in"
+          className="mx-4 md:mx-8 mt-5 p-4 rounded-2xl flex items-center justify-between border animate-fade-in"
           style={{
             background: "var(--color-warning-subtle)",
             borderColor: "var(--color-warning)",
@@ -777,9 +777,9 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       )}
 
       {/* ── Content ── */}
-      <div className="flex-1 px-4 lg:px-8 py-6 pb-24 lg:pb-8 space-y-5">
+      <div className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-8 space-y-5">
         {/* Top grid: Weight chart + Measurements */}
-        <div id="progreso" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div id="progreso" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Weight History */}
           <Section title="Progreso de peso">
             <div className="px-5 py-5">
@@ -792,7 +792,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
         </div>
 
         {/* Middle grid: Diet + Routine */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div id="dieta" className="scroll-mt-24">
             <DietSection detail={detail} />
           </div>
@@ -802,7 +802,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
         </div>
 
         {/* Bottom grid: Notes + Photos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Photos */}
           <Section title="Registro fotográfico">
             <div className="px-5 py-5 flex flex-col items-center justify-center min-h-[160px]">
@@ -856,7 +856,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
       {/* Mobile Bottom Navigation Bar (Detail specific) */}
       <div
-        className="fixed bottom-0 left-0 right-0 h-16 z-50 lg:hidden flex items-center justify-around px-6 backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 h-16 z-50 md:hidden flex items-center justify-around px-6 backdrop-blur-xl"
         style={{
           background: "var(--bg-sidebar)",
           WebkitBackdropFilter: "blur(24px)",

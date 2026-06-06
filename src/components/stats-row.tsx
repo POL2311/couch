@@ -39,13 +39,13 @@ export default function StatsRow({
   ];
 
   return (
-    <div id="stats-row" className="grid grid-cols-2 lg:grid-cols-4 gap-px mx-4 lg:mx-8 my-6 rounded-xl overflow-hidden"
+    <div id="stats-row" className="grid grid-cols-2 md:grid-cols-4 gap-px mx-4 md:mx-8 my-6 rounded-xl overflow-hidden"
       style={{ background: "var(--border-subtle)" }}
     >
       {items.map((item, i) => (
         <div
           key={i}
-          className="flex flex-col items-center justify-center py-5 lg:py-6"
+          className="flex flex-col items-center justify-center py-5 md:py-6"
           style={{ background: "var(--bg-surface)" }}
         >
           <span

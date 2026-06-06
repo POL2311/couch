@@ -161,7 +161,7 @@ export function MobileBottomNav() {
       aria-label="Navegación móvil"
     >
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive = isActiveRoute(pathname, item.href);
         const Icon = item.icon;
 
         return (

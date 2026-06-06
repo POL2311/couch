@@ -167,7 +167,7 @@ export default function TemplatesPage() {
   return (
     <>
       {/* Header */}
-      <header className="px-4 lg:px-8 py-5 flex flex-col gap-4 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+      <header className="px-4 md:px-8 py-5 flex flex-col gap-4 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
@@ -190,13 +190,13 @@ export default function TemplatesPage() {
         </div>
 
         {/* Tabs + búsqueda */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
+          <div className="flex gap-2.5 overflow-x-auto flex-nowrap min-w-0" style={{ WebkitOverflowScrolling: "touch" }}>
             {([["diets", "Planes de Alimentación"], ["routines", "Planes de Entrenamiento"]] as const).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className="px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer whitespace-nowrap"
+                className="px-4 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0"
                 style={{
                   background: activeTab === key ? "var(--accent-primary)" : "var(--bg-surface-raised)",
                   color: activeTab === key ? "var(--text-inverse)" : "var(--text-secondary)",
@@ -223,7 +223,7 @@ export default function TemplatesPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 lg:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
         {/* Diet templates */}
         {activeTab === "diets" && (
           diets.length === 0 ? (
@@ -240,7 +240,7 @@ export default function TemplatesPage() {
                     style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-[13px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>{diet.name}</h3>
+                      <h3 className="text-[13px] font-semibold leading-snug flex-1 min-w-0" style={{ color: "var(--text-primary)" }}>{diet.name}</h3>
                       <KcalChip kcal={diet.totalCalories} />
                     </div>
                     <MacrosBar macros={diet.macros} totalCalories={diet.totalCalories} />

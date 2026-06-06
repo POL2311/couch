@@ -71,7 +71,7 @@ export default function PeriodizationPage() {
     <>
       {/* Header */}
       <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
+        className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
         <div>
@@ -85,10 +85,10 @@ export default function PeriodizationPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* Stage distribution KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Volumen", count: metrics.volumen, color: "var(--stage-volumen)", bg: "var(--stage-volumen-subtle)" },
             { label: "Definición", count: metrics.definicion, color: "var(--stage-definicion)", bg: "var(--stage-definicion-subtle)" },
@@ -124,11 +124,11 @@ export default function PeriodizationPage() {
         </div>
 
         {/* Center Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           
           {/* Timeline of Scheduled Changes (Col 1 & 2) */}
           <div
-            className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
+            className="md:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
@@ -157,7 +157,7 @@ export default function PeriodizationPage() {
                         style={{ background: "var(--color-warning)" }}
                       />
 
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] hover:border-[color:var(--border-strong)] transition-all">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] hover:border-[color:var(--border-strong)] transition-all">
                         <div>
                           <Link href={`/coach/students/${change.id}`} className="text-[13px] font-semibold hover:underline" style={{ color: "var(--text-primary)" }}>
                             {change.name}

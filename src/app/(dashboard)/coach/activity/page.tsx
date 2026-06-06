@@ -51,7 +51,7 @@ export default function ActivityPage() {
 
   return (
     <>
-      <header className="px-4 lg:px-8 py-5 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+      <header className="px-4 md:px-8 py-5 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
         <Link href="/coach" className="text-[13px] inline-flex items-center gap-1 hover:underline" style={{ color: "var(--text-tertiary)" }}>
           <ArrowLeft size={14} strokeWidth={1.75} />
           Volver al dashboard
@@ -64,7 +64,7 @@ export default function ActivityPage() {
         </p>
       </header>
 
-      <div className="flex-1 px-4 lg:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
         <div className="rounded-xl border overflow-hidden" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
           {isLoading ? (
             <div className="p-5"><RowSkeleton count={8} /></div>

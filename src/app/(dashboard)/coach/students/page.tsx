@@ -218,7 +218,7 @@ export default function StudentsPage() {
 
       {/* ── Table Area ── */}
       <div
-        className="flex-1 mx-4 lg:mx-8 mb-6 rounded-xl overflow-hidden"
+        className="flex-1 mx-4 md:mx-8 mb-6 rounded-xl overflow-hidden"
         style={{
           background: "var(--bg-surface)",
           border: "1px solid var(--border-subtle)",

@@ -30,7 +30,7 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
   return (
     <header
       id="dashboard-header"
-      className="sticky top-0 z-30 flex items-center gap-4 px-4 lg:px-8 shrink-0"
+      className="sticky top-0 z-30 flex items-center gap-4 px-4 md:px-8 shrink-0"
       style={{
         height: "var(--header-height)",
         background: "var(--glass)",
@@ -56,7 +56,7 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
 
       {/* ── Search ── */}
       <div
-        className="hidden lg:flex items-center gap-2.5 px-3.5 py-2 rounded-lg w-56"
+        className="hidden md:flex items-center gap-2.5 px-3.5 py-2 rounded-lg w-56"
         style={{
           background: "var(--bg-surface)",
           border: "1px solid var(--border-subtle)",
@@ -84,7 +84,7 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
           style={{ color: "var(--text-primary)" }}
         />
         <kbd
-          className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono"
+          className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono"
           style={{
             background: "var(--bg-surface-raised)",
             color: "var(--text-tertiary)",

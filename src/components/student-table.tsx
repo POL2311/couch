@@ -205,7 +205,7 @@ export default function StudentTable({
   return (
     <>
       {/* ═══ DESKTOP TABLE ═══ */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table id="students-table" className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
@@ -377,7 +377,7 @@ export default function StudentTable({
       </div>
 
       {/* ═══ MOBILE CARD LIST ═══ */}
-      <div className="lg:hidden">
+      <div className="md:hidden">
         {students.map((student, idx) => (
           <div key={student.id} style={{ animationDelay: `${idx * 25}ms` }}>
             <StudentCard
