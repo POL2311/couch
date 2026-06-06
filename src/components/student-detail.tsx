@@ -190,8 +190,8 @@ function WeightChart({ history }: { history: { date: string; weight: number }[] 
           />
           <defs>
             <linearGradient id="weightGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="rgba(228,228,231,0.06)" />
-              <stop offset="100%" stopColor="rgba(228,228,231,0)" />
+              <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
             </linearGradient>
           </defs>
         </svg>
@@ -225,7 +225,7 @@ function Section({
 }) {
   return (
     <div
-      className="rounded-xl overflow-hidden"
+      className="rounded-2xl overflow-hidden"
       style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
     >
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
@@ -242,7 +242,7 @@ function Section({
 function EditButton({ label }: { label: string }) {
   return (
     <button
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] cursor-pointer"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] cursor-pointer"
       style={{
         color: "var(--text-tertiary)",
         border: "1px solid var(--border-default)",
@@ -274,7 +274,7 @@ function DietSection({ detail }: { detail: StudentDetail }) {
     return (
       <Section title="Dieta asignada" action={<EditButton label="Asignar" />}>
         <div className="px-5 py-8 text-center">
-          <svg className="w-8 h-8 mx-auto mb-2 text-zinc-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
+          <svg className="w-8 h-8 mx-auto mb-2 text-[color:var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
           </svg>
           <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>Sin dieta asignada</p>
@@ -293,7 +293,7 @@ function DietSection({ detail }: { detail: StudentDetail }) {
         <div className="grid grid-cols-4 gap-2">
           {/* Calorías */}
           <div
-            className="rounded-lg p-2.5 text-center"
+            className="rounded-xl p-2.5 text-center"
             style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}
           >
             <span className="block text-[14px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
@@ -306,7 +306,7 @@ function DietSection({ detail }: { detail: StudentDetail }) {
 
           {/* Proteína */}
           <div
-            className="rounded-lg p-2.5 text-center"
+            className="rounded-xl p-2.5 text-center"
             style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}
           >
             <span className="block text-[14px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
@@ -319,7 +319,7 @@ function DietSection({ detail }: { detail: StudentDetail }) {
 
           {/* Carbos */}
           <div
-            className="rounded-lg p-2.5 text-center"
+            className="rounded-xl p-2.5 text-center"
             style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}
           >
             <span className="block text-[14px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
@@ -332,7 +332,7 @@ function DietSection({ detail }: { detail: StudentDetail }) {
 
           {/* Grasas */}
           <div
-            className="rounded-lg p-2.5 text-center"
+            className="rounded-xl p-2.5 text-center"
             style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}
           >
             <span className="block text-[14px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
@@ -386,7 +386,7 @@ function RoutineSection({ detail }: { detail: StudentDetail }) {
     return (
       <Section title="Rutina asignada" action={<EditButton label="Asignar" />}>
         <div className="px-5 py-8 text-center">
-          <svg className="w-8 h-8 mx-auto mb-2 text-zinc-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
+          <svg className="w-8 h-8 mx-auto mb-2 text-[color:var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
           </svg>
           <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>Sin rutina asignada</p>
@@ -414,7 +414,7 @@ function RoutineSection({ detail }: { detail: StudentDetail }) {
             <button
               key={i}
               onClick={() => setActiveDay(i)}
-              className="px-3.5 py-1.5 rounded-md text-[12px] whitespace-nowrap cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg text-[12px] whitespace-nowrap cursor-pointer"
               style={{
                 background: isActive ? "var(--accent-primary)" : "var(--bg-surface-raised)",
                 color: isActive ? "var(--text-inverse)" : "var(--text-secondary)",
@@ -585,7 +585,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
-        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-2xl" />
       </div>
     );
   }
@@ -617,7 +617,9 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       <header
         className="sticky top-0 z-30 px-4 lg:px-8 shrink-0"
         style={{
-          background: "rgba(247, 244, 235, 0.8)",
+          /* Mismo cristal oscuro que la navegación (sidebar/bottom-bar) */
+          background: "var(--bg-sidebar)",
+          WebkitBackdropFilter: "blur(20px) saturate(120%)",
           backdropFilter: "blur(20px) saturate(120%)",
           borderBottom: "1px solid var(--border-subtle)",
         }}
@@ -627,7 +629,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           <Link
             href="/coach/students"
             id="btn-back"
-            className="p-2 -ml-2 rounded-lg cursor-pointer"
+            className="p-2 -ml-2 rounded-xl cursor-pointer"
             style={{ color: "var(--text-tertiary)", transition: "color var(--transition-fast)" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
@@ -661,7 +663,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           {/* Actions */}
           <button
             onClick={() => setIsChangeStageModalOpen(true)}
-            className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium cursor-pointer animate-fade-in"
+            className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer animate-fade-in"
             style={{
               background: "var(--text-primary)",
               color: "var(--text-inverse)",
@@ -718,7 +720,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       {/* ── Banner de Cambio Programado ── */}
       {detail.scheduledChange && (
         <div
-          className="mx-4 lg:mx-8 mt-5 p-4 rounded-xl flex items-center justify-between border animate-fade-in"
+          className="mx-4 lg:mx-8 mt-5 p-4 rounded-2xl flex items-center justify-between border animate-fade-in"
           style={{
             background: "var(--color-warning-subtle)",
             borderColor: "var(--color-warning)",
@@ -754,7 +756,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
                 }
               }
             }}
-            className="px-3 py-1.5 rounded-lg border text-[11px] font-medium cursor-pointer transition-all duration-150"
+            className="px-3 py-1.5 rounded-xl border text-[11px] font-medium cursor-pointer transition-all duration-150"
             style={{
               borderColor: "var(--color-warning)",
               color: "var(--color-warning)",
@@ -805,18 +807,25 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
           <Section title="Registro fotográfico">
             <div className="px-5 py-5 flex flex-col items-center justify-center min-h-[160px]">
               {detail.photoName ? (
-                <div className="relative group w-full max-w-[240px] rounded-lg overflow-hidden border border-zinc-200/50 shadow-sm bg-white p-1">
+                <div
+                  className="relative group w-full max-w-[240px] rounded-xl overflow-hidden shadow-sm p-1"
+                  style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}
+                >
                   <img
                     src={detail.photoName}
                     alt={`Foto de progreso de ${student.name}`}
-                    className="w-full h-auto max-h-[200px] object-cover rounded-md"
+                    className="w-full h-auto max-h-[200px] object-cover rounded-lg"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    style={{ background: "var(--scrim)" }}
+                  >
                     <a
                       href={detail.photoName}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-white text-zinc-900 text-[11px] font-medium shadow hover:scale-105 transition-transform"
+                      className="px-3 py-1.5 rounded-xl text-[11px] font-medium shadow hover:scale-105 transition-transform"
+                      style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
                     >
                       Pantalla completa
                     </a>
@@ -824,7 +833,7 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <svg className="w-8 h-8 mx-auto mb-2 text-zinc-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
+                  <svg className="w-8 h-8 mx-auto mb-2 text-[color:var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                   </svg>
@@ -847,9 +856,11 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
       {/* Mobile Bottom Navigation Bar (Detail specific) */}
       <div
-        className="fixed bottom-0 left-0 right-0 h-16 z-50 lg:hidden flex items-center justify-around px-6"
+        className="fixed bottom-0 left-0 right-0 h-16 z-50 lg:hidden flex items-center justify-around px-6 backdrop-blur-xl"
         style={{
           background: "var(--bg-sidebar)",
+          WebkitBackdropFilter: "blur(24px)",
+          backdropFilter: "blur(24px)",
           borderTop: "1px solid var(--border-subtle)",
         }}
       >

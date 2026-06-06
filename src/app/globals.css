@@ -25,6 +25,9 @@
   --ring-on-dark: rgba(255, 255, 255, 0.20);
   --underline-on-dark: rgba(255, 255, 255, 0.20);
 
+  /* ── Scrim (oscurecedor sobre imágenes/overlays) ── */
+  --scrim: rgba(0, 0, 0, 0.5);
+
   /* ── Text (White / Bright Silver / Muted Gray) ── */
   --text-primary: #ffffff; /* Títulos en Blanco Puro */
   --text-secondary: #e5e5ea; /* Texto de lectura en Plata Brillante */
