@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { LayoutGrid, Users, FileText, CalendarRange, CreditCard } from "lucide-react";
 
 /* ═══════════════════════════════════════════
@@ -29,16 +28,15 @@ function isActiveRoute(pathname: string, href: string) {
    Desktop Sidebar — Minimal, weightless
    ═══════════════════════════════════════════ */
 
-export function DesktopSidebar() {
+export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside
       id="sidebar-nav"
       className="desktop-sidebar hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col backdrop-blur-xl"
       style={{
-        width: collapsed ? "var(--sidebar-collapsed-width)" : "var(--sidebar-width)",
+        width: "var(--sidebar-width)",
         transition: "width var(--transition-slow)",
         background: "var(--bg-sidebar)",
         WebkitBackdropFilter: "blur(24px)",
@@ -72,7 +70,8 @@ export function DesktopSidebar() {
               key={item.href}
               href={item.href}
               id={`nav-${item.label.toLowerCase()}`}
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px]"
+              aria-label={item.label}
+              className={`group relative flex items-center gap-3 py-2.5 rounded-xl text-[13px] outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)] ${collapsed ? "justify-center px-0" : "px-3"}`}
               style={{
                 color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
                 background: isActive ? "var(--bg-sidebar-active)" : "transparent",
@@ -95,6 +94,16 @@ export function DesktopSidebar() {
             >
               <Icon strokeWidth={1.5} className={`w-[18px] h-[18px] shrink-0 ${isActive ? "opacity-100" : "opacity-40 group-hover:opacity-70"}`} />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {/* Tooltip (solo colapsado): nombre accesible al hover/focus */}
+              {collapsed && (
+                <span
+                  role="tooltip"
+                  className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 px-2.5 py-1.5 rounded-lg text-[12px] whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-visible:opacity-100 group-focus-visible:visible transition-opacity duration-150"
+                  style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)", boxShadow: "var(--shadow-md)" }}
+                >
+                  {item.label}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -103,8 +112,10 @@ export function DesktopSidebar() {
       {/* ── Profile ── */}
       <div className="px-3 py-4 shrink-0" style={{ borderTop: "1px solid var(--border-sidebar-subtle)" }}>
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-xl cursor-pointer"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+          aria-expanded={!collapsed}
+          className={`flex items-center gap-3 py-2 w-full rounded-xl cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)] ${collapsed ? "justify-center px-0" : "px-3"}`}
           style={{ transition: "all var(--transition-fast)" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sidebar-hover)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -192,10 +203,10 @@ export function MobileBottomNav() {
    Default Export — Composite
    ═══════════════════════════════════════════ */
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
   return (
     <>
-      <DesktopSidebar />
+      <DesktopSidebar collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
       <MobileBottomNav />
     </>
   );

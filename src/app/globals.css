@@ -89,12 +89,22 @@
 
   /* ── Layout ── */
   --sidebar-width: 240px;
-  --sidebar-collapsed-width: 64px;
+  --sidebar-collapsed-width: 72px;
   --header-height: 56px;
 
   /* ── Densidad de superficies de trabajo (tablas/listas) ── */
   --row-h-compact: 56px;
   --row-h-comfortable: 72px;
+}
+
+/* ── Colapso del sidebar: fuente única de verdad (data-sidebar en el contenedor).
+   Aside (width) y main (margin-left) leen ambos --sidebar-width. ── */
+[data-sidebar="expanded"] { --sidebar-width: 240px; }
+[data-sidebar="collapsed"] { --sidebar-width: var(--sidebar-collapsed-width); }
+
+/* El main se mueve en sincronía con el aside (misma duración/easing). */
+.main-content {
+  transition: margin-left var(--transition-slow);
 }
 
 @theme inline {
