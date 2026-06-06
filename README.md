@@ -1,20 +1,48 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Puesta en marcha
 
-First, run the development server:
+1. Instala dependencias y genera el cliente Prisma (el `postinstall` lo hace automáticamente):
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```bash
+   npm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Configura el entorno: copia `.env.example` a `.env` (los valores por defecto sirven para desarrollo local con SQLite).
+
+3. Crea la base de datos y siémbrala (migra `database.json` + crea las cuentas demo):
+
+   ```bash
+   npm run db:reset
+   ```
+
+4. Arranca el servidor de desarrollo:
+
+   ```bash
+   npm run dev
+   ```
+
+Abre [http://localhost:3000](http://localhost:3000). Serás redirigido a `/login`.
+
+### Cuentas de demostración (3 roles)
+
+| Rol     | Correo                | Contraseña   | Acceso                                   |
+| ------- | --------------------- | ------------ | ---------------------------------------- |
+| Coach   | `coach@mycoach.app`   | `coach123`   | Dashboard, alumnos, plantillas, pagos    |
+| Admin   | `admin@mycoach.app`   | `admin123`   | Panel global del SaaS y alta de coaches  |
+| Cliente | `cliente@mycoach.app` | `cliente123` | Portal móvil B2C (dieta, rutina, progreso) |
+
+### Scripts útiles
+
+- `npm run db:push` — sincroniza el esquema Prisma con la base de datos.
+- `npm run db:seed` — siembra/migra los datos y cuentas.
+- `npm run db:reset` — recrea la base de datos desde cero y la siembra.
+
+## Arquitectura
+
+- **Next.js 16 (App Router)** + **React 19** + **Tailwind CSS 4**.
+- **Prisma ORM + SQLite** como base de datos relacional (`prisma/schema.prisma`).
+- **NextAuth/Auth.js v5** (Credentials + JWT) con control de acceso por rol en `src/proxy.ts`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

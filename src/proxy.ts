@@ -35,7 +35,6 @@ export default auth((req) => {
 
   // Control de acceso por rol
   const inCoach = path.startsWith("/coach");
-  const inAdmin = path.startsWith("/admin");
   const inPortal = path.startsWith("/portal");
 
   if (role === "CLIENT" && !inPortal) {
@@ -53,6 +52,7 @@ export default auth((req) => {
 });
 
 export const config = {
-  // Protege todo salvo assets estáticos y la API de autenticación
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // Protege las páginas; las rutas /api gestionan su propia autorización
+  // (devuelven 401/403) para no redirigir por rol las peticiones fetch.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
