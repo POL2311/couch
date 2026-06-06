@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from "next/server";
+import { applyStageChange } from "@/lib/db";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      studentIds,
+      stage,
+      stageNumber,
+      dietTemplateId,
+      routineTemplateId,
+      executionDate,
+    } = body;
+
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return NextResponse.json({ error: "IDs de alumnos inválidos o vacíos" }, { status: 400 });
+    }
+
+    if (!stage) {
+      return NextResponse.json({ error: "Etapa objetivo es requerida" }, { status: 400 });
+    }
+
+    await applyStageChange(studentIds, {
+      stage,
+      stageNumber: parseInt(stageNumber) || 1,
+      dietTemplateId: dietTemplateId || undefined,
+      routineTemplateId: routineTemplateId || undefined,
+      executionDate: executionDate || undefined,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error in change-stage API:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

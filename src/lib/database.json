@@ -1,0 +1,5114 @@
+{
+  "students": [
+    {
+      "id": "s13",
+      "name": "231",
+      "email": "al@gmail.com",
+      "avatarInitials": "23",
+      "avatarColor": "linear-gradient(135deg, var(--accent-primary), var(--text-secondary))",
+      "currentWeight": 66,
+      "previousWeight": 66,
+      "lastWeighIn": "2026-06-05",
+      "stage": "Definición",
+      "stageNumber": 1,
+      "paymentStatus": "active",
+      "joinedDate": "2026-06-05",
+      "completionRate": 100,
+      "streak": 1
+    },
+    {
+      "id": "s1",
+      "name": "María López García",
+      "email": "maria.lopez@gmail.com",
+      "avatarInitials": "ML",
+      "avatarColor": "linear-gradient(135deg, #8b5cf6, #ec4899)",
+      "currentWeight": 62.5,
+      "previousWeight": 64,
+      "lastWeighIn": "2026-06-02",
+      "stage": "Definición",
+      "stageNumber": 2,
+      "paymentStatus": "active",
+      "joinedDate": "2026-01-15",
+      "streak": 18,
+      "completionRate": 94
+    },
+    {
+      "id": "s2",
+      "name": "Carlos Ruiz Hernández",
+      "email": "carlos.ruiz@outlook.com",
+      "avatarInitials": "CR",
+      "avatarColor": "linear-gradient(135deg, #06b6d4, #3b82f6)",
+      "currentWeight": 85.2,
+      "previousWeight": 83,
+      "lastWeighIn": "2026-06-03",
+      "stage": "Volumen",
+      "stageNumber": 1,
+      "paymentStatus": "active",
+      "joinedDate": "2026-02-01",
+      "streak": 12,
+      "completionRate": 87
+    },
+    {
+      "id": "s3",
+      "name": "Ana Torres Mendoza",
+      "email": "ana.torres@gmail.com",
+      "avatarInitials": "AT",
+      "avatarColor": "linear-gradient(135deg, #22c55e, #06b6d4)",
+      "currentWeight": 58,
+      "previousWeight": 58.3,
+      "lastWeighIn": "2026-05-28",
+      "stage": "Mantenimiento",
+      "stageNumber": 3,
+      "paymentStatus": "grace_period",
+      "joinedDate": "2025-11-10",
+      "streak": 0,
+      "completionRate": 45
+    },
+    {
+      "id": "s4",
+      "name": "Pedro Sánchez Ríos",
+      "email": "pedro.sanchez@hotmail.com",
+      "avatarInitials": "PS",
+      "avatarColor": "linear-gradient(135deg, #f59e0b, #ef4444)",
+      "currentWeight": 92.1,
+      "previousWeight": 90.5,
+      "lastWeighIn": "2026-06-04",
+      "stage": "Volumen",
+      "stageNumber": 1,
+      "paymentStatus": "active",
+      "joinedDate": "2026-03-20",
+      "streak": 25,
+      "completionRate": 96
+    },
+    {
+      "id": "s5",
+      "name": "Laura Méndez Cruz",
+      "email": "laura.mendez@gmail.com",
+      "avatarInitials": "LM",
+      "avatarColor": "linear-gradient(135deg, #ec4899, #8b5cf6)",
+      "currentWeight": 55.8,
+      "previousWeight": 57.2,
+      "lastWeighIn": "2026-06-01",
+      "stage": "Definición",
+      "stageNumber": 2,
+      "paymentStatus": "active",
+      "joinedDate": "2026-01-05",
+      "streak": 8,
+      "completionRate": 78
+    },
+    {
+      "id": "s6",
+      "name": "Diego Flores Vargas",
+      "email": "diego.flores@yahoo.com",
+      "avatarInitials": "DF",
+      "avatarColor": "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+      "currentWeight": 78.3,
+      "previousWeight": 78.3,
+      "lastWeighIn": "2026-05-20",
+      "stage": "Volumen",
+      "stageNumber": 1,
+      "paymentStatus": "inactive",
+      "joinedDate": "2026-04-10",
+      "streak": 0,
+      "completionRate": 22
+    },
+    {
+      "id": "s7",
+      "name": "Sofía Ramírez Luna",
+      "email": "sofia.ramirez@gmail.com",
+      "avatarInitials": "SR",
+      "avatarColor": "linear-gradient(135deg, #f59e0b, #22c55e)",
+      "currentWeight": 67,
+      "previousWeight": 68.5,
+      "lastWeighIn": "2026-06-04",
+      "stage": "Recomposición",
+      "stageNumber": 1,
+      "paymentStatus": "active",
+      "joinedDate": "2026-04-01",
+      "streak": 14,
+      "completionRate": 89
+    },
+    {
+      "id": "s8",
+      "name": "Roberto Guzmán Díaz",
+      "email": "roberto.guzman@gmail.com",
+      "avatarInitials": "RG",
+      "avatarColor": "linear-gradient(135deg, #ef4444, #f59e0b)",
+      "currentWeight": 95,
+      "previousWeight": 93.2,
+      "lastWeighIn": "2026-06-03",
+      "stage": "Volumen",
+      "stageNumber": 2,
+      "paymentStatus": "active",
+      "joinedDate": "2025-09-15",
+      "streak": 30,
+      "completionRate": 98
+    },
+    {
+      "id": "s9",
+      "name": "Valentina Ortiz Peña",
+      "email": "vale.ortiz@outlook.com",
+      "avatarInitials": "VO",
+      "avatarColor": "linear-gradient(135deg, #06b6d4, #22c55e)",
+      "currentWeight": 60.2,
+      "previousWeight": 61,
+      "lastWeighIn": "2026-06-02",
+      "stage": "Definición",
+      "stageNumber": 3,
+      "paymentStatus": "active",
+      "joinedDate": "2025-08-20",
+      "streak": 45,
+      "completionRate": 99
+    },
+    {
+      "id": "s10",
+      "name": "Emilio Castro Navarro",
+      "email": "emilio.castro@gmail.com",
+      "avatarInitials": "EC",
+      "avatarColor": "linear-gradient(135deg, #8b5cf6, #3b82f6)",
+      "currentWeight": 73.5,
+      "previousWeight": 74,
+      "lastWeighIn": "2026-05-25",
+      "stage": "Mantenimiento",
+      "stageNumber": 2,
+      "paymentStatus": "grace_period",
+      "joinedDate": "2026-02-14",
+      "streak": 2,
+      "completionRate": 55
+    },
+    {
+      "id": "s11",
+      "name": "Camila Herrera Solís",
+      "email": "camila.herrera@gmail.com",
+      "avatarInitials": "CH",
+      "avatarColor": "linear-gradient(135deg, #ec4899, #f59e0b)",
+      "currentWeight": 52.1,
+      "previousWeight": 53.4,
+      "lastWeighIn": "2026-06-04",
+      "stage": "Definición",
+      "stageNumber": 1,
+      "paymentStatus": "active",
+      "joinedDate": "2026-05-01",
+      "streak": 7,
+      "completionRate": 82
+    },
+    {
+      "id": "s12",
+      "name": "Andrés Morales Jiménez",
+      "email": "andres.morales@hotmail.com",
+      "avatarInitials": "AM",
+      "avatarColor": "linear-gradient(135deg, #22c55e, #3b82f6)",
+      "currentWeight": 88.7,
+      "previousWeight": 87,
+      "lastWeighIn": "2026-06-01",
+      "stage": "Volumen",
+      "stageNumber": 1,
+      "paymentStatus": "inactive",
+      "joinedDate": "2026-03-01",
+      "streak": 0,
+      "completionRate": 15
+    }
+  ],
+  "studentDetails": {
+    "s1": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 66.2
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 65.2
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 65.4
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 64.5
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 64.7
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 63.7
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 63.9
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 63
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 63.2
+        },
+        {
+          "date": "2026-06-02",
+          "weight": 62.5
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 173,
+      "bodyFat": 18
+    },
+    "s2": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 90.2
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 89
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 89.1
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 88
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 88.1
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 86.9
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 87
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 86
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 86.1
+        },
+        {
+          "date": "2026-06-03",
+          "weight": 85.2
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 180,
+      "bodyFat": 18
+    },
+    "s3": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 61.4
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 60.5
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 60.7
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 59.8
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 60.1
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 59.1
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 59.3
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 58.4
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 58.7
+        },
+        {
+          "date": "2026-05-28",
+          "weight": 58
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": null,
+      "notes": "Pago pendiente — período de gracia activo. Enviar recordatorio.",
+      "height": 184,
+      "bodyFat": 17
+    },
+    "s4": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 97.5
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 96.2
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 96.3
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 95.2
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 95.2
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 94
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 94.1
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 93
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 93
+        },
+        {
+          "date": "2026-06-04",
+          "weight": 92.1
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 168,
+      "bodyFat": 26
+    },
+    "s5": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 59.1
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 58.2
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 58.4
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 57.6
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 57.8
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 56.8
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 57.1
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 56.2
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 56.4
+        },
+        {
+          "date": "2026-06-01",
+          "weight": 55.8
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 183,
+      "bodyFat": 25
+    },
+    "s6": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 82.9
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 81.8
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 81.9
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 80.9
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 81
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 79.9
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 80
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 79
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 79.1
+        },
+        {
+          "date": "2026-05-20",
+          "weight": 78.3
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Cuenta suspendida por falta de pago. Contactar al alumno.",
+      "height": 177,
+      "bodyFat": 19
+    },
+    "s7": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 71
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 69.9
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 70.1
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 69.2
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 69.3
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 68.3
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 68.5
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 67.6
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 67.7
+        },
+        {
+          "date": "2026-06-04",
+          "weight": 67
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 170,
+      "bodyFat": 20
+    },
+    "s8": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 100.5
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 99.3
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 99.3
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 98.2
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 98.2
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 97
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 97
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 95.9
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 96
+        },
+        {
+          "date": "2026-06-03",
+          "weight": 95
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 173,
+      "bodyFat": 14
+    },
+    "s9": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 63.8
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 62.8
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 63
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 62.1
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 62.3
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 61.3
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 61.6
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 60.7
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 60.9
+        },
+        {
+          "date": "2026-06-02",
+          "weight": 60.2
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": null,
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 172,
+      "bodyFat": 24
+    },
+    "s10": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 77.8
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 76.7
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 76.9
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 75.9
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 76.1
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 75
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 75.1
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 74.1
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 74.3
+        },
+        {
+          "date": "2026-05-25",
+          "weight": 73.5
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Pago pendiente — período de gracia activo. Enviar recordatorio.",
+      "height": 180,
+      "bodyFat": 20
+    },
+    "s11": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 55.2
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 54.3
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 54.6
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 53.7
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 54
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 53.1
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 53.3
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 52.5
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 52.7
+        },
+        {
+          "date": "2026-06-04",
+          "weight": 52.1
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Progreso excelente en definición. Reducir 100 kcal en julio si el peso se estanca.",
+      "height": 170,
+      "bodyFat": 25
+    },
+    "s12": {
+      "weightHistory": [
+        {
+          "date": "2026-01-15",
+          "weight": 93.9
+        },
+        {
+          "date": "2026-02-01",
+          "weight": 92.7
+        },
+        {
+          "date": "2026-02-15",
+          "weight": 92.7
+        },
+        {
+          "date": "2026-03-01",
+          "weight": 91.7
+        },
+        {
+          "date": "2026-03-15",
+          "weight": 91.7
+        },
+        {
+          "date": "2026-04-01",
+          "weight": 90.5
+        },
+        {
+          "date": "2026-04-15",
+          "weight": 90.6
+        },
+        {
+          "date": "2026-05-01",
+          "weight": 89.5
+        },
+        {
+          "date": "2026-05-15",
+          "weight": 89.6
+        },
+        {
+          "date": "2026-06-01",
+          "weight": 88.7
+        }
+      ],
+      "diet": {
+        "name": "Hipocalórica Definición",
+        "totalCalories": 1750,
+        "macros": {
+          "protein": 140,
+          "carbs": 160,
+          "fat": 50
+        },
+        "meals": [
+          {
+            "name": "Desayuno",
+            "time": "07:00",
+            "calories": 380,
+            "protein": 30,
+            "carbs": 40,
+            "fat": 10,
+            "items": [
+              "3 claras + 1 huevo entero revuelto",
+              "½ taza avena con canela",
+              "½ plátano"
+            ]
+          },
+          {
+            "name": "Snack AM",
+            "time": "10:00",
+            "calories": 200,
+            "protein": 25,
+            "carbs": 15,
+            "fat": 5,
+            "items": [
+              "Yogur griego natural 150g",
+              "10 almendras"
+            ]
+          },
+          {
+            "name": "Comida",
+            "time": "13:30",
+            "calories": 520,
+            "protein": 40,
+            "carbs": 50,
+            "fat": 15,
+            "items": [
+              "150g pechuga de pollo a la plancha",
+              "¾ taza arroz integral",
+              "Ensalada mixta con limón",
+              "1 cda aceite de oliva"
+            ]
+          },
+          {
+            "name": "Snack PM",
+            "time": "16:30",
+            "calories": 180,
+            "protein": 25,
+            "carbs": 10,
+            "fat": 5,
+            "items": [
+              "Scoop de proteína whey con agua",
+              "1 manzana"
+            ]
+          },
+          {
+            "name": "Cena",
+            "time": "20:00",
+            "calories": 470,
+            "protein": 35,
+            "carbs": 45,
+            "fat": 15,
+            "items": [
+              "150g salmón al horno",
+              "Camote asado 120g",
+              "Brócoli al vapor",
+              "1 cda aceite de oliva"
+            ]
+          }
+        ]
+      },
+      "routine": {
+        "name": "PPL Definición 5 días",
+        "daysPerWeek": 5,
+        "days": [
+          {
+            "day": "Lunes",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Banca",
+                "sets": 4,
+                "reps": "10",
+                "weight": "40 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Press Inclinado Mancuernas",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Aperturas en Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Militar",
+                "sets": 4,
+                "reps": "10",
+                "weight": "25 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevaciones Laterales",
+                "sets": 3,
+                "reps": "15",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Fondos en Paralelas",
+                "sets": 3,
+                "reps": "AMRAP",
+                "rest": "60s"
+              }
+            ]
+          },
+          {
+            "day": "Martes",
+            "label": "Pull",
+            "muscleGroup": "Espalda · Bíceps",
+            "exercises": [
+              {
+                "name": "Jalón al Pecho",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo con Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Remo Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "14 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Face Pull",
+                "sets": 3,
+                "reps": "15",
+                "weight": "12 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Bíceps Barra",
+                "sets": 3,
+                "reps": "12",
+                "weight": "20 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Martillo",
+                "sets": 3,
+                "reps": "12",
+                "weight": "8 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Miércoles",
+            "label": "Legs",
+            "muscleGroup": "Pierna · Glúteo",
+            "exercises": [
+              {
+                "name": "Sentadilla",
+                "sets": 4,
+                "reps": "10",
+                "weight": "50 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Prensa",
+                "sets": 4,
+                "reps": "12",
+                "weight": "100 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Extensión de Pierna",
+                "sets": 3,
+                "reps": "15",
+                "weight": "30 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Curl Femoral",
+                "sets": 3,
+                "reps": "12",
+                "weight": "25 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Hip Thrust",
+                "sets": 4,
+                "reps": "12",
+                "weight": "60 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Elevación de Talones",
+                "sets": 3,
+                "reps": "20",
+                "weight": "40 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Jueves",
+            "label": "Push",
+            "muscleGroup": "Pecho · Hombro · Tríceps",
+            "exercises": [
+              {
+                "name": "Press Inclinado Barra",
+                "sets": 4,
+                "reps": "10",
+                "weight": "35 kg",
+                "rest": "90s"
+              },
+              {
+                "name": "Aperturas Mancuerna",
+                "sets": 3,
+                "reps": "12",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Press Arnold",
+                "sets": 3,
+                "reps": "12",
+                "weight": "12 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Elevación Frontal",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Extensión Tríceps Polea",
+                "sets": 3,
+                "reps": "15",
+                "weight": "15 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Patada Tríceps",
+                "sets": 3,
+                "reps": "12",
+                "weight": "6 kg",
+                "rest": "45s"
+              }
+            ]
+          },
+          {
+            "day": "Viernes",
+            "label": "Pull + Legs",
+            "muscleGroup": "Espalda · Pierna",
+            "exercises": [
+              {
+                "name": "Peso Muerto Rumano",
+                "sets": 4,
+                "reps": "10",
+                "weight": "45 kg",
+                "rest": "120s"
+              },
+              {
+                "name": "Jalón Agarre Cerrado",
+                "sets": 3,
+                "reps": "12",
+                "weight": "40 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Remo en Polea Baja",
+                "sets": 3,
+                "reps": "12",
+                "weight": "35 kg",
+                "rest": "75s"
+              },
+              {
+                "name": "Zancadas Caminando",
+                "sets": 3,
+                "reps": "12 c/lado",
+                "weight": "10 kg",
+                "rest": "60s"
+              },
+              {
+                "name": "Abductora",
+                "sets": 3,
+                "reps": "15",
+                "weight": "35 kg",
+                "rest": "45s"
+              },
+              {
+                "name": "Plancha",
+                "sets": 3,
+                "reps": "45s",
+                "rest": "30s"
+              }
+            ]
+          }
+        ]
+      },
+      "measurements": [
+        {
+          "date": "2026-01-15",
+          "chest": 90,
+          "waist": 74,
+          "hips": 98,
+          "armL": 27,
+          "armR": 27.5,
+          "thighL": 56,
+          "thighR": 56.5
+        },
+        {
+          "date": "2026-03-15",
+          "chest": 89,
+          "waist": 71,
+          "hips": 97,
+          "armL": 27.5,
+          "armR": 28,
+          "thighL": 55,
+          "thighR": 55.5
+        },
+        {
+          "date": "2026-06-01",
+          "chest": 88,
+          "waist": 68,
+          "hips": 96,
+          "armL": 28,
+          "armR": 28.5,
+          "thighL": 54.5,
+          "thighR": 55
+        }
+      ],
+      "nextStageDate": "2026-07-15",
+      "notes": "Cuenta suspendida por falta de pago. Contactar al alumno.",
+      "height": 181,
+      "bodyFat": 23
+    },
+    "s13": {
+      "weightHistory": [
+        {
+          "date": "2026-06-05",
+          "weight": 66
+        }
+      ],
+      "diet": {
+        "name": "Dieta no asignada",
+        "totalCalories": 0,
+        "macros": {
+          "protein": 0,
+          "carbs": 0,
+          "fat": 0
+        },
+        "meals": []
+      },
+      "routine": {
+        "name": "Rutina no asignada",
+        "daysPerWeek": 0,
+        "days": []
+      },
+      "measurements": [
+        {
+          "date": "2026-06-05",
+          "chest": 42,
+          "waist": 42,
+          "hips": 24,
+          "armL": 0,
+          "armR": 0,
+          "thighL": 0,
+          "thighR": 0
+        }
+      ],
+      "nextStageDate": null,
+      "notes": "Alumno registrado correctamente. Asigne su dieta y rutina.",
+      "height": 66,
+      "bodyFat": 54,
+      "photoName": "/uploads/student_1780701199904.png"
+    }
+  }
+}

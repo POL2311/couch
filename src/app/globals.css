@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════
+   MyCouch — Street Luxury Design System
+   Minimalismo Premium · Negro Profundo
+   ═══════════════════════════════════════════ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Surfaces (Warm Light Sand & Pure White) ── */
+  --bg-root: #f7f4eb; /* Beautiful warm beige / sand background */
+  --bg-sidebar: #f7f4eb; /* Same warm beige as --bg-root for unified layout */
+  --bg-surface: #ffffff; /* Clean white for card backgrounds */
+  --bg-surface-raised: #fbf9f4; /* Lighter warm sand/cream */
+  --bg-surface-overlay: #f0eae1; /* Deeper warm sand overlay */
+  --bg-hover: rgba(24, 23, 21, 0.03);
+  --bg-active: rgba(24, 23, 21, 0.06);
+
+  /* ── Borders (Warm Taupe opacity) ── */
+  --border-subtle: rgba(18, 17, 16, 0.06);
+  --border-default: rgba(18, 17, 16, 0.10);
+  --border-strong: rgba(18, 17, 16, 0.16);
+
+  /* ── Text (Deep Charcoal & Muted Taupe) ── */
+  --text-primary: #1a1816; /* Solid dark text, highly readable */
+  --text-secondary: #6b6358; /* Muted warm taupe text */
+  --text-tertiary: #9c9384; /* Soft sand gray for detail labels */
+  --text-inverse: #ffffff; /* White text on dark elements */
+
+  /* ── Accent (Dark Ebony & Gold Sand) ── */
+  --accent-primary: #1a1816; /* Clean dark accent buttons */
+  --accent-primary-hover: #33302c;
+  --accent-primary-subtle: rgba(26, 24, 22, 0.06);
+
+  /* ── Sidebar specific (Updated to match light warm theme) ── */
+  --text-sidebar-primary: #1a1816; /* Charcoal */
+  --text-sidebar-secondary: #6b6358; /* Muted warm taupe */
+  --bg-sidebar-active: #ffffff; /* White active background for modern card look */
+  --bg-sidebar-hover: rgba(24, 23, 21, 0.03); /* Soft hover state */
+  --border-sidebar-subtle: rgba(18, 17, 16, 0.06); /* Muted border */
+
+  /* ── Semantic (Vivid & Strong Accent Tones) ── */
+  --color-success: #059669; /* Emerald Green */
+  --color-success-subtle: rgba(5, 150, 105, 0.09);
+  --color-warning: #d97706; /* Rich Amber */
+  --color-warning-subtle: rgba(217, 119, 6, 0.09);
+  --color-danger: #dc2626; /* Crimson Red */
+  --color-danger-subtle: rgba(220, 38, 38, 0.09);
+  --color-info: #2563eb; /* Royal Blue for weight gains */
+  --color-info-subtle: rgba(37, 99, 235, 0.09);
+
+  /* ── Stage Colors (Vivid & High Contrast Tones) ── */
+  --stage-volumen: #7c3aed; /* Deep Violet */
+  --stage-volumen-subtle: rgba(124, 58, 237, 0.09);
+  --stage-definicion: #0d9488; /* Deep Teal */
+  --stage-definicion-subtle: rgba(13, 148, 136, 0.09);
+  --stage-mantenimiento: #ca8a04; /* Rich Bronze/Gold */
+  --stage-mantenimiento-subtle: rgba(202, 138, 4, 0.09);
+  --stage-recomposicion: #db2777; /* Deep Pink/Magenta */
+  --stage-recomposicion-subtle: rgba(219, 39, 119, 0.09);
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.7);
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition-base: 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition-slow: 350ms cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* ── Layout ── */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 56px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-root);
+  --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ═══════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════ */
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-root);
+  color: var(--text-primary);
+  font-family: var(--font-sans, "Inter", system-ui, -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: rgba(228, 228, 231, 0.15);
+  color: #fafafa;
+}
+
+input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ═══════════════════════════════════════════
+   Animations (subtle, refined)
+   ═══════════════════════════════════════════ */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float-up {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+.animate-float-up {
+  animation: float-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════
+   Mobile Bottom Navigation
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 1023px) {
+  .desktop-sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding-bottom: 80px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
 }

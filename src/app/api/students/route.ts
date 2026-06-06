@@ -1,0 +1,155 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getStudents, addStudent } from "@/lib/db";
+import { type Student, type Stage } from "@/lib/mock-data";
+import fs from "fs/promises";
+import path from "path";
+
+export async function GET() {
+  try {
+    const students = await getStudents();
+    return NextResponse.json(students);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const contentType = request.headers.get("content-type") || "";
+    let data: any = {};
+    let photoName: string | undefined = undefined;
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      
+      // Extract fields
+      const name = formData.get("name") as string;
+      const email = formData.get("email") as string;
+      const stage = formData.get("stage") as Stage;
+      const stageNumber = parseInt(formData.get("stageNumber") as string) || 1;
+      const startingWeight = parseFloat(formData.get("startingWeight") as string) || 0;
+      const height = parseFloat(formData.get("height") as string) || 0;
+      
+      const bodyFatStr = formData.get("bodyFat") as string;
+      const bodyFat = bodyFatStr ? parseFloat(bodyFatStr) : undefined;
+      
+      const chestStr = formData.get("chest") as string;
+      const chest = chestStr ? parseFloat(chestStr) : undefined;
+      
+      const waistStr = formData.get("waist") as string;
+      const waist = waistStr ? parseFloat(waistStr) : undefined;
+      
+      const hipsStr = formData.get("hips") as string;
+      const hips = hipsStr ? parseFloat(hipsStr) : undefined;
+
+      // Extract file
+      const photoFile = formData.get("photo") as File | null;
+      if (photoFile && photoFile.size > 0) {
+        // Save the file
+        const arrayBuffer = await photoFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        // Ensure folder public/uploads exists
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        // Generate a unique filename
+        const ext = path.extname(photoFile.name) || ".png";
+        const filename = `student_${Date.now()}${ext}`;
+        const filePath = path.join(uploadsDir, filename);
+        await fs.writeFile(filePath, buffer);
+        
+        photoName = `/uploads/${filename}`;
+      }
+
+      data = {
+        name,
+        email,
+        stage,
+        stageNumber,
+        startingWeight,
+        height,
+        bodyFat,
+        chest,
+        waist,
+        hips,
+        photoName
+      };
+    } else {
+      // Fallback for JSON
+      data = await request.json();
+    }
+
+    if (!data.name || !data.email) {
+      return NextResponse.json({ error: "Nombre y correo son requeridos" }, { status: 400 });
+    }
+
+    const students = await getStudents();
+    
+    // Generate avatar initials
+    const words = data.name.trim().split(/\s+/);
+    const initials = words.length > 1 
+      ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+      : words[0].slice(0, 2).toUpperCase();
+
+    // Create the new student model
+    const newStudent: Student = {
+      id: `s${students.length + 1}`,
+      name: data.name,
+      email: data.email,
+      avatarInitials: initials,
+      avatarColor: "linear-gradient(135deg, var(--accent-primary), var(--text-secondary))",
+      currentWeight: data.startingWeight,
+      previousWeight: data.startingWeight,
+      lastWeighIn: new Date().toISOString().split("T")[0],
+      stage: data.stage || "Volumen",
+      stageNumber: data.stageNumber || 1,
+      paymentStatus: "active",
+      joinedDate: new Date().toISOString().split("T")[0],
+      completionRate: 100,
+      streak: 1,
+    };
+
+    // Create the detailed measurements and history
+    const detail = {
+      weightHistory: [
+        { date: newStudent.lastWeighIn, weight: data.startingWeight }
+      ],
+      diet: {
+        name: "Dieta no asignada",
+        totalCalories: 0,
+        macros: { protein: 0, carbs: 0, fat: 0 },
+        meals: []
+      },
+      routine: {
+        name: "Rutina no asignada",
+        daysPerWeek: 0,
+        days: []
+      },
+      measurements: [
+        {
+          date: newStudent.lastWeighIn,
+          chest: data.chest || 0,
+          waist: data.waist || 0,
+          hips: data.hips || 0,
+          armL: 0,
+          armR: 0,
+          thighL: 0,
+          thighR: 0
+        }
+      ],
+      nextStageDate: null,
+      notes: "Alumno registrado correctamente. Asigne su dieta y rutina.",
+      height: data.height,
+      bodyFat: data.bodyFat,
+      photoName: data.photoName
+    };
+
+    await addStudent(newStudent, detail);
+
+    return NextResponse.json(newStudent);
+  } catch (error: any) {
+    console.error("Error creating student:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
