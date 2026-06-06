@@ -82,7 +82,7 @@ export default function CoachDashboard() {
     <>
       {/* Header canónico */}
       <PageHeader
-        title="Resumen de Control"
+        title="Resumen"
         hint="Resumen del estado de tu negocio: ingresos, adherencia y alertas."
         cta={
           <Link
