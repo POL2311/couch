@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/components/header";
+import { PageHeader, AddButton } from "@/components/page-header";
 import StatsRow from "@/components/stats-row";
 import FilterBar, { type PaymentFilter } from "@/components/filter-bar";
 import StudentTable from "@/components/student-table";
@@ -220,12 +220,12 @@ export default function StudentsPage() {
 
   return (
     <>
-      {/* ── Header ── */}
-      <Header
+      {/* ── Header canónico ── */}
+      <PageHeader
         title="Alumnos"
-        subtitle={isLoading ? "Cargando alumnos..." : `${stats.total} alumnos registrados`}
+        count={isLoading ? undefined : stats.total}
         hint="Gestión de tus alumnos: progreso, etapa y estado de pago."
-        onNewStudent={() => setIsAddModalOpen(true)}
+        cta={<AddButton label="Agregar alumno" onClick={() => setIsAddModalOpen(true)} />}
       />
 
       {/* ── KPI Stats (Atención → filtra gracia+suspendido) ── */}

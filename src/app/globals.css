@@ -91,6 +91,7 @@
   --sidebar-width: 240px;
   --sidebar-collapsed-width: 72px;
   --header-height: 56px;
+  --page-header-h: 64px; /* altura fija del header de página (móvil) */
 
   /* ── Densidad de superficies de trabajo (tablas/listas) ── */
   --row-h-compact: 56px;
@@ -105,6 +106,11 @@
 /* El main se mueve en sincronía con el aside (misma duración/easing). */
 .main-content {
   transition: margin-left var(--transition-slow);
+}
+
+/* Header de página: altura fija (desktop un poco mayor). */
+@media (min-width: 768px) {
+  :root { --page-header-h: 72px; }
 }
 
 @theme inline {

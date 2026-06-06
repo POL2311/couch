@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Flame, Zap, Clock, Search, X, SearchX, Plus } from "lucide-react";
+import { Flame, Zap, Clock, Search, X, SearchX } from "lucide-react";
 import { DIET_TEMPLATES, ROUTINE_TEMPLATES, type DietTemplate, type RoutineTemplate } from "@/lib/templates";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { EmptyState } from "@/components/empty-state";
-import { InfoHint } from "@/components/info-hint";
+import { PageHeader, AddButton } from "@/components/page-header";
 
 /* ── Helpers ── */
 const STAGE_WORDS = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
@@ -184,30 +184,17 @@ export default function TemplatesPage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="px-4 md:px-8 py-5 flex flex-col gap-3 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-        {/* Fila 1: título + InfoHint + CTA (único elemento blanco) */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-[16px] font-semibold tracking-tight whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
-              Plantillas
-            </h1>
-            <InfoHint text="Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos." />
-          </div>
+      {/* Header canónico: solo identidad + acción */}
+      <PageHeader
+        title="Plantillas"
+        hint="Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos."
+        cta={<AddButton label="Nueva plantilla" onClick={() => alert("Crear nueva plantilla [Esta funcionalidad requiere base de datos de plantillas dinámicas]")} />}
+      />
 
-          <button
-            onClick={() => alert("Crear nueva plantilla [Esta funcionalidad requiere base de datos de plantillas dinámicas]")}
-            aria-label="Nueva plantilla"
-            className="shrink-0 inline-flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-85 rounded-full md:rounded-xl w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2"
-            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-          >
-            <Plus size={18} strokeWidth={2} className="shrink-0" />
-            <span className="hidden md:inline text-[13px] font-medium">Nueva plantilla</span>
-          </button>
-        </div>
-
-        {/* Fila 2 (+3 en móvil): segmented control + buscador */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 min-w-0">
+      {/* Content */}
+      <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
+        {/* Controles (segmented + buscador) — scrollean con el contenido */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 min-w-0 mb-6">
           {/* Segmented control */}
           <div
             className="grid grid-cols-2 md:inline-flex w-full md:w-auto rounded-xl shrink-0"
@@ -246,10 +233,7 @@ export default function TemplatesPage() {
             />
           </div>
         </div>
-      </header>
 
-      {/* Content */}
-      <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
         {/* Diet templates */}
         {activeTab === "diets" && (
           diets.length === 0 ? (

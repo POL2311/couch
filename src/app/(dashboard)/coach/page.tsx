@@ -6,7 +6,7 @@ import { CalendarClock, Activity } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { buildFeedItems } from "@/lib/activity";
 import { FeedRow } from "@/components/feed-row";
-import { InfoHint } from "@/components/info-hint";
+import { PageHeader } from "@/components/page-header";
 import { PAYMENT_STATUS_LABELS } from "@/lib/status-labels";
 import { MRR_LABEL } from "@/lib/kpi-labels";
 import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
@@ -80,28 +80,20 @@ export default function CoachDashboard() {
 
   return (
     <>
-      {/* Header */}
-      <header
-        className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
-        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-      >
-        <div className="flex items-center gap-1.5 min-w-0">
-          <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Resumen de Control
-          </h1>
-          <InfoHint text="Resumen del estado de tu negocio: ingresos, adherencia y alertas." />
-        </div>
-
-        <Link
-          href="/coach/students"
-          className="px-3.5 py-2 rounded-lg text-[12px] font-medium transition-all duration-150"
-          style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-        >
-          Ver Alumnos
-        </Link>
-      </header>
+      {/* Header canónico */}
+      <PageHeader
+        title="Resumen de Control"
+        hint="Resumen del estado de tu negocio: ingresos, adherencia y alertas."
+        cta={
+          <Link
+            href="/coach/students"
+            className="inline-flex items-center rounded-xl px-4 py-2 text-[13px] font-medium transition-opacity hover:opacity-85 whitespace-nowrap"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+          >
+            Ver alumnos
+          </Link>
+        }
+      />
 
       {/* Main Grid */}
       <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
