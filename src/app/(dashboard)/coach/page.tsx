@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Scale, UserPlus, ArrowDownRight, ArrowUpRight, CalendarClock, Activity } from "lucide-react";
+import { CalendarClock, Activity } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { buildFeedItems } from "@/lib/activity";
+import { FeedRow } from "@/components/feed-row";
 import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 
-function formatFeedDate(dateStr: string) {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-}
+const FEED_CAP = 6;
 
 export default function CoachDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -72,40 +72,8 @@ export default function CoachDashboard() {
     }).join(" ");
   }, [students]);
 
-  // Activity feed derived from the SAME source as counts/charts (los alumnos fetchados).
-  // Sin nuevas llamadas API: solo deriva ítems de campos reales (pesajes, altas).
-  const feedItems = useMemo(() => {
-    const items: Array<{ key: string; Icon: typeof Scale; title: string; desc: string; date: string; delta?: number }> = [];
-
-    // Pesajes más recientes
-    [...students]
-      .sort((a, b) => b.lastWeighIn.localeCompare(a.lastWeighIn))
-      .slice(0, 3)
-      .forEach((s) => {
-        items.push({
-          key: `w-${s.id}`,
-          Icon: Scale,
-          title: "Pesaje reportado",
-          desc: `${s.name} reportó ${s.currentWeight} kg.`,
-          date: s.lastWeighIn,
-          delta: Math.round((s.currentWeight - s.previousWeight) * 10) / 10,
-        });
-      });
-
-    // Alta más reciente
-    const newest = [...students].sort((a, b) => b.joinedDate.localeCompare(a.joinedDate))[0];
-    if (newest) {
-      items.push({
-        key: `j-${newest.id}`,
-        Icon: UserPlus,
-        title: "Nuevo alumno",
-        desc: `${newest.name} se unió en etapa de ${newest.stage}.`,
-        date: newest.joinedDate,
-      });
-    }
-
-    return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-  }, [students]);
+  // Feed derivado de la misma fuente (alumnos). El dashboard solo muestra los primeros FEED_CAP.
+  const feedItems = useMemo(() => buildFeedItems(students), [students]);
 
   return (
     <>
@@ -301,7 +269,7 @@ export default function CoachDashboard() {
                   }
                 />
               ) : (
-                stats.upcomingChanges.map((change) => (
+                stats.upcomingChanges.slice(0, 5).map((change) => (
                   <div key={change.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] text-[12px]">
                     <div>
                       <strong className="font-medium" style={{ color: "var(--text-primary)" }}>{change.name}</strong>
@@ -319,6 +287,13 @@ export default function CoachDashboard() {
                     </span>
                   </div>
                 ))
+              )}
+              {!isLoading && stats.upcomingChanges.length > 5 && (
+                <div className="text-center pt-1">
+                  <Link href="/coach/periodization" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                    Ver todos ({stats.upcomingChanges.length})
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -343,51 +318,16 @@ export default function CoachDashboard() {
             ) : feedItems.length === 0 ? (
               <EmptyState icon={Activity} message="Aún no hay actividad reciente" className="py-10" />
             ) : (
-              feedItems.map(({ key, Icon, title, desc, date, delta }) => (
-                <div key={key} className="px-5 py-4 flex items-start gap-4">
-                  {/* Contenedor de icono — 36x36, radius 10, fondo white/4, hairline */}
-                  <div
-                    className="shrink-0 flex items-center justify-center"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid var(--border-subtle)",
-                    }}
-                  >
-                    <Icon size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {/* Título 14px/500 (primario) · timestamp 12px (terciario) */}
-                    <div className="flex items-center justify-between gap-2">
-                      <strong className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>{title}</strong>
-                      <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-tertiary)" }}>{formatFeedDate(date)}</span>
-                    </div>
-
-                    {/* Descripción 13px (secundario) + chip de delta de peso real */}
-                    <div className="flex items-center flex-wrap gap-2 mt-1">
-                      <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{desc}</p>
-                      {typeof delta === "number" && Math.abs(delta) >= 0.1 && (
-                        // NOTA: el color del chip NO debe asumir que bajar de peso siempre es positivo.
-                        // Debe depender del objetivo del alumno: en definición, perder peso es éxito (success);
-                        // en volumen, perder peso es regresión (danger) y ganar peso es éxito. Aquí se usa
-                        // success como placeholder hasta tener el objetivo del alumno en los datos.
-                        <span
-                          className="inline-flex items-center gap-0.5 text-[12px] tabular-nums px-1.5 py-0.5 rounded-md shrink-0"
-                          style={{ background: "var(--color-success-subtle)", color: "var(--color-success)" }}
-                        >
-                          {delta < 0 ? <ArrowDownRight size={12} strokeWidth={1.75} /> : <ArrowUpRight size={12} strokeWidth={1.75} />}
-                          {Math.abs(delta)} kg
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
+              feedItems.slice(0, FEED_CAP).map((item) => <FeedRow key={item.key} item={item} />)
             )}
           </div>
+          {!isLoading && feedItems.length > FEED_CAP && (
+            <div className="px-5 py-3 border-t border-[var(--border-subtle)] text-center">
+              <Link href="/coach/activity" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                Ver toda la actividad
+              </Link>
+            </div>
+          )}
         </div>
 
       </div>

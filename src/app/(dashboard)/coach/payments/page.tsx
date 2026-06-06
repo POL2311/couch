@@ -155,6 +155,15 @@ export default function PaymentsPage() {
     alert(`Recordatorio de pago enviado a ${s.name}`);
   }, []);
 
+  // Techo por sección: "Requieren acción" siempre completa; el resto cap 10
+  // y revela de a 50 (paginación incremental dentro de la sección).
+  const SECTION_CAP = 10;
+  const [shown, setShown] = useState<Record<string, number>>({});
+  const visibleCount = (sec: { key: string; items: Student[] }) =>
+    sec.key === "action" ? sec.items.length : Math.min(sec.items.length, shown[sec.key] ?? SECTION_CAP);
+  const revealMore = (key: string, total: number) =>
+    setShown((p) => ({ ...p, [key]: Math.min(total, (p[key] ?? SECTION_CAP) + 50) }));
+
   const getStatusStyle = (status: string) => {
     const map: Record<string, { label: string; color: string; bg: string }> = {
       active: { label: "Al día", color: "var(--color-success)", bg: "var(--color-success-subtle)" },
@@ -346,7 +355,7 @@ export default function PaymentsPage() {
                             {sec.title} · {sec.items.length}
                           </td>
                         </tr>
-                        {sec.items.map((student) => {
+                        {sec.items.slice(0, visibleCount(sec)).map((student) => {
                           const status = getStatusStyle(student.paymentStatus);
                           const needsAction = student.paymentStatus === "grace_period";
                           return (
@@ -390,6 +399,15 @@ export default function PaymentsPage() {
                             </tr>
                           );
                         })}
+                        {visibleCount(sec) < sec.items.length && (
+                          <tr>
+                            <td colSpan={3} className="px-5 py-2.5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <button onClick={() => revealMore(sec.key, sec.items.length)} className="text-[12px] hover:underline cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                                {sec.items.length - visibleCount(sec) <= 50 ? `Mostrar los ${sec.items.length}` : "Mostrar 50 más"}
+                              </button>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     ))}
                   </table>
@@ -402,9 +420,9 @@ export default function PaymentsPage() {
                       <div className="px-4 pt-4 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
                         {sec.title} · {sec.items.length}
                       </div>
-                      {sec.items.map((student, idx) => {
+                      {sec.items.slice(0, visibleCount(sec)).map((student, idx, arr) => {
                         const status = getStatusStyle(student.paymentStatus);
-                        const isLast = idx === sec.items.length - 1;
+                        const isLast = idx === arr.length - 1;
                         return (
                           <button
                             key={student.id}
@@ -429,6 +447,15 @@ export default function PaymentsPage() {
                           </button>
                         );
                       })}
+                      {visibleCount(sec) < sec.items.length && (
+                        <button
+                          onClick={() => revealMore(sec.key, sec.items.length)}
+                          className="w-full text-left pl-4 pr-4 py-3 text-[12px] cursor-pointer active:bg-[var(--bg-hover)]"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {sec.items.length - visibleCount(sec) <= 50 ? `Mostrar los ${sec.items.length}` : "Mostrar 50 más"}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
