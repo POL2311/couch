@@ -8,6 +8,7 @@ import { buildFeedItems } from "@/lib/activity";
 import { FeedRow } from "@/components/feed-row";
 import { InfoHint } from "@/components/info-hint";
 import { PAYMENT_STATUS_LABELS } from "@/lib/status-labels";
+import { MRR_LABEL } from "@/lib/kpi-labels";
 import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -114,8 +115,8 @@ export default function CoachDashboard() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              <span className="md:hidden">MRR</span>
-              <span className="hidden md:inline">Ingresos recurrentes (MRR)</span>
+              <span className="md:hidden">{MRR_LABEL.short}</span>
+              <span className="hidden md:inline">{MRR_LABEL.full}</span>
             </span>
             <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
               ${stats.mrr.toLocaleString("es-MX")}

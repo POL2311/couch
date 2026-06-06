@@ -8,6 +8,7 @@ import { DetailOverlay } from "@/components/detail-overlay";
 import { InfoHint } from "@/components/info-hint";
 import { type Student, type PaymentStatus } from "@/lib/mock-data";
 import { PAYMENT_STATUS_LABELS, statusTone, PAYMENT_SECTION_LABELS } from "@/lib/status-labels";
+import { MRR_LABEL } from "@/lib/kpi-labels";
 
 /* ── Secciones por estado (iOS grouped list) — etiquetas del diccionario ── */
 const PAYMENT_SECTIONS: { key: "action" | "active" | "disabled"; title: string; statuses: PaymentStatus[] }[] = [
@@ -240,6 +241,14 @@ export default function PaymentsPage() {
   const isExpanded = (sec: { key: string; collapsible: boolean }) =>
     !sec.collapsible || isSearching || expanded.has(sec.key);
 
+  // KPIs navegables: expande la sección y hace scroll hacia ella.
+  const focusSection = (key: "action" | "active" | "disabled") => {
+    if (key !== "action") setExpanded((prev) => new Set(prev).add(key));
+    setTimeout(() => {
+      document.getElementById(`pay-sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  };
+
   // Techo: acción siempre completa; en búsqueda mostramos todas las coincidencias;
   // si no, cap 10 con revelado incremental de 50.
   const sectionLimit = (sec: { key: string; collapsible: boolean; items: Student[] }) =>
@@ -298,89 +307,95 @@ export default function PaymentsPage() {
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           
-          {/* MRR */}
+          {/* MRR (no navegable) */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Mensualidad Estimada (MRR)
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">{MRR_LABEL.short}</span>
+              <span className="hidden md:inline">{MRR_LABEL.full}</span>
             </span>
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
               <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
                 ${metrics.mrr.toLocaleString("es-MX")}
-                <span className="text-[14px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
               </p>
             )}
-            <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              Cuota base: $1,200 MXN / alumno
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              Cuota base $1,200/alumno
             </span>
           </div>
 
-          {/* Active Subscriptions */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* Al día → expande sección "active" */}
+          <button
+            type="button"
+            onClick={() => focusSection("active")}
+            aria-label="Ver suscripciones al día"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Suscripciones Al Día
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Al día</span>
+              <span className="hidden md:inline">Suscripciones al día</span>
             </span>
             {isLoading ? (
               <Skeleton className="h-[30px] w-16 mt-2" />
             ) : (
-              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
                 {metrics.active}
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>de {metrics.total}</span>
               </p>
             )}
-            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
-              Acceso habilitado a la app
-            </span>
-          </div>
+          </button>
 
-          {/* Revenue at risk */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* En riesgo → scroll a "Requieren acción" */}
+          <button
+            type="button"
+            onClick={() => focusSection("action")}
+            aria-label="Ver alumnos que requieren acción"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Ingresos en Riesgo
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">En riesgo</span>
+              <span className="hidden md:inline">Ingresos en riesgo</span>
             </span>
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
               <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
                 ${metrics.atRisk.toLocaleString("es-MX")}
-                <span className="text-[14px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
               </p>
             )}
-            <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              {metrics.grace} {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s de pago
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              {metrics.grace} pagos {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s
             </span>
-          </div>
+          </button>
 
-          {/* Suspended Accounts */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* Suspendidas → expande sección "disabled" */}
+          <button
+            type="button"
+            onClick={() => focusSection("disabled")}
+            aria-label="Ver cuentas suspendidas"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
-              Cuentas suspendidas
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Suspendidas</span>
+              <span className="hidden md:inline">Cuentas suspendidas</span>
             </span>
             {isLoading ? (
               <Skeleton className="h-[30px] w-16 mt-2" />
             ) : (
-              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
                 {metrics.inactive}
               </p>
             )}
-            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
-              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-danger)" }} />
-              Acceso denegado temporalmente
-            </span>
-          </div>
+          </button>
 
         </div>
 
@@ -434,7 +449,7 @@ export default function PaymentsPage() {
                   const remaining = sec.items.length - limit;
 
                   return (
-                    <div key={sec.key} style={{ borderTop: sec.key === "action" ? "none" : "1px solid var(--border-subtle)" }}>
+                    <div key={sec.key} id={`pay-sec-${sec.key}`} style={{ scrollMarginTop: "72px", borderTop: sec.key === "action" ? "none" : "1px solid var(--border-subtle)" }}>
                       {/* ── Header de sección ── */}
                       {sec.collapsible ? (
                         <button
