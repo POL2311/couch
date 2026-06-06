@@ -177,7 +177,7 @@ export default function PaymentsPage() {
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
                 Cobros y Alumnos
               </h3>
-              <span className="text-[10px] text-zinc-400">Facturación Mensual</span>
+              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Facturación Mensual</span>
             </div>
 
             <div className="overflow-x-auto flex-1">
@@ -228,7 +228,7 @@ export default function PaymentsPage() {
                                 <Link href={`/coach/students/${student.id}`} className="font-medium hover:underline text-[12px]" style={{ color: "var(--text-primary)" }}>
                                   {student.name}
                                 </Link>
-                                <span className="block text-[10px] text-zinc-400 mt-0.5">{student.email}</span>
+                                <span className="block text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{student.email}</span>
                               </div>
                             </div>
                           </td>
@@ -259,7 +259,8 @@ export default function PaymentsPage() {
                             {student.paymentStatus !== "active" && (
                               <button
                                 onClick={() => alert(`Recordatorio de pago enviado a ${student.name}`)}
-                                className="px-2.5 py-1 text-[10px] rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+                                className="px-2.5 py-1 text-[10px] rounded-lg border border-[var(--border-default)] transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+                                style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)" }}
                               >
                                 Recordar
                               </button>
@@ -300,8 +301,8 @@ export default function PaymentsPage() {
               
               <button
                 onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCouch...")}
-                className="mt-5 w-full py-2 border rounded-lg text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 transition-all cursor-pointer"
-                style={{ borderColor: "var(--border-default)" }}
+                className="mt-5 w-full py-2 border rounded-xl text-[11px] font-medium transition-all cursor-pointer hover:bg-[color:var(--bg-hover)]"
+                style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
               >
                 Ver Dashboard de Stripe
               </button>
@@ -334,7 +335,7 @@ export default function PaymentsPage() {
               <div style={{ borderBottom: "1px solid var(--border-subtle)", margin: "15px 0" }} />
 
               <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--color-success)" }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-subtle-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full animate-subtle-pulse" style={{ background: "var(--color-success)" }} />
                 <span>Tarjeta de débito activa (termina en 4242)</span>
               </div>
             </div>
