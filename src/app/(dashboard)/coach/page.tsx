@@ -221,7 +221,7 @@ export default function CoachDashboard() {
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
                 Curva de Adherencia (Alumnos)
               </h3>
-              <span className="text-[10px] text-zinc-400">Orden: Mayor a Menor</span>
+              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Orden: Mayor a Menor</span>
             </div>
             
             <div className="p-5 flex flex-col justify-end" style={{ height: "180px" }}>
@@ -284,7 +284,7 @@ export default function CoachDashboard() {
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
                 Próximos Cambios Programados
               </h3>
-              <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">AutoCron</span>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(255, 255, 255, 0.08)", color: "var(--text-secondary)" }}>AutoCron</span>
             </div>
             
             <div className="p-5 flex-1 overflow-y-auto max-h-[180px] space-y-3">
@@ -305,12 +305,15 @@ export default function CoachDashboard() {
                   <div key={change.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] text-[12px]">
                     <div>
                       <strong className="font-medium" style={{ color: "var(--text-primary)" }}>{change.name}</strong>
-                      <span className="mx-2 text-zinc-300">|</span>
+                      <span className="mx-2" style={{ color: "var(--text-tertiary)" }}>|</span>
                       <span style={{ color: "var(--text-secondary)" }}>
                         Nueva Etapa: {change.stage} (E{change.stageNumber})
                       </span>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium tabular-nums text-zinc-400 bg-white border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-medium tabular-nums border border-[var(--border-subtle)] px-2 py-0.5 rounded-md"
+                      style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)" }}
+                    >
                       <CalendarClock size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
                       {change.date.split("-").slice(1).join("/")}
                     </span>

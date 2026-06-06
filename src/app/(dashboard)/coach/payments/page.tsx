@@ -102,13 +102,17 @@ export default function PaymentsPage() {
             className="p-5 rounded-xl border animate-fade-in"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Mensualidad Estimada (MRR)
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${metrics.mrr.toLocaleString("es-MX")} MXN`}
-            </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-32 mt-2" />
+            ) : (
+              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                ${metrics.mrr.toLocaleString("es-MX")} MXN
+              </p>
+            )}
+            <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
               Cuota base: $1,200 MXN / alumno
             </span>
           </div>
@@ -118,12 +122,16 @@ export default function PaymentsPage() {
             className="p-5 rounded-xl border animate-fade-in"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Suscripciones Al Día
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : metrics.active}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-16 mt-2" />
+            ) : (
+              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                {metrics.active}
+              </p>
+            )}
             <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
               <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
               Acceso habilitado a la app
@@ -135,13 +143,17 @@ export default function PaymentsPage() {
             className="p-5 rounded-xl border animate-fade-in"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Ingresos en Riesgo
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${metrics.atRisk.toLocaleString("es-MX")} MXN`}
-            </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-32 mt-2" />
+            ) : (
+              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
+                ${metrics.atRisk.toLocaleString("es-MX")} MXN
+              </p>
+            )}
+            <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
               {metrics.grace} alumnos en mora
             </span>
           </div>
@@ -151,12 +163,16 @@ export default function PaymentsPage() {
             className="p-5 rounded-xl border animate-fade-in"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
+            <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
               Cuentas Inhabilitadas
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : metrics.inactive}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-16 mt-2" />
+            ) : (
+              <p className="text-[30px] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+                {metrics.inactive}
+              </p>
+            )}
             <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
               <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-danger)" }} />
               Acceso denegado temporalmente

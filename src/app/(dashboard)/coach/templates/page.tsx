@@ -114,7 +114,7 @@ export default function TemplatesPage() {
                             {meal.items[0]}... ({meal.items.length} alimentos)
                           </span>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 tabular-nums shrink-0 ml-2">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium tabular-nums shrink-0 ml-2" style={{ color: "var(--text-tertiary)" }}>
                           <Clock size={14} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
                           {meal.time} · {meal.calories} kcal
                         </span>
@@ -162,7 +162,7 @@ export default function TemplatesPage() {
                         <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
                           Grupo muscular: <span className="font-medium">{day.muscleGroup}</span>
                         </p>
-                        <div className="mt-2 text-[11px] space-y-0.5 text-zinc-400 pl-2 border-l border-zinc-200">
+                        <div className="mt-2 text-[11px] space-y-0.5 pl-2 border-l border-[color:var(--border-default)]" style={{ color: "var(--text-tertiary)" }}>
                           {day.exercises.slice(0, 2).map((ex, exIdx) => (
                             <div key={exIdx} className="flex items-center gap-1.5">
                               <span className="inline-block rounded-full shrink-0" style={{ width: 3, height: 3, background: "currentColor" }} />
@@ -170,7 +170,7 @@ export default function TemplatesPage() {
                             </div>
                           ))}
                           {day.exercises.length > 2 && (
-                            <div className="text-[9px] italic text-zinc-400">
+                            <div className="text-[9px] italic" style={{ color: "var(--text-tertiary)" }}>
                               + {day.exercises.length - 2} ejercicios más...
                             </div>
                           )}

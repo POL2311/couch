@@ -78,7 +78,8 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 backdrop-blur-sm transition-opacity duration-300"
+        style={{ background: "var(--scrim)" }}
         onClick={onClose}
       />
 
@@ -219,7 +220,7 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
                   name="timing"
                   checked={timing === "immediate"}
                   onChange={() => setTiming("immediate")}
-                  className="accent-zinc-900"
+                  className="accent-[var(--accent-primary)]"
                 />
                 <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>Inmediato</span>
               </label>
@@ -237,7 +238,7 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
                   name="timing"
                   checked={timing === "scheduled"}
                   onChange={() => setTiming("scheduled")}
-                  className="accent-zinc-900"
+                  className="accent-[var(--accent-primary)]"
                 />
                 <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>Programar</span>
               </label>

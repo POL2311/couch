@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
-import { RowSkeleton } from "@/components/skeleton";
+import { RowSkeleton, Skeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 
 export default function PeriodizationPage() {
@@ -102,9 +102,13 @@ export default function PeriodizationPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>{item.label}</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: item.color, background: item.bg }}>
-                  {isLoading ? "—" : `${item.count} alumnos`}
-                </span>
+                {isLoading ? (
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                ) : (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: item.color, background: item.bg }}>
+                    {item.count} alumnos
+                  </span>
+                )}
               </div>
               <div className="mt-4 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
                 <div

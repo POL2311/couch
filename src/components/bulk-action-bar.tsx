@@ -34,7 +34,8 @@ export default function BulkActionBar({
       <div
         className="flex items-center gap-4 px-2 py-2 rounded-2xl"
         style={{
-          background: "rgba(5, 5, 5, 0.95)",
+          background: "var(--glass-strong)",
+          WebkitBackdropFilter: "blur(24px) saturate(120%)",
           backdropFilter: "blur(24px) saturate(120%)",
           border: "1px solid var(--border-default)",
           boxShadow: "0 16px 64px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.02)",

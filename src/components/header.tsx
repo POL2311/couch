@@ -33,7 +33,8 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
       className="sticky top-0 z-30 flex items-center gap-4 px-4 lg:px-8 shrink-0"
       style={{
         height: "var(--header-height)",
-        background: "rgba(3, 3, 3, 0.7)",
+        background: "var(--glass)",
+        WebkitBackdropFilter: "blur(20px) saturate(120%)",
         backdropFilter: "blur(20px) saturate(120%)",
         borderBottom: "1px solid var(--border-subtle)",
       }}
