@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoHint } from "@/components/info-hint";
 
 function IconSearch({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -21,10 +22,11 @@ function IconPlus({ className = "w-4 h-4" }: { className?: string }) {
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  hint?: string;
   onNewStudent?: () => void;
 }
 
-export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
+export default function Header({ title, subtitle, hint, onNewStudent }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
@@ -40,13 +42,16 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
       }}
     >
       {/* ── Title ── */}
-      <div className="mr-auto">
-        <h1
-          className="text-[15px] font-medium tracking-tight"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {title}
-        </h1>
+      <div className="mr-auto min-w-0">
+        <div className="flex items-center gap-1.5">
+          <h1
+            className="text-[15px] font-medium tracking-tight"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {title}
+          </h1>
+          {hint && <InfoHint text={hint} />}
+        </div>
         {subtitle && (
           <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
             {subtitle}

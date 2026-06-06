@@ -205,6 +205,7 @@ export default function StudentsPage() {
       <Header
         title="Alumnos"
         subtitle={isLoading ? "Cargando alumnos..." : `${stats.total} alumnos registrados`}
+        hint="Gestión de tus alumnos: progreso, etapa y estado de pago."
         onNewStudent={() => setIsAddModalOpen(true)}
       />
 

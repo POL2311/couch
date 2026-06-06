@@ -6,6 +6,7 @@ import { CalendarClock, Activity } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { buildFeedItems } from "@/lib/activity";
 import { FeedRow } from "@/components/feed-row";
+import { InfoHint } from "@/components/info-hint";
 import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -82,15 +83,13 @@ export default function CoachDashboard() {
         className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
-        <div>
+        <div className="flex items-center gap-1.5 min-w-0">
           <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
             Resumen de Control
           </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Bienvenido, Coach Alejandro. Aquí está el estado de tu negocio hoy.
-          </p>
+          <InfoHint text="Resumen del estado de tu negocio: ingresos, adherencia y alertas." />
         </div>
-        
+
         <Link
           href="/coach/students"
           className="px-3.5 py-2 rounded-lg text-[12px] font-medium transition-all duration-150"

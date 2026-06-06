@@ -6,6 +6,7 @@ import { Calendar } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { RowSkeleton, Skeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { InfoHint } from "@/components/info-hint";
 
 export default function PeriodizationPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -74,13 +75,11 @@ export default function PeriodizationPage() {
         className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
-        <div>
+        <div className="flex items-center gap-1.5 min-w-0">
           <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
             Periodización y Ciclos
           </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Supervisa la distribución de tus alumnos por objetivos y los cambios de etapa programados.
-          </p>
+          <InfoHint text="Supervisa la distribución de tus alumnos por objetivos y los cambios de etapa programados." />
         </div>
       </header>
 

@@ -5,6 +5,7 @@ import { Plug, ChevronRight, X, CreditCard } from "lucide-react";
 import { Skeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { DetailOverlay } from "@/components/detail-overlay";
+import { InfoHint } from "@/components/info-hint";
 import { type Student } from "@/lib/mock-data";
 
 /* ── Secciones por estado (iOS grouped list) ── */
@@ -204,13 +205,11 @@ export default function PaymentsPage() {
         className="px-4 md:px-8 py-5 flex items-center justify-between shrink-0"
         style={{ borderBottom: "1px solid var(--border-subtle)" }}
       >
-        <div>
+        <div className="flex items-center gap-1.5 min-w-0">
           <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
             Gestión de Suscripciones
           </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Controla las cuotas mensuales de tus clientes y el estado de la integración de Stripe.
-          </p>
+          <InfoHint text="Controla las cuotas mensuales de tus clientes y el estado de la integración de Stripe." />
         </div>
       </header>
 

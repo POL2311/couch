@@ -5,6 +5,7 @@ import { Flame, Zap, Clock, Search, X, SearchX } from "lucide-react";
 import { DIET_TEMPLATES, ROUTINE_TEMPLATES, type DietTemplate, type RoutineTemplate } from "@/lib/templates";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { EmptyState } from "@/components/empty-state";
+import { InfoHint } from "@/components/info-hint";
 
 /* ── Helpers ── */
 const STAGE_WORDS = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
@@ -169,13 +170,11 @@ export default function TemplatesPage() {
       {/* Header */}
       <header className="px-4 md:px-8 py-5 flex flex-col gap-4 shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-1.5 min-w-0">
             <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
               Plantillas Predeterminadas
             </h1>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-              Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos.
-            </p>
+            <InfoHint text="Revisa y edita los planes globales de nutrición y entrenamiento para tus alumnos." />
           </div>
 
           <button
