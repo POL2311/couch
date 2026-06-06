@@ -9,11 +9,12 @@ import { LayoutGrid, Users, FileText, CalendarRange, CreditCard } from "lucide-r
    Navegación — Iconos Lucide (líneas finas)
    ═══════════════════════════════════════════ */
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { label: string; shortLabel?: string; href: string; icon: typeof LayoutGrid }[] = [
   { label: "Dashboard", href: "/coach", icon: LayoutGrid },
   { label: "Alumnos", href: "/coach/students", icon: Users },
   { label: "Plantillas", href: "/coach/templates", icon: FileText },
-  { label: "Periodización", href: "/coach/periodization", icon: CalendarRange },
+  // shortLabel: etiqueta corta para el bottom bar móvil; el sidebar de escritorio usa label.
+  { label: "Periodización", shortLabel: "Períodos", href: "/coach/periodization", icon: CalendarRange },
   { label: "Pagos", href: "/coach/payments", icon: CreditCard },
 ];
 
@@ -140,7 +141,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around backdrop-blur-xl"
+      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 items-center backdrop-blur-xl"
       style={{
         height: "72px",
         background: "var(--bg-sidebar)",
@@ -160,18 +161,18 @@ export function MobileBottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            className="flex flex-col items-center justify-center gap-1 py-2 px-4"
+            className="flex flex-col items-center justify-center gap-1 py-2 px-1 min-w-0"
             style={{
               color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
               transition: "color var(--transition-fast)",
             }}
           >
-            <Icon strokeWidth={1.5} className="w-6 h-6" />
+            <Icon strokeWidth={1.5} className="w-6 h-6 shrink-0" />
             <span
-              className="text-[10px] tracking-tight"
+              className="text-[10px] tracking-tight truncate max-w-full"
               style={{ fontWeight: isActive ? 600 : 400 }}
             >
-              {item.label}
+              {item.shortLabel ?? item.label}
             </span>
           </Link>
         );

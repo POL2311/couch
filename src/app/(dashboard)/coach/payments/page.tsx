@@ -108,8 +108,9 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
-              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
-                ${metrics.mrr.toLocaleString("es-MX")} MXN
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                ${metrics.mrr.toLocaleString("es-MX")}
+                <span className="text-[14px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
               </p>
             )}
             <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
@@ -149,8 +150,9 @@ export default function PaymentsPage() {
             {isLoading ? (
               <Skeleton className="h-[30px] w-32 mt-2" />
             ) : (
-              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
-                ${metrics.atRisk.toLocaleString("es-MX")} MXN
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
+                ${metrics.atRisk.toLocaleString("es-MX")}
+                <span className="text-[14px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
               </p>
             )}
             <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
@@ -200,7 +202,7 @@ export default function PaymentsPage() {
               <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)]">
-                    {["Alumno", "Cuota", "Estado", "Próximo Vencimiento", ""].map((h, i) => (
+                    {["Alumno", "Cuota (MXN)", "Estado", "Próximo Vencimiento", ""].map((h, i) => (
                       <th
                         key={i}
                         className="px-5 py-3 text-left text-[10px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
@@ -249,9 +251,9 @@ export default function PaymentsPage() {
                             </div>
                           </td>
 
-                          {/* Fee */}
-                          <td className="px-5 py-4 text-[12px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
-                            $1,200 MXN
+                          {/* Fee — moneda en el header de columna; celda solo el monto */}
+                          <td className="px-5 py-4 text-[12px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--text-primary)" }}>
+                            $1,200
                           </td>
 
                           {/* Status */}
