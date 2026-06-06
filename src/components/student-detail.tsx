@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Flame } from "lucide-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   type Student,
@@ -687,7 +688,10 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
             </span>
           )}
           {student.streak > 0 && (
-            <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>🔥 {student.streak} días</span>
+            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--color-warning)" }}>
+              <Flame size={14} strokeWidth={1.75} />
+              <span className="tabular-nums">{student.streak}</span> días
+            </span>
           )}
           {detail.height && (
             <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>📏 {detail.height} cm</span>

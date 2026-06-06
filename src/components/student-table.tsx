@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Flame } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 
 /* ═══════════════════════════════════════════
@@ -195,7 +196,10 @@ function StudentCard({
               {student.completionRate}%
             </span>
             {student.streak > 0 && (
-              <span className="text-[10px]">🔥{student.streak}</span>
+              <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: "var(--color-warning)" }}>
+                <Flame size={14} strokeWidth={1.75} />
+                <span className="tabular-nums">{student.streak}</span>
+              </span>
             )}
           </div>
         </Link>
@@ -358,7 +362,10 @@ export default function StudentTable({
                         {student.completionRate}%
                       </span>
                       {student.streak > 0 && (
-                        <span className="text-[10px] opacity-60">🔥{student.streak}</span>
+                        <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: "var(--color-warning)" }}>
+                          <Flame size={14} strokeWidth={1.75} />
+                          <span className="tabular-nums">{student.streak}</span>
+                        </span>
                       )}
                     </div>
                   </td>

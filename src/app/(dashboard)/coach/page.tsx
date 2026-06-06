@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { Scale, Dumbbell, UserPlus, CreditCard, ArrowDownRight, CalendarClock } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 
 export default function CoachDashboard() {
@@ -109,8 +110,9 @@ export default function CoachDashboard() {
             <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
               {isLoading ? "—" : `$${stats.mrr.toLocaleString("es-MX")} MXN`}
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--color-success)" }}>
-              ● Cobros automáticos activos
+            <span className="text-[12px] mt-1 flex items-center gap-1.5" style={{ color: "var(--text-secondary)" }}>
+              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
+              Cobros automáticos activos
             </span>
           </div>
 
@@ -248,8 +250,9 @@ export default function CoachDashboard() {
                         Nueva Etapa: {change.stage} (E{change.stageNumber})
                       </span>
                     </div>
-                    <span className="text-[10px] font-medium tabular-nums text-zinc-400 bg-white border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
-                      📅 {change.date.split("-").slice(1).join("/")}
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium tabular-nums text-zinc-400 bg-white border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
+                      <CalendarClock size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                      {change.date.split("-").slice(1).join("/")}
                     </span>
                   </div>
                 ))
@@ -265,25 +268,56 @@ export default function CoachDashboard() {
           style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
         >
           <div className="px-5 py-4 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-              Actividad Reciente del Dashboard
+            <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+              Actividad reciente
             </h3>
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">
             {[
-              { time: "Hace 10m", title: "Pesaje Reportado", desc: "María López García reportó peso diario: 62.5 kg (-1.5 kg).", icon: "⚖️" },
-              { time: "Hace 1h", title: "Entrenamiento Completado", desc: "Carlos Ruiz Hernández marcó como completada la rutina 'Pull'.", icon: "💪" },
-              { time: "Hace 3h", title: "Nuevo Alumno Creado", desc: "Has registrado a Camila Herrera Solís en etapa de Definición.", icon: "👤" },
-              { time: "Ayer", title: "Factura Emitida", desc: "Se generó cobro automático recurrente de Stripe para Pedro Sánchez Ríos.", icon: "💳" }
-            ].map((feed, i) => (
-              <div key={i} className="px-5 py-4 flex items-start gap-4 text-[12px]">
-                <span className="text-lg shrink-0 mt-0.5">{feed.icon}</span>
+              { time: "Hace 10m", title: "Pesaje reportado", desc: "María López García reportó peso diario: 62.5 kg.", delta: "1.5 kg", Icon: Scale },
+              { time: "Hace 1h", title: "Entrenamiento completado", desc: "Carlos Ruiz Hernández marcó como completada la rutina 'Pull'.", Icon: Dumbbell },
+              { time: "Hace 3h", title: "Nuevo alumno", desc: "Has registrado a Camila Herrera Solís en etapa de Definición.", Icon: UserPlus },
+              { time: "Ayer", title: "Factura emitida", desc: "Se generó cobro automático recurrente de Stripe para Pedro Sánchez Ríos.", Icon: CreditCard },
+            ].map(({ time, title, desc, delta, Icon }, i) => (
+              <div key={i} className="px-5 py-4 flex items-start gap-4">
+                {/* Contenedor de icono — 36x36, radius 10, fondo white/4, hairline */}
+                <div
+                  className="shrink-0 flex items-center justify-center"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  <Icon size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                </div>
+
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <strong className="font-semibold" style={{ color: "var(--text-primary)" }}>{feed.title}</strong>
-                    <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>{feed.time}</span>
+                  {/* Título 14px/500 (primario) · timestamp 12px (terciario) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>{title}</strong>
+                    <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-tertiary)" }}>{time}</span>
                   </div>
-                  <p className="mt-1" style={{ color: "var(--text-secondary)" }}>{feed.desc}</p>
+
+                  {/* Descripción 13px (secundario) + chip de delta de peso */}
+                  <div className="flex items-center flex-wrap gap-2 mt-1">
+                    <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{desc}</p>
+                    {delta && (
+                      // NOTA: el color del chip NO debe asumir que bajar de peso siempre es positivo.
+                      // Debe depender del objetivo del alumno: en definición, perder peso es éxito (success);
+                      // en volumen, perder peso es regresión (danger) y ganar peso es éxito. Aquí se asume
+                      // definición de forma temporal hasta tener el objetivo del alumno en los datos.
+                      <span
+                        className="inline-flex items-center gap-0.5 text-[12px] tabular-nums px-1.5 py-0.5 rounded-md shrink-0"
+                        style={{ background: "var(--color-success-subtle)", color: "var(--color-success)" }}
+                      >
+                        <ArrowDownRight size={12} strokeWidth={1.75} />
+                        {delta}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
