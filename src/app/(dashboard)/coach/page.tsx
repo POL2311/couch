@@ -7,6 +7,7 @@ import { type Student } from "@/lib/mock-data";
 import { buildFeedItems } from "@/lib/activity";
 import { FeedRow } from "@/components/feed-row";
 import { InfoHint } from "@/components/info-hint";
+import { PAYMENT_STATUS_LABELS } from "@/lib/status-labels";
 import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -180,7 +181,7 @@ export default function CoachDashboard() {
               {stats.grace + stats.inactive}
             </p>
             <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
-              {stats.grace} gracia · {stats.inactive} suspendidos
+              {stats.grace} {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s · {stats.inactive} {PAYMENT_STATUS_LABELS.inactive.short.toLowerCase()}s
             </span>
           </Link>
 

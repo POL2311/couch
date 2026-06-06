@@ -6,13 +6,14 @@ import { Skeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { InfoHint } from "@/components/info-hint";
-import { type Student } from "@/lib/mock-data";
+import { type Student, type PaymentStatus } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS, statusTone, PAYMENT_SECTION_LABELS } from "@/lib/status-labels";
 
-/* ── Secciones por estado (iOS grouped list) ── */
-const PAYMENT_SECTIONS: { key: string; title: string; statuses: string[] }[] = [
-  { key: "action", title: "Requieren acción", statuses: ["grace_period"] },
-  { key: "active", title: "Al día", statuses: ["active"] },
-  { key: "disabled", title: "Suspendidos", statuses: ["inactive"] },
+/* ── Secciones por estado (iOS grouped list) — etiquetas del diccionario ── */
+const PAYMENT_SECTIONS: { key: "action" | "active" | "disabled"; title: string; statuses: PaymentStatus[] }[] = [
+  { key: "action", title: PAYMENT_SECTION_LABELS.action, statuses: ["grace_period"] },
+  { key: "active", title: PAYMENT_SECTION_LABELS.active, statuses: ["active"] },
+  { key: "disabled", title: PAYMENT_SECTION_LABELS.disabled, statuses: ["inactive"] },
 ];
 
 function KVRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
@@ -246,13 +247,10 @@ export default function PaymentsPage() {
   const revealMore = (key: string, total: number) =>
     setShown((p) => ({ ...p, [key]: Math.min(total, (p[key] ?? SECTION_CAP) + 50) }));
 
-  const getStatusStyle = (status: string) => {
-    const map: Record<string, { label: string; color: string; bg: string }> = {
-      active: { label: "Al día", color: "var(--color-success)", bg: "var(--color-success-subtle)" },
-      grace_period: { label: "Gracia (Pendiente)", color: "var(--color-warning)", bg: "var(--color-warning-subtle)" },
-      inactive: { label: "Suspendido", color: "var(--color-danger)", bg: "var(--color-danger-subtle)" },
-    };
-    return map[status] || { label: status, color: "var(--text-secondary)", bg: "var(--bg-hover)" };
+  const getStatusStyle = (status: PaymentStatus) => {
+    const meta = PAYMENT_STATUS_LABELS[status];
+    const tone = statusTone(status);
+    return { label: meta.label, color: tone.color, bg: tone.bg };
   };
 
   const calculateDueDate = (joinedDateStr: string, status: string) => {
@@ -359,7 +357,7 @@ export default function PaymentsPage() {
               </p>
             )}
             <span className="text-[12px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              {metrics.grace} alumnos en mora
+              {metrics.grace} {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s de pago
             </span>
           </div>
 

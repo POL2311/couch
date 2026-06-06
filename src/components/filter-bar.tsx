@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal, Check, X } from "lucide-react";
 import { type PaymentStatus, type Stage, type Student } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS } from "@/lib/status-labels";
 
 export type PaymentFilter = PaymentStatus | "all" | "attention";
 
@@ -17,11 +18,9 @@ interface FilterBarProps {
   onClear: () => void;
 }
 
-const STATUS_CHIPS: { label: string; value: PaymentStatus }[] = [
-  { label: "Activo", value: "active" },
-  { label: "Gracia", value: "grace_period" },
-  { label: "Suspendido", value: "inactive" },
-];
+const STATUS_CHIPS: { label: string; value: PaymentStatus }[] = (
+  ["active", "grace_period", "inactive"] as PaymentStatus[]
+).map((value) => ({ value, label: PAYMENT_STATUS_LABELS[value].short }));
 
 const STAGES: { label: Stage; color: string; bg: string }[] = [
   { label: "Volumen", color: "var(--stage-volumen)", bg: "var(--stage-volumen-subtle)" },

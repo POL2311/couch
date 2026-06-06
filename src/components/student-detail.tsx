@@ -9,7 +9,9 @@ import {
   type Student,
   type StudentDetail,
   type RoutineDay,
+  type PaymentStatus,
 } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS, statusTone } from "@/lib/status-labels";
 import ChangeStageModal from "@/components/change-stage-modal";
 
 /* ═══════════════════════════════════════════
@@ -87,13 +89,9 @@ function getStageColor(stage: string) {
   return map[stage] || { color: "var(--text-secondary)", bg: "var(--bg-hover)" };
 }
 
-function getPaymentInfo(status: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    active: { label: "Pago al día", color: "var(--color-success)" },
-    inactive: { label: "Cuenta suspendida", color: "var(--color-danger)" },
-    grace_period: { label: "Período de gracia", color: "var(--color-warning)" },
-  };
-  return map[status] || { label: status, color: "var(--text-secondary)" };
+function getPaymentInfo(status: PaymentStatus) {
+  const meta = PAYMENT_STATUS_LABELS[status];
+  return { label: meta.label, color: statusTone(status).color };
 }
 
 function formatDateLong(dateStr: string) {

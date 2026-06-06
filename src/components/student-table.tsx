@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Flame, SearchX } from "lucide-react";
-import { type Student } from "@/lib/mock-data";
+import { type Student, type PaymentStatus } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS, statusTone } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
 
 /* ═══════════════════════════════════════════
@@ -20,13 +21,9 @@ function getStageStyle(stage: string) {
   return map[stage] || { color: "var(--text-secondary)", bg: "var(--bg-hover)" };
 }
 
-function getPaymentLabel(status: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    active: { label: "Activo", color: "var(--color-success)" },
-    inactive: { label: "Suspendido", color: "var(--color-danger)" },
-    grace_period: { label: "Gracia", color: "var(--color-warning)" },
-  };
-  return map[status] || { label: status, color: "var(--text-secondary)" };
+function getPaymentLabel(status: PaymentStatus) {
+  const meta = PAYMENT_STATUS_LABELS[status];
+  return { label: meta.label, color: statusTone(status).color };
 }
 
 function formatWeight(current: number, previous: number) {
