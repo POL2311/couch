@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/header";
 import StatsRow from "@/components/stats-row";
-import FilterBar from "@/components/filter-bar";
+import FilterBar, { type PaymentFilter } from "@/components/filter-bar";
 import StudentTable from "@/components/student-table";
 import BulkActionBar from "@/components/bulk-action-bar";
 import AddStudentModal from "@/components/add-student-modal";
 import ChangeStageModal from "@/components/change-stage-modal";
 import { RowSkeleton } from "@/components/skeleton";
-import { type Student, type PaymentStatus, type Stage } from "@/lib/mock-data";
+import { type Student, type Stage } from "@/lib/mock-data";
 
 /* ═══════════════════════════════════════════
    Coach Students Dashboard Page
@@ -45,37 +45,29 @@ export default function StudentsPage() {
   /* ── Add Student Modal State ── */
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  /* ── Filter State ── */
-  const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | "all">("all");
+  /* ── Filter State (estado en URL: ?estado&etapa&page) ── */
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [stageFilter, setStageFilter] = useState<Stage | "all">("all");
 
   /* ── Selection State ── */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  /* ── Filtered Students ── */
+  /* ── Filtered Students (filtros operan sobre el total) ── */
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
-      if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) return false;
+      if (paymentFilter === "attention") {
+        if (s.paymentStatus !== "grace_period" && s.paymentStatus !== "inactive") return false;
+      } else if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) {
+        return false;
+      }
       if (stageFilter !== "all" && s.stage !== stageFilter) return false;
       return true;
     });
   }, [students, paymentFilter, stageFilter]);
 
-  /* ── Paginación (50 por página, estado en ?page; filtros operan sobre el total) ── */
+  /* ── Paginación (50/pág) ── */
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
-
-  // Leer ?page al montar (sobrevive refresh).
-  useEffect(() => {
-    const p = parseInt(new URLSearchParams(window.location.search).get("page") || "1", 10);
-    if (p > 1) setPage(p);
-  }, []);
-
-  // Volver a la primera página al cambiar filtros.
-  useEffect(() => {
-    setPage(1);
-  }, [paymentFilter, stageFilter]);
-
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * PAGE_SIZE;
@@ -84,14 +76,41 @@ export default function StudentsPage() {
     [filteredStudents, pageStart]
   );
 
-  // Reflejar la página en la URL sin recargar.
+  /* ── Filtros + página en la URL ── */
+  const ESTADO_TO_SLUG: Record<string, string> = { active: "activo", grace_period: "gracia", inactive: "suspendido", attention: "atencion" };
+  const SLUG_TO_ESTADO: Record<string, PaymentFilter> = { activo: "active", gracia: "grace_period", suspendido: "inactive", atencion: "attention" };
+  const ETAPA_TO_SLUG: Record<string, string> = { Volumen: "volumen", Definición: "definicion", Mantenimiento: "mantenimiento", Recomposición: "recomposicion" };
+  const SLUG_TO_ETAPA: Record<string, Stage> = { volumen: "Volumen", definicion: "Definición", mantenimiento: "Mantenimiento", recomposicion: "Recomposición" };
+
+  // Leer al montar (sobrevive refresh / navegación).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (safePage > 1) params.set("page", String(safePage));
-    else params.delete("page");
-    const qs = params.toString();
+    const sp = new URLSearchParams(window.location.search);
+    const est = sp.get("estado");
+    if (est && SLUG_TO_ESTADO[est]) setPaymentFilter(SLUG_TO_ESTADO[est]);
+    const eta = sp.get("etapa");
+    if (eta && SLUG_TO_ETAPA[eta]) setStageFilter(SLUG_TO_ETAPA[eta]);
+    const p = parseInt(sp.get("page") || "1", 10);
+    if (p > 1) setPage(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Escribir cambios (omite la 1ª ejecución para no pisar la hidratación).
+  const firstWrite = useRef(true);
+  useEffect(() => {
+    if (firstWrite.current) { firstWrite.current = false; return; }
+    const sp = new URLSearchParams();
+    if (paymentFilter !== "all") sp.set("estado", ESTADO_TO_SLUG[paymentFilter]);
+    if (stageFilter !== "all") sp.set("etapa", ETAPA_TO_SLUG[stageFilter]);
+    if (safePage > 1) sp.set("page", String(safePage));
+    const qs = sp.toString();
     window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [safePage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentFilter, stageFilter, safePage]);
+
+  /* ── Handlers de filtro (resetean a página 1) ── */
+  const handlePaymentFilter = useCallback((f: PaymentFilter) => { setPaymentFilter(f); setPage(1); }, []);
+  const handleStageFilter = useCallback((f: Stage | "all") => { setStageFilter(f); setPage(1); }, []);
+  const handleClearFilters = useCallback(() => { setPaymentFilter("all"); setStageFilter("all"); setPage(1); }, []);
 
   /* ── Stats ── */
   const stats = useMemo(() => {
@@ -209,12 +228,13 @@ export default function StudentsPage() {
         onNewStudent={() => setIsAddModalOpen(true)}
       />
 
-      {/* ── KPI Stats ── */}
+      {/* ── KPI Stats (Atención → filtra gracia+suspendido) ── */}
       <StatsRow
         totalStudents={stats.total}
         activeStudents={stats.active}
         alertStudents={stats.alerts}
         scheduledChanges={stats.scheduledChanges}
+        onAlertClick={() => handlePaymentFilter("attention")}
       />
 
       {/* ── Table Area ── */}
@@ -229,11 +249,12 @@ export default function StudentsPage() {
         <FilterBar
           activePaymentFilter={paymentFilter}
           activeStageFilter={stageFilter}
-          onPaymentFilterChange={setPaymentFilter}
-          onStageFilterChange={setStageFilter}
+          onPaymentFilterChange={handlePaymentFilter}
+          onStageFilterChange={handleStageFilter}
           totalStudents={students.length}
           filteredCount={filteredStudents.length}
           students={students}
+          onClear={handleClearFilters}
         />
 
         {/* ── Student Table ── */}
