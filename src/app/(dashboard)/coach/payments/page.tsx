@@ -1,8 +1,226 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
-import { type Student } from "@/lib/mock-data";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Plug, ChevronRight, X, CreditCard, Search, CheckCircle2, Loader2 } from "lucide-react";
+import { Skeleton, RowSkeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { DetailOverlay } from "@/components/detail-overlay";
+import { InfoHint } from "@/components/info-hint";
+import { PageHeader } from "@/components/page-header";
+import { type Student, type PaymentStatus } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS, statusTone, PAYMENT_SECTION_LABELS } from "@/lib/status-labels";
+import { MRR_LABEL } from "@/lib/kpi-labels";
+
+/* ── Secciones por estado (iOS grouped list) — etiquetas del diccionario ── */
+const PAYMENT_SECTIONS: { key: "action" | "active" | "disabled"; title: string; statuses: PaymentStatus[] }[] = [
+  { key: "action", title: PAYMENT_SECTION_LABELS.action, statuses: ["grace_period"] },
+  { key: "active", title: PAYMENT_SECTION_LABELS.active, statuses: ["active"] },
+  { key: "disabled", title: PAYMENT_SECTION_LABELS.disabled, statuses: ["inactive"] },
+];
+
+function KVRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div
+      className="flex items-center justify-between gap-4 px-4 py-3 text-[13px]"
+      style={{ borderBottom: last ? "none" : "1px solid var(--border-subtle)" }}
+    >
+      <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+      <span className="tabular-nums text-right truncate" style={{ color: "var(--text-primary)" }}>{value}</span>
+    </div>
+  );
+}
+
+/* Contenido compartido por el bottom sheet (móvil) y el dialog (escritorio) */
+function PaymentDetailBody({
+  student,
+  status,
+  dueDate,
+  onClose,
+  onRemind,
+  onStripeClick,
+}: {
+  student: Student;
+  status: { label: string; color: string; bg: string };
+  dueDate: string;
+  onClose: () => void;
+  onRemind: () => void;
+  onStripeClick: () => void;
+}) {
+  const needsAction = student.paymentStatus === "grace_period";
+  return (
+    <div className="relative">
+      <button
+        onClick={onClose}
+        aria-label="Cerrar"
+        className="absolute -top-1 right-0 p-2 rounded-full transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        <X size={18} strokeWidth={1.75} />
+      </button>
+
+      {/* Header */}
+      <div className="flex items-center gap-3 pr-10">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[12px] font-medium"
+          style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}
+        >
+          {student.avatarInitials}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+          <p className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>{student.email}</p>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: status.color, background: status.bg }}>
+          <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
+          {status.label}
+        </span>
+      </div>
+
+      {/* Pares clave-valor */}
+      <div className="mt-5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+        <KVRow label="Cuota" value="$1,200 MXN" />
+        <KVRow label="Estado" value={status.label} />
+        <KVRow label="Próximo vencimiento" value={new Date(dueDate + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })} />
+        <KVRow label="Correo" value={student.email} last />
+      </div>
+
+      {/* Acciones apiladas */}
+      <div className="mt-5 space-y-2.5">
+        {needsAction && (
+          <button
+            onClick={onRemind}
+            className="w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-85"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+          >
+            Recordar pago
+          </button>
+        )}
+        <button
+          onClick={onStripeClick}
+          className="w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
+          style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
+        >
+          Ver en Stripe
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* Facepile: hasta 5 avatares de 20px solapados + "+N" */
+function Facepile({ items }: { items: Student[] }) {
+  const shown = items.slice(0, 5);
+  const extra = items.length - shown.length;
+  return (
+    <div className="flex items-center">
+      {shown.map((s, i) => (
+        <div
+          key={s.id}
+          className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium"
+          style={{ marginLeft: i === 0 ? 0 : -8, background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--bg-surface)" }}
+        >
+          {s.avatarInitials}
+        </div>
+      ))}
+      {extra > 0 && <span className="text-[11px] ml-1.5 shrink-0" style={{ color: "var(--text-tertiary)" }}>+{extra}</span>}
+    </div>
+  );
+}
+
+const STRIPE_HINT = "Las mensualidades se cobran automáticamente los días de corte del cliente.";
+
+type ConnectData = { stripeConnectId: string | null; stripeOnboardingComplete: boolean };
+
+/* Botón compacto (atajo, no acción primaria) */
+function StripeButton({
+  label,
+  loading,
+  onClick,
+}: {
+  label: string;
+  loading?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="px-3 py-1.5 rounded-lg border text-[11px] font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+      style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
+    >
+      {loading && <Loader2 size={10} strokeWidth={2} className="animate-spin shrink-0" />}
+      {label}
+    </button>
+  );
+}
+
+function connectBtnLabel(data: ConnectData | null): string {
+  if (!data) return "Cargando...";
+  if (data.stripeOnboardingComplete) return "Ver Dashboard de Stripe";
+  if (data.stripeConnectId) return "Continuar registro";
+  return "Conectar Stripe";
+}
+
+function ConnectStatusLabel({ data }: { data: ConnectData | null }) {
+  if (!data) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ background: "var(--text-tertiary)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-tertiary)" }}>Verificando...</span>
+      </div>
+    );
+  }
+  if (data.stripeOnboardingComplete) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Conectado con éxito</span>
+      </div>
+    );
+  }
+  if (data.stripeConnectId) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-warning)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Onboarding pendiente</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--text-tertiary)" }} />
+      <span className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>Sin conectar</span>
+    </div>
+  );
+}
+
+/* Pares clave-valor del plan + línea de tarjeta (compartido desktop/móvil) */
+function SaaSDetails() {
+  const rows: [string, string][] = [
+    ["Plan actual", "Coach PRO"],
+    ["Costo mensual", "$49.00 USD"],
+    ["Próximo cargo", "24 de junio, 2026"],
+  ];
+  return (
+    <>
+      <div className="space-y-2.5 text-[13px]">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-center justify-between gap-3">
+            <span style={{ color: "var(--text-secondary)" }}>{k}</span>
+            <span className="font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>{v}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+        <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>Tarjeta de débito · termina en 4242</span>
+      </div>
+    </>
+  );
+}
 
 export default function PaymentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -25,6 +243,36 @@ export default function PaymentsPage() {
     fetchStudents();
   }, []);
 
+  // ── Stripe Connect ───────────────────────────────────────────────────
+  const [connectData, setConnectData] = useState<ConnectData | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  const handleConnectClick = useCallback(async () => {
+    setConnectLoading(true);
+    try {
+      const res = await fetch("/api/coach/connect", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      console.error("[Connect] Error:", err);
+    } finally {
+      setConnectLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const connectParam = sp.get("connect");
+    if (connectParam) window.history.replaceState(null, "", window.location.pathname);
+
+    fetch("/api/coach/connect")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setConnectData(data); })
+      .catch(() => setConnectData({ stripeConnectId: null, stripeOnboardingComplete: false }));
+
+    if (connectParam === "refresh") handleConnectClick();
+  }, [handleConnectClick]);
+
   // Compute dynamic payment states
   const metrics = useMemo(() => {
     const total = students.length;
@@ -39,13 +287,64 @@ export default function PaymentsPage() {
     return { total, active, grace, inactive, mrr, atRisk };
   }, [students]);
 
-  const getStatusStyle = (status: string) => {
-    const map: Record<string, { label: string; color: string; bg: string }> = {
-      active: { label: "Al día", color: "var(--color-success)", bg: "var(--color-success-subtle)" },
-      grace_period: { label: "Gracia (Pendiente)", color: "var(--color-warning)", bg: "var(--color-warning-subtle)" },
-      inactive: { label: "Suspendido", color: "var(--color-danger)", bg: "var(--color-danger-subtle)" },
-    };
-    return map[status] || { label: status, color: "var(--text-secondary)", bg: "var(--bg-hover)" };
+  const [selected, setSelected] = useState<Student | null>(null);
+
+  // ── Estado del acordeón + búsqueda (compartido por desktop y móvil) ──
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set()); // sin persistencia: arranca colapsado
+  const SECTION_CAP = 10;
+  const [shown, setShown] = useState<Record<string, number>>({});
+
+  const remind = useCallback((s: Student) => {
+    alert(`Recordatorio de pago enviado a ${s.name}`);
+  }, []);
+
+  const q = search.trim().toLowerCase();
+  const isSearching = q.length > 0;
+
+  // Secciones por estado (filtradas por búsqueda). "Requieren acción" siempre primera.
+  const sections = useMemo(() => {
+    const match = (s: Student) =>
+      !isSearching || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
+    return PAYMENT_SECTIONS.map((sec) => ({
+      key: sec.key,
+      title: sec.title,
+      collapsible: sec.key !== "action",
+      items: students.filter((s) => sec.statuses.includes(s.paymentStatus) && match(s)),
+    }));
+  }, [students, q, isSearching]);
+
+  const toggleSection = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Expandida si: no colapsable (acción), o hay búsqueda activa, o el usuario la abrió.
+  const isExpanded = (sec: { key: string; collapsible: boolean }) =>
+    !sec.collapsible || isSearching || expanded.has(sec.key);
+
+  // KPIs navegables: expande la sección y hace scroll hacia ella.
+  const focusSection = (key: "action" | "active" | "disabled") => {
+    if (key !== "action") setExpanded((prev) => new Set(prev).add(key));
+    setTimeout(() => {
+      document.getElementById(`pay-sec-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  };
+
+  // Techo: acción siempre completa; en búsqueda mostramos todas las coincidencias;
+  // si no, cap 10 con revelado incremental de 50.
+  const sectionLimit = (sec: { key: string; collapsible: boolean; items: Student[] }) =>
+    !sec.collapsible || isSearching ? sec.items.length : Math.min(sec.items.length, shown[sec.key] ?? SECTION_CAP);
+  const revealMore = (key: string, total: number) =>
+    setShown((p) => ({ ...p, [key]: Math.min(total, (p[key] ?? SECTION_CAP) + 50) }));
+
+  const getStatusStyle = (status: PaymentStatus) => {
+    const meta = PAYMENT_STATUS_LABELS[status];
+    const tone = statusTone(status);
+    return { label: meta.label, color: tone.color, bg: tone.bg };
   };
 
   const calculateDueDate = (joinedDateStr: string, status: string) => {
@@ -74,262 +373,312 @@ export default function PaymentsPage() {
 
   return (
     <>
-      {/* Header */}
-      <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
-        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-      >
-        <div>
-          <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Gestión de Suscripciones
-          </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Controla las cuotas mensuales de tus clientes y el estado de la integración de Stripe.
-          </p>
-        </div>
-      </header>
+      {/* Header canónico */}
+      <PageHeader
+        title="Gestión de Suscripciones"
+        hint="Controla las cuotas mensuales de tus clientes y el estado de la integración de Stripe."
+      />
 
       {/* Content */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* KPI Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           
-          {/* MRR */}
+          {/* MRR (no navegable) */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Mensualidad Estimada (MRR)
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">{MRR_LABEL.short}</span>
+              <span className="hidden md:inline">{MRR_LABEL.full}</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${metrics.mrr.toLocaleString("es-MX")} MXN`}
-            </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              Cuota base: $1,200 MXN / alumno
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-32 mt-2" />
+            ) : (
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                ${metrics.mrr.toLocaleString("es-MX")}
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
+              </p>
+            )}
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              Cuota base $1,200/alumno
             </span>
           </div>
 
-          {/* Active Subscriptions */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* Al día → expande sección "active" */}
+          <button
+            type="button"
+            onClick={() => focusSection("active")}
+            aria-label="Ver suscripciones al día"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Suscripciones Al Día
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Al día</span>
+              <span className="hidden md:inline">Suscripciones al día</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : metrics.active}
-            </p>
-            <span className="text-[9px] mt-1 block text-emerald-600">
-              ● Acceso habilitado a la app
-            </span>
-          </div>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-16 mt-2" />
+            ) : (
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                {metrics.active}
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>de {metrics.total}</span>
+              </p>
+            )}
+          </button>
 
-          {/* Revenue at risk */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* En riesgo → scroll a "Requieren acción" */}
+          <button
+            type="button"
+            onClick={() => focusSection("action")}
+            aria-label="Ver alumnos que requieren acción"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Ingresos en Riesgo
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">En riesgo</span>
+              <span className="hidden md:inline">Ingresos en riesgo</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${metrics.atRisk.toLocaleString("es-MX")} MXN`}
-            </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              {metrics.grace} alumnos en mora
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-32 mt-2" />
+            ) : (
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.atRisk > 0 ? "var(--color-warning)" : "var(--text-tertiary)" }}>
+                ${metrics.atRisk.toLocaleString("es-MX")}
+                <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
+              </p>
+            )}
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              {metrics.grace} pagos {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s
             </span>
-          </div>
+          </button>
 
-          {/* Suspended Accounts */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* Suspendidas → expande sección "disabled" */}
+          <button
+            type="button"
+            onClick={() => focusSection("disabled")}
+            aria-label="Ver cuentas suspendidas"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col text-left cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Cuentas Inhabilitadas
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Suspendidas</span>
+              <span className="hidden md:inline">Cuentas suspendidas</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : metrics.inactive}
-            </p>
-            <span className="text-[9px] mt-1 block text-red-500">
-              ● Acceso denegado temporalmente
-            </span>
-          </div>
+            {isLoading ? (
+              <Skeleton className="h-[30px] w-16 mt-2" />
+            ) : (
+              <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold leading-none mt-2 tabular-nums whitespace-nowrap" style={{ color: metrics.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+                {metrics.inactive}
+              </p>
+            )}
+          </button>
 
         </div>
 
         {/* Tables & Integrations Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           
-          {/* Subscriptions Table (Col 1 & 2) */}
+          {/* Cobros y Alumnos — agrupado por estado (lista iOS en móvil, tabla en desktop) */}
           <div
-            className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
+            className="md:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Cobros y Alumnos
+            <div className="px-4 md:px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between gap-3 bg-[var(--bg-surface-raised)]">
+              <h3 className="text-[14px] font-medium shrink-0" style={{ color: "var(--text-primary)" }}>
+                Cobros y alumnos
               </h3>
-              <span className="text-[10px] text-zinc-400">Facturación Mensual</span>
+              <div className="relative min-w-0 w-full max-w-[220px]">
+                <Search size={14} strokeWidth={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar alumno..."
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-lg text-[12px] outline-none"
+                  style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                />
+              </div>
             </div>
 
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)]">
-                    {["Alumno", "Cuota", "Estado", "Próximo Vencimiento", ""].map((h, i) => (
-                      <th
-                        key={i}
-                        className="px-5 py-3 text-left text-[10px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
-                        style={{ color: "var(--text-tertiary)", background: "var(--bg-surface-raised)" }}
+            {isLoading ? (
+              <div className="p-4"><RowSkeleton count={6} /></div>
+            ) : students.length === 0 ? (
+              <EmptyState
+                icon={CreditCard}
+                message="Sin alumnos registrados"
+                hint="Registra alumnos para gestionar sus cobros mensuales."
+                className="py-12"
+              />
+            ) : (
+              <div>
+                {sections.map((sec) => {
+                  // "Requieren acción" siempre visible (empty state positivo si no hay y no se busca).
+                  // Colapsables solo si tienen items (en búsqueda, solo con coincidencias).
+                  if (sec.key === "action") {
+                    if (isSearching && sec.items.length === 0) return null;
+                  } else if (sec.items.length === 0) {
+                    return null;
+                  }
+
+                  const open = isExpanded(sec);
+                  const limit = sectionLimit(sec);
+                  const remaining = sec.items.length - limit;
+
+                  return (
+                    <div key={sec.key} id={`pay-sec-${sec.key}`} style={{ scrollMarginTop: "72px", borderTop: sec.key === "action" ? "none" : "1px solid var(--border-subtle)" }}>
+                      {/* ── Header de sección ── */}
+                      {sec.collapsible ? (
+                        <button
+                          onClick={() => toggleSection(sec.key)}
+                          aria-expanded={open}
+                          className="w-full flex items-center gap-3 px-4 md:px-5 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                          style={{ height: 48 }}
+                        >
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                            style={{ color: "var(--text-tertiary)", transform: open ? "rotate(90deg)" : "none", transition: "transform 200ms ease-out" }}
+                          />
+                          <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                            {sec.title} · {sec.items.length}
+                          </span>
+                          <div className="ml-auto"><Facepile items={sec.items} /></div>
+                        </button>
+                      ) : (
+                        <div className="px-4 md:px-5 pt-4 pb-2 text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+                          {sec.title} · {sec.items.length}
+                        </div>
+                      )}
+
+                      {/* Empty state positivo de "Requieren acción" */}
+                      {sec.key === "action" && sec.items.length === 0 && !isSearching && (
+                        <div className="flex items-center gap-2 px-4 md:px-5 pb-4">
+                          <CheckCircle2 size={16} strokeWidth={1.75} style={{ color: "var(--color-success)" }} />
+                          <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>Sin pagos pendientes</span>
+                        </div>
+                      )}
+
+                      {/* ── Cuerpo (animado en colapsables) ── */}
+                      <div
+                        style={sec.collapsible ? { display: "grid", gridTemplateRows: open ? "1fr" : "0fr", transition: "grid-template-rows 200ms ease-out" } : undefined}
                       >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center text-[12px] text-zinc-400">
-                        Cargando registros de cobros...
-                      </td>
-                    </tr>
-                  ) : (
-                    students.map((student) => {
-                      const status = getStatusStyle(student.paymentStatus);
-                      const dueDate = calculateDueDate(student.joinedDate, student.paymentStatus);
-
-                      return (
-                        <tr key={student.id} className="hover:bg-[var(--bg-hover)] transition-colors">
-                          {/* Student */}
-                          <td className="px-5 py-4 text-[12px]">
-                            <div className="flex items-center gap-3">
+                        <div
+                          className={sec.collapsible ? "overflow-hidden" : ""}
+                          style={sec.collapsible ? { opacity: open ? 1 : 0, transition: "opacity 200ms ease-out" } : undefined}
+                        >
+                          {sec.items.slice(0, limit).map((student) => {
+                            const status = getStatusStyle(student.paymentStatus);
+                            const needsAction = student.paymentStatus === "grace_period";
+                            return (
                               <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium"
-                                style={{
-                                  background: "var(--bg-surface-raised)",
-                                  color: "var(--text-secondary)",
-                                  border: "1px solid var(--border-default)",
-                                }}
+                                key={student.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelected(student)}
+                                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(student); } }}
+                                className="w-full flex items-center gap-3 px-4 md:px-5 text-left cursor-pointer transition-colors hover:bg-[var(--bg-hover)] active:bg-[var(--bg-hover)]"
+                                style={{ minHeight: "var(--row-h-compact)", borderTop: "1px solid var(--border-subtle)" }}
                               >
-                                {student.avatarInitials}
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-medium" style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                                  {student.avatarInitials}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</p>
+                                  <p className="text-[12px] truncate" style={{ color: "var(--text-tertiary)" }} title={student.email}>{student.email}</p>
+                                </div>
+                                <span className="hidden md:inline text-[12px] tabular-nums shrink-0" style={{ color: "var(--text-primary)" }}>$1,200</span>
+                                <span className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5 shrink-0" style={{ color: status.color, background: status.bg }}>
+                                  <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
+                                  {status.label}
+                                </span>
+                                {needsAction && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); remind(student); }}
+                                    className="hidden md:inline-flex px-2.5 py-1 text-[10px] rounded-lg whitespace-nowrap transition-colors cursor-pointer hover:bg-[color:var(--bg-surface-raised)] shrink-0"
+                                    style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+                                  >
+                                    Recordar
+                                  </button>
+                                )}
+                                <ChevronRight size={14} strokeWidth={1.75} className="md:hidden shrink-0" style={{ color: "var(--text-tertiary)" }} />
                               </div>
-                              <div>
-                                <Link href={`/coach/students/${student.id}`} className="font-medium hover:underline text-[12px]" style={{ color: "var(--text-primary)" }}>
-                                  {student.name}
-                                </Link>
-                                <span className="block text-[10px] text-zinc-400 mt-0.5">{student.email}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Fee */}
-                          <td className="px-5 py-4 text-[12px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>
-                            $1,200 MXN
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-5 py-4 text-[12px]">
-                            <span
-                              className="text-[10px] px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap inline-flex items-center gap-1.5"
-                              style={{ color: status.color, background: status.bg }}
+                            );
+                          })}
+                          {remaining > 0 && (
+                            <button
+                              onClick={() => revealMore(sec.key, sec.items.length)}
+                              className="w-full text-left px-4 md:px-5 py-3 text-[12px] cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                              style={{ color: "var(--text-primary)", borderTop: "1px solid var(--border-subtle)" }}
                             >
-                              <span className="w-1 h-1 rounded-full" style={{ background: status.color }} />
-                              {status.label}
-                            </span>
-                          </td>
-
-                          {/* Due Date */}
-                          <td className="px-5 py-4 text-[12px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {new Date(dueDate + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
-                          </td>
-
-                          {/* Action */}
-                          <td className="px-5 py-4 text-[12px] text-right">
-                            {student.paymentStatus !== "active" && (
-                              <button
-                                onClick={() => alert(`Recordatorio de pago enviado a ${student.name}`)}
-                                className="px-2.5 py-1 text-[10px] rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-                              >
-                                Recordar
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              {remaining <= 50 ? `Mostrar los ${remaining} restantes` : "Mostrar 50 más"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Stripe & SaaS Billing Status (Col 3) */}
-          <div className="space-y-5 flex flex-col">
-            
-            {/* Stripe Integration */}
-            <div
-              className="rounded-xl border overflow-hidden p-5"
-              style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-            >
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
-                Pasarela de Pagos (Stripe)
-              </h3>
-              
+          <div className="flex flex-col gap-5">
+
+            {/* ═══ DESKTOP: dos cards ═══ */}
+            {/* Stripe */}
+            <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <div className="flex items-center gap-1.5 border-b border-[var(--border-subtle)] pb-3">
+                <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                  Pasarela de pagos
+                </h3>
+                <InfoHint text={`Stripe Connect · ${STRIPE_HINT}`} />
+              </div>
               <div className="mt-4 flex items-center gap-3">
-                <span className="text-2xl">🔌</span>
-                <div>
-                  <p className="text-[12px] font-semibold" style={{ color: "var(--color-success)" }}>
-                    Conectado con éxito
-                  </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Las mensualidades se cobran automáticamente los días de corte del cliente.
-                  </p>
+                <Plug size={20} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                <ConnectStatusLabel data={connectData} />
+                <div className="ml-auto">
+                  <StripeButton
+                    label={connectBtnLabel(connectData)}
+                    loading={connectLoading}
+                    onClick={handleConnectClick}
+                  />
                 </div>
               </div>
-              
-              <button
-                onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCouch...")}
-                className="mt-5 w-full py-2 border rounded-lg text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 transition-all cursor-pointer"
-                style={{ borderColor: "var(--border-default)" }}
-              >
-                Ver Dashboard de Stripe
-              </button>
             </div>
 
-            {/* SaaS Subscription Info */}
-            <div
-              className="rounded-xl border overflow-hidden p-5"
-              style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
-            >
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em] border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-secondary)" }}>
-                Tu cuenta SaaS (MyCouch)
+            {/* SaaS */}
+            <div className="hidden md:block rounded-xl border overflow-hidden p-5" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <h3 className="text-[14px] font-medium border-b border-[var(--border-subtle)] pb-3" style={{ color: "var(--text-primary)" }}>
+                Tu cuenta SaaS
               </h3>
-              
-              <div className="mt-4 space-y-3 text-[12px]">
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Plan Actual</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>Coach PRO</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Costo Mensual</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>$49.00 USD</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--text-tertiary)" }}>Próximo Cargo</span>
-                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>24 de Junio, 2026</span>
+              <div className="mt-4">
+                <SaaSDetails />
+              </div>
+            </div>
+
+            {/* ═══ MÓVIL: una card "Facturación" con dos grupos ═══ */}
+            <div className="md:hidden rounded-xl border overflow-hidden" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <h3 className="px-5 py-4 border-b border-[var(--border-subtle)] text-[14px] font-medium bg-[var(--bg-surface-raised)]" style={{ color: "var(--text-primary)" }}>
+                Facturación
+              </h3>
+              {/* Grupo 1: estado Stripe */}
+              <div className="px-5 py-4 flex items-center gap-2">
+                <ConnectStatusLabel data={connectData} />
+                <div className="ml-auto">
+                  <StripeButton
+                    label={connectBtnLabel(connectData)}
+                    loading={connectLoading}
+                    onClick={handleConnectClick}
+                  />
                 </div>
               </div>
-
-              <div style={{ borderBottom: "1px solid var(--border-subtle)", margin: "15px 0" }} />
-
-              <div className="flex items-center gap-2 text-[10px]" style={{ color: "var(--color-success)" }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-subtle-pulse" />
-                <span>Tarjeta de débito activa (termina en 4242)</span>
+              {/* Grupo 2: plan + tarjeta */}
+              <div className="px-5 py-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                <SaaSDetails />
               </div>
             </div>
 
@@ -338,6 +687,25 @@ export default function PaymentsPage() {
         </div>
 
       </div>
+
+      {/* ═══ Detalle de cobro — DetailOverlay (sheet móvil / dialog desktop) ═══ */}
+      {selected && (() => {
+        const status = getStatusStyle(selected.paymentStatus);
+        const dueDate = calculateDueDate(selected.joinedDate, selected.paymentStatus);
+        const close = () => setSelected(null);
+        return (
+          <DetailOverlay onClose={close} ariaLabel={`Cobro de ${selected.name}`} desktop="dialog">
+            <PaymentDetailBody
+              student={selected}
+              status={status}
+              dueDate={dueDate}
+              onClose={close}
+              onRemind={() => { remind(selected); close(); }}
+              onStripeClick={handleConnectClick}
+            />
+          </DetailOverlay>
+        );
+      })()}
     </>
   );
 }

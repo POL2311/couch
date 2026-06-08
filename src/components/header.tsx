@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoHint } from "@/components/info-hint";
 
 function IconSearch({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -21,31 +22,36 @@ function IconPlus({ className = "w-4 h-4" }: { className?: string }) {
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  hint?: string;
   onNewStudent?: () => void;
 }
 
-export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
+export default function Header({ title, subtitle, hint, onNewStudent }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <header
       id="dashboard-header"
-      className="sticky top-0 z-30 flex items-center gap-4 px-4 lg:px-8 shrink-0"
+      className="sticky top-0 z-30 flex items-center gap-4 px-4 md:px-8 shrink-0"
       style={{
         height: "var(--header-height)",
-        background: "rgba(3, 3, 3, 0.7)",
+        background: "var(--glass)",
+        WebkitBackdropFilter: "blur(20px) saturate(120%)",
         backdropFilter: "blur(20px) saturate(120%)",
         borderBottom: "1px solid var(--border-subtle)",
       }}
     >
       {/* ── Title ── */}
-      <div className="mr-auto">
-        <h1
-          className="text-[15px] font-medium tracking-tight"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {title}
-        </h1>
+      <div className="mr-auto min-w-0">
+        <div className="flex items-center gap-1.5">
+          <h1
+            className="text-[15px] font-medium tracking-tight"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {title}
+          </h1>
+          {hint && <InfoHint text={hint} />}
+        </div>
         {subtitle && (
           <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
             {subtitle}
@@ -55,7 +61,7 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
 
       {/* ── Search ── */}
       <div
-        className="hidden lg:flex items-center gap-2.5 px-3.5 py-2 rounded-lg w-56"
+        className="hidden md:flex items-center gap-2.5 px-3.5 py-2 rounded-lg w-56"
         style={{
           background: "var(--bg-surface)",
           border: "1px solid var(--border-subtle)",
@@ -83,7 +89,7 @@ export default function Header({ title, subtitle, onNewStudent }: HeaderProps) {
           style={{ color: "var(--text-primary)" }}
         />
         <kbd
-          className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono"
+          className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono"
           style={{
             background: "var(--bg-surface-raised)",
             color: "var(--text-tertiary)",

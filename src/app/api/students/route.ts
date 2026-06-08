@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStudents, addStudent } from "@/lib/db";
+import { getSessionUser } from "@/lib/session";
 import { type Student, type Stage } from "@/lib/mock-data";
+import { stripe, stripeEnabled, SUBSCRIPTION_PRICE_MXN, SUBSCRIPTION_CURRENCY } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 
 export async function GET() {
   try {
-    const students = await getStudents();
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+    // Coach: solo sus alumnos. Admin: todos. Cliente: ninguno por esta vía.
+    if (user.role === "CLIENT") {
+      return NextResponse.json([]);
+    }
+    const students = await getStudents(user.role === "COACH" ? user.coachId ?? undefined : undefined);
     return NextResponse.json(students);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -15,6 +25,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user || (user.role !== "COACH" && user.role !== "ADMIN")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
     const contentType = request.headers.get("content-type") || "";
     let data: any = {};
     let photoName: string | undefined = undefined;
@@ -84,8 +98,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nombre y correo son requeridos" }, { status: 400 });
     }
 
-    const students = await getStudents();
-    
     // Generate avatar initials
     const words = data.name.trim().split(/\s+/);
     const initials = words.length > 1 
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Create the new student model
     const newStudent: Student = {
-      id: `s${students.length + 1}`,
+      id: "",
       name: data.name,
       email: data.email,
       avatarInitials: initials,
@@ -104,7 +116,7 @@ export async function POST(request: NextRequest) {
       lastWeighIn: new Date().toISOString().split("T")[0],
       stage: data.stage || "Volumen",
       stageNumber: data.stageNumber || 1,
-      paymentStatus: "active",
+      paymentStatus: "inactive",
       joinedDate: new Date().toISOString().split("T")[0],
       completionRate: 100,
       streak: 1,
@@ -145,9 +157,71 @@ export async function POST(request: NextRequest) {
       photoName: data.photoName
     };
 
-    await addStudent(newStudent, detail);
+    const coachId = user.role === "COACH" ? user.coachId ?? undefined : undefined;
+    const created = await addStudent(newStudent, detail, coachId);
 
-    return NextResponse.json(newStudent);
+    // ── Stripe: registrar cliente y generar checkout de suscripción ──
+    let checkoutUrl: string | null = null;
+
+    if (stripeEnabled()) {
+      try {
+        const customer = await stripe.customers.create({
+          name: data.name,
+          email: data.email,
+          metadata: { studentId: created.id },
+        });
+
+        await prisma.student.update({
+          where: { id: created.id },
+          data: { stripeCustomerId: customer.id },
+        });
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+        const coachConnect = user.coachId
+          ? await prisma.coach.findUnique({
+              where: { id: user.coachId },
+              select: { stripeConnectId: true, stripeOnboardingComplete: true },
+            })
+          : null;
+
+        const connectParams =
+          coachConnect?.stripeOnboardingComplete && coachConnect.stripeConnectId
+            ? {
+                payment_intent_data: {
+                  application_fee_amount: 10000,
+                  transfer_data: { destination: coachConnect.stripeConnectId },
+                },
+              }
+            : {};
+
+        const session = await stripe.checkout.sessions.create({
+          customer: customer.id,
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: SUBSCRIPTION_CURRENCY,
+                product_data: { name: "Suscripción MyCoach" },
+                recurring: { interval: "month" },
+                unit_amount: SUBSCRIPTION_PRICE_MXN,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "subscription",
+          success_url: `${appUrl}/portal?payment=success`,
+          cancel_url: `${appUrl}/portal/blocked`,
+          ...connectParams,
+        });
+
+        checkoutUrl = session.url;
+      } catch (stripeErr: any) {
+        console.error("[Stripe] Error creando cliente/checkout:", stripeErr.message);
+      }
+    }
+
+    return NextResponse.json({ ...created, checkoutUrl });
   } catch (error: any) {
     console.error("Error creating student:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

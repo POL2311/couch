@@ -1,68 +1,80 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════
-   MyCouch — Street Luxury Design System
-   Minimalismo Premium · Negro Profundo
+   MyCoach — SF Dark Pro Design System
+   Estilo App de Apple · Negro Puro Premium
+   (ROADMAP.md · 3. Directrices de Rediseño)
    ═══════════════════════════════════════════ */
 
 :root {
-  /* ── Surfaces (Warm Light Sand & Pure White) ── */
-  --bg-root: #f7f4eb; /* Beautiful warm beige / sand background */
-  --bg-sidebar: #f7f4eb; /* Same warm beige as --bg-root for unified layout */
-  --bg-surface: #ffffff; /* Clean white for card backgrounds */
-  --bg-surface-raised: #fbf9f4; /* Lighter warm sand/cream */
-  --bg-surface-overlay: #f0eae1; /* Deeper warm sand overlay */
-  --bg-hover: rgba(24, 23, 21, 0.03);
-  --bg-active: rgba(24, 23, 21, 0.06);
+  /* ── Surfaces (Pure Black & Subtle Floating Grays) ── */
+  --bg-root: #0a0a0b; /* Carbón profundo — separa superficies y hairlines sin perder look OLED */
+  --bg-sidebar: var(--glass); /* Cristal de chrome unificado (ver --glass) */
+  --bg-surface: #121214; /* Gris sutil que flota sobre el negro (tarjetas) */
+  --bg-surface-raised: #1c1c1e; /* Gris elevado estilo iOS */
+  --bg-surface-overlay: #1c1c1e; /* Overlay sutil */
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --bg-active: rgba(255, 255, 255, 0.07);
 
-  /* ── Borders (Warm Taupe opacity) ── */
-  --border-subtle: rgba(18, 17, 16, 0.06);
-  --border-default: rgba(18, 17, 16, 0.10);
-  --border-strong: rgba(18, 17, 16, 0.16);
+  /* ── Borders (White opacity — casi imperceptibles) ── */
+  --border-subtle: rgba(255, 255, 255, 0.07); /* hairline visible en pantallas no-Retina */
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-  /* ── Text (Deep Charcoal & Muted Taupe) ── */
-  --text-primary: #1a1816; /* Solid dark text, highly readable */
-  --text-secondary: #6b6358; /* Muted warm taupe text */
-  --text-tertiary: #9c9384; /* Soft sand gray for detail labels */
-  --text-inverse: #ffffff; /* White text on dark elements */
+  /* ── Overlays sutiles sobre fondo oscuro (foco, subrayado decorativo) ── */
+  --ring-on-dark: rgba(255, 255, 255, 0.20);
+  --underline-on-dark: rgba(255, 255, 255, 0.20);
 
-  /* ── Accent (Dark Ebony & Gold Sand) ── */
-  --accent-primary: #1a1816; /* Clean dark accent buttons */
-  --accent-primary-hover: #33302c;
-  --accent-primary-subtle: rgba(26, 24, 22, 0.06);
+  /* ── Cristal de chrome flotante (sidebar, header, bottom-bar, bulk-bar) ── */
+  --glass: rgba(8, 8, 10, 0.72);
+  --glass-strong: rgba(5, 5, 5, 0.95);
 
-  /* ── Sidebar specific (Updated to match light warm theme) ── */
-  --text-sidebar-primary: #1a1816; /* Charcoal */
-  --text-sidebar-secondary: #6b6358; /* Muted warm taupe */
-  --bg-sidebar-active: #ffffff; /* White active background for modern card look */
-  --bg-sidebar-hover: rgba(24, 23, 21, 0.03); /* Soft hover state */
-  --border-sidebar-subtle: rgba(18, 17, 16, 0.06); /* Muted border */
+  /* ── Scrim (oscurecedor único para imágenes/overlays/modales) ── */
+  --scrim: rgba(0, 0, 0, 0.6);
 
-  /* ── Semantic (Vivid & Strong Accent Tones) ── */
-  --color-success: #059669; /* Emerald Green */
-  --color-success-subtle: rgba(5, 150, 105, 0.09);
-  --color-warning: #d97706; /* Rich Amber */
-  --color-warning-subtle: rgba(217, 119, 6, 0.09);
-  --color-danger: #dc2626; /* Crimson Red */
-  --color-danger-subtle: rgba(220, 38, 38, 0.09);
-  --color-info: #2563eb; /* Royal Blue for weight gains */
-  --color-info-subtle: rgba(37, 99, 235, 0.09);
+  /* ── Text (White / Bright Silver / Muted Gray) ── */
+  --text-primary: #ffffff; /* Títulos en Blanco Puro */
+  --text-secondary: #e5e5ea; /* Texto de lectura en Plata Brillante */
+  --text-tertiary: #8e8e93; /* Secundarios / etiquetas en Gris Apagado */
+  --text-inverse: #000000; /* Texto negro sobre botones blancos */
 
-  /* ── Stage Colors (Vivid & High Contrast Tones) ── */
-  --stage-volumen: #7c3aed; /* Deep Violet */
-  --stage-volumen-subtle: rgba(124, 58, 237, 0.09);
-  --stage-definicion: #0d9488; /* Deep Teal */
-  --stage-definicion-subtle: rgba(13, 148, 136, 0.09);
-  --stage-mantenimiento: #ca8a04; /* Rich Bronze/Gold */
-  --stage-mantenimiento-subtle: rgba(202, 138, 4, 0.09);
-  --stage-recomposicion: #db2777; /* Deep Pink/Magenta */
-  --stage-recomposicion-subtle: rgba(219, 39, 119, 0.09);
+  /* ── Accent (Apple Action Button — Blanco de alto contraste) ── */
+  --accent-primary: #ffffff; /* Botón principal blanco puro */
+  --accent-primary-hover: #e5e5ea;
+  --accent-primary-subtle: rgba(255, 255, 255, 0.06);
 
-  /* ── Radius ── */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  /* ── Sidebar specific (SF Dark Pro) ── */
+  --text-sidebar-primary: #ffffff; /* Blanco puro */
+  --text-sidebar-secondary: #8e8e93; /* Gris apagado */
+  --bg-sidebar-active: rgba(255, 255, 255, 0.07); /* Estado activo translúcido sutil */
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.04); /* Hover sutil */
+  --border-sidebar-subtle: rgba(255, 255, 255, 0.05); /* border-white/5 */
+
+  /* ── Semantic (Brillantes para legibilidad sobre negro) ── */
+  --color-success: #34d399; /* emerald-400 */
+  --color-success-subtle: rgba(52, 211, 153, 0.10);
+  --color-warning: #fbbf24; /* amber-400 */
+  --color-warning-subtle: rgba(251, 191, 36, 0.10);
+  --color-danger: #f87171; /* red-400 */
+  --color-danger-subtle: rgba(248, 113, 113, 0.10);
+  --color-info: #60a5fa; /* blue-400 */
+  --color-info-subtle: rgba(96, 165, 250, 0.10);
+
+  /* ── Stage Colors (Brillantes sobre negro) ── */
+  --stage-volumen: #a78bfa; /* violet-400 */
+  --stage-volumen-subtle: rgba(167, 139, 250, 0.10);
+  --stage-definicion: #2dd4bf; /* teal-400 */
+  --stage-definicion-subtle: rgba(45, 212, 191, 0.10);
+  --stage-mantenimiento: #facc15; /* yellow-400 */
+  --stage-mantenimiento-subtle: rgba(250, 204, 21, 0.10);
+  --stage-recomposicion: #f472b6; /* pink-400 */
+  --stage-recomposicion-subtle: rgba(244, 114, 182, 0.10);
+
+  /* ── Radius (Apple — radios orgánicos suaves) ── */
+  --radius-sm: 8px;
+  --radius-md: 12px; /* rounded-xl — botones e inputs */
   --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-xl: 16px; /* rounded-2xl — tarjetas grandes */
   --radius-full: 9999px;
 
   /* ── Shadows ── */
@@ -77,8 +89,28 @@
 
   /* ── Layout ── */
   --sidebar-width: 240px;
-  --sidebar-collapsed-width: 64px;
+  --sidebar-collapsed-width: 72px;
   --header-height: 56px;
+  --page-header-h: 64px; /* altura fija del header de página (móvil) */
+
+  /* ── Densidad de superficies de trabajo (tablas/listas) ── */
+  --row-h-compact: 56px;
+  --row-h-comfortable: 72px;
+}
+
+/* ── Colapso del sidebar: fuente única de verdad (data-sidebar en el contenedor).
+   Aside (width) y main (margin-left) leen ambos --sidebar-width. ── */
+[data-sidebar="expanded"] { --sidebar-width: 240px; }
+[data-sidebar="collapsed"] { --sidebar-width: var(--sidebar-collapsed-width); }
+
+/* El main se mueve en sincronía con el aside (misma duración/easing). */
+.main-content {
+  transition: margin-left var(--transition-slow);
+}
+
+/* Header de página: altura fija (desktop un poco mayor). */
+@media (min-width: 768px) {
+  :root { --page-header-h: 72px; }
 }
 
 @theme inline {
@@ -110,8 +142,8 @@ body {
 }
 
 ::selection {
-  background: rgba(228, 228, 231, 0.15);
-  color: #fafafa;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 input::placeholder {
@@ -149,22 +181,67 @@ input::placeholder {
   animation: subtle-pulse 2s ease-in-out infinite;
 }
 
+/* ── Skeleton shimmer (base sutil + gradiente que la cruza) ── */
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background-color: rgba(255, 255, 255, 0.05);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  border-radius: 8px;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Bottom sheet / scrim (estilo iOS) ── */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-scrim-in {
+  animation: scrim-in 0.2s ease-out both;
+}
+
+@keyframes panel-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-panel-in {
+  animation: panel-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 /* ═══════════════════════════════════════════
    Mobile Bottom Navigation
    ═══════════════════════════════════════════ */
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .desktop-sidebar {
     display: none !important;
   }
 
   .main-content {
     margin-left: 0 !important;
-    padding-bottom: 80px;
+    padding-bottom: 88px;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .mobile-bottom-nav {
     display: none !important;
   }

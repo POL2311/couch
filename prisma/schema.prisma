@@ -1,0 +1,155 @@
+// MyCoach — Esquema relacional (Prisma + SQLite)
+// Diseñado a la medida del SaaS: usuarios con 3 roles, coaches, alumnos,
+// historial de progreso, plantillas dinámicas y cambios programados.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  COACH
+  CLIENT
+}
+
+// ─────────────────────────────────────────────
+// Autenticación / cuentas (3 roles)
+// ─────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(CLIENT)
+  createdAt    DateTime @default(now())
+
+  // Perfil de coach (si role = COACH)
+  coachProfile Coach?   @relation("CoachUser")
+
+  // Vínculo de un usuario Cliente con su ficha de alumno (si role = CLIENT)
+  student      Student? @relation("StudentUser")
+}
+
+// ─────────────────────────────────────────────
+// Coach (multi-tenant): dueño de alumnos y plantillas
+// ─────────────────────────────────────────────
+model Coach {
+  id                       String     @id @default(cuid())
+  userId                   String     @unique
+  user                     User       @relation("CoachUser", fields: [userId], references: [id], onDelete: Cascade)
+  students                 Student[]
+  templates                Template[]
+  stripeConnectId          String?
+  stripeOnboardingComplete Boolean    @default(false)
+  createdAt                DateTime   @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Alumno (ficha técnica completa)
+// ─────────────────────────────────────────────
+model Student {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  avatarInitials String
+  avatarColor    String
+  currentWeight  Float
+  previousWeight Float
+  lastWeighIn    String
+  stage          String
+  stageNumber    Int
+  paymentStatus        String  @default("inactive")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  joinedDate           String
+  streak         Int      @default(0)
+  completionRate Int      @default(0)
+
+  // Detalle
+  height    Float?
+  bodyFat   Float?
+  photoName String? // foto principal/inicial
+  notes     String  @default("")
+  nextStageDate String?
+
+  // Estructuras complejas serializadas (JSON en texto)
+  dietJson    String @default("")
+  routineJson String @default("")
+
+  // Relaciones de progreso
+  weightHistory WeightEntry[]
+  measurements  Measurement[]
+  photos        ProgressPhoto[]
+  scheduledChange ScheduledChange?
+
+  // Tenant
+  coachId String?
+  coach   Coach?  @relation(fields: [coachId], references: [id], onDelete: SetNull)
+
+  // Cuenta del cliente vinculada
+  userId String? @unique
+  user   User?   @relation("StudentUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+model WeightEntry {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String
+  weight    Float
+}
+
+model Measurement {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String
+  chest     Float   @default(0)
+  waist     Float   @default(0)
+  hips      Float   @default(0)
+  armL      Float   @default(0)
+  armR      Float   @default(0)
+  thighL    Float   @default(0)
+  thighR    Float   @default(0)
+}
+
+model ProgressPhoto {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  url       String
+  label     String   @default("")
+  weight    Float?
+  createdAt DateTime @default(now())
+}
+
+model ScheduledChange {
+  id              String  @id @default(cuid())
+  studentId       String  @unique
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  executionDate   String
+  stage           String
+  stageNumber     Int
+  dietTemplateId  String?
+  routineTemplateId String?
+}
+
+// ─────────────────────────────────────────────
+// Plantillas dinámicas (dietas y rutinas)
+// ─────────────────────────────────────────────
+model Template {
+  id        String   @id @default(cuid())
+  type      String // "diet" | "routine"
+  name      String
+  dataJson  String // payload completo de la plantilla
+  coachId   String?
+  coach     Coach?   @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}

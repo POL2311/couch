@@ -2,7 +2,17 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { CalendarClock, Activity } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { buildFeedItems } from "@/lib/activity";
+import { FeedRow } from "@/components/feed-row";
+import { PageHeader } from "@/components/page-header";
+import { PAYMENT_STATUS_LABELS } from "@/lib/status-labels";
+import { MRR_LABEL } from "@/lib/kpi-labels";
+import { ChartSkeleton, RowSkeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
+
+const FEED_CAP = 6;
 
 export default function CoachDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -65,107 +75,113 @@ export default function CoachDashboard() {
     }).join(" ");
   }, [students]);
 
+  // Feed derivado de la misma fuente (alumnos). El dashboard solo muestra los primeros FEED_CAP.
+  const feedItems = useMemo(() => buildFeedItems(students), [students]);
+
   return (
     <>
-      {/* Header */}
-      <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
-        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-      >
-        <div>
-          <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Resumen de Control
-          </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Bienvenido, Coach Alejandro. Aquí está el estado de tu negocio hoy.
-          </p>
-        </div>
-        
-        <Link
-          href="/coach/students"
-          className="px-3.5 py-2 rounded-lg text-[12px] font-medium transition-all duration-150"
-          style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-        >
-          Ver Alumnos
-        </Link>
-      </header>
+      {/* Header canónico */}
+      <PageHeader
+        title="Resumen"
+        hint="Resumen del estado de tu negocio: ingresos, adherencia y alertas."
+        cta={
+          <Link
+            href="/coach/students"
+            className="inline-flex items-center rounded-xl px-4 py-2 text-[13px] font-medium transition-opacity hover:opacity-85 whitespace-nowrap"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+          >
+            Ver alumnos
+          </Link>
+        }
+      />
 
       {/* Main Grid */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* KPI Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           
           {/* MRR Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Ingresos Recurrentes (MRR)
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">{MRR_LABEL.short}</span>
+              <span className="hidden md:inline">{MRR_LABEL.full}</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `$${stats.mrr.toLocaleString("es-MX")} MXN`}
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.mrr === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              ${stats.mrr.toLocaleString("es-MX")}
+              <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>MXN</span>
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--color-success)" }}>
-              ● Cobros automáticos activos
+            <span className="text-[12px] mt-2 flex items-center gap-1.5 min-w-0" style={{ color: "var(--text-secondary)" }}>
+              <span className="inline-block rounded-full shrink-0" style={{ width: 6, height: 6, background: "var(--color-success)" }} />
+              <span className="truncate">AutoCobro activo</span>
             </span>
           </div>
 
           {/* Compliance Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Adherencia Promedio
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Adherencia</span>
+              <span className="hidden md:inline">Adherencia promedio</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : `${stats.avgAdherence}%`}
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.avgAdherence === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              {stats.avgAdherence}%
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              Objetivo: mantener &gt;80%
-            </span>
+            {/* Objetivo 80% visualizado: barra + tick */}
+            <div className="relative mt-3" title="Objetivo: 80%">
+              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min(stats.avgAdherence, 100)}%`, background: stats.avgAdherence >= 80 ? "var(--color-success)" : "var(--color-warning)", transition: "width 0.6s ease-out" }}
+                />
+              </div>
+              <div className="absolute top-0 bottom-0" style={{ left: "80%", width: 1, background: "var(--text-tertiary)" }} />
+            </div>
           </div>
 
           {/* Active Students Card */}
           <div
-            className="p-5 rounded-xl border animate-fade-in"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Alumnos Activos
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Activos</span>
+              <span className="hidden md:inline">Alumnos activos</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {isLoading ? "—" : stats.active}
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.active === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+              {stats.active}
+              <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>de {stats.total}</span>
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              De {stats.total} alumnos registrados
-            </span>
           </div>
 
-          {/* Alerts Card */}
-          <div
-            className="p-5 rounded-xl border animate-fade-in"
+          {/* Alerts Card — clickable → filtro de atención */}
+          <Link
+            href="/coach/students?estado=atencion"
+            className="p-5 rounded-xl border animate-fade-in flex flex-col cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
-            <span className="text-[10px] uppercase tracking-[0.06em] font-medium" style={{ color: "var(--text-tertiary)" }}>
-              Alertas de Suspensión
+            <span className="text-[11px] uppercase font-medium truncate" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>
+              <span className="md:hidden">Alertas</span>
+              <span className="hidden md:inline">Alertas de suspensión</span>
             </span>
-            <p className="text-[22px] font-light mt-1.5 tabular-nums" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-primary)" }}>
-              {isLoading ? "—" : stats.grace + stats.inactive}
+            {/* Cero alertas → terciario (tranquilo); >0 → danger (señal) */}
+            <p className="text-[clamp(1.5rem,5vw,1.875rem)] font-semibold tabular-nums leading-none mt-2 whitespace-nowrap" style={{ color: stats.grace + stats.inactive > 0 ? "var(--color-danger)" : "var(--text-tertiary)" }}>
+              {stats.grace + stats.inactive}
             </p>
-            <span className="text-[9px] mt-1 block" style={{ color: "var(--text-secondary)" }}>
-              {stats.grace} en gracia · {stats.inactive} suspendidos
+            <span className="text-[12px] mt-2 truncate" style={{ color: "var(--text-secondary)" }}>
+              {stats.grace} {PAYMENT_STATUS_LABELS.grace_period.short.toLowerCase()}s · {stats.inactive} {PAYMENT_STATUS_LABELS.inactive.short.toLowerCase()}s
             </span>
-          </div>
+          </Link>
 
         </div>
 
         {/* Center Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           
           {/* Adherence Graph */}
           <div
@@ -173,46 +189,60 @@ export default function CoachDashboard() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Curva de Adherencia (Alumnos)
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Curva de adherencia
               </h3>
-              <span className="text-[10px] text-zinc-400">Orden: Mayor a Menor</span>
+              <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Orden: mayor a menor</span>
             </div>
             
             <div className="p-5 flex flex-col justify-end" style={{ height: "180px" }}>
-              {isLoading || students.length < 2 ? (
-                <div className="flex-1 flex items-center justify-center text-zinc-300 text-[12px]">
-                  Cargando gráfica...
-                </div>
+              {isLoading ? (
+                <ChartSkeleton className="flex-1" />
+              ) : students.length < 2 ? (
+                <EmptyState
+                  icon={Activity}
+                  message="Aún no hay datos de adherencia"
+                  hint="Registra alumnos y sus check-ins para ver la curva."
+                  cta={
+                    stats.total === 0 ? (
+                      <Link href="/coach/students" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                        Registrar primer alumno
+                      </Link>
+                    ) : undefined
+                  }
+                  className="flex-1 py-0"
+                />
               ) : (
-                <svg viewBox="0 0 400 100" preserveAspectRatio="none" className="w-full h-24 overflow-visible">
-                  <polyline
-                    fill="none"
-                    stroke="var(--text-secondary)"
-                    strokeWidth="1.5"
-                    points={adherencePoints}
-                  />
-                  {students.map((s, idx) => {
-                    const sorted = [...students].sort((a, b) => b.completionRate - a.completionRate);
-                    const x = (idx / (sorted.length - 1)) * 400;
-                    const y = 100 - (s.completionRate / 100) * 80;
-                    return (
-                      <circle
-                        key={s.id}
-                        cx={x}
-                        cy={y}
-                        r="3"
-                        fill={s.completionRate >= 80 ? "var(--color-success)" : "var(--color-warning)"}
-                      />
-                    );
-                  })}
-                </svg>
+                <>
+                  <svg viewBox="0 0 400 100" preserveAspectRatio="none" className="w-full h-24 overflow-visible">
+                    <polyline
+                      fill="none"
+                      stroke="var(--text-secondary)"
+                      strokeWidth="1.5"
+                      points={adherencePoints}
+                    />
+                    {students.map((s, idx) => {
+                      const sorted = [...students].sort((a, b) => b.completionRate - a.completionRate);
+                      const x = (idx / (sorted.length - 1)) * 400;
+                      const y = 100 - (s.completionRate / 100) * 80;
+                      return (
+                        <circle
+                          key={s.id}
+                          cx={x}
+                          cy={y}
+                          r="3"
+                          fill={s.completionRate >= 80 ? "var(--color-success)" : "var(--color-warning)"}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="flex justify-between mt-3 border-t border-[var(--border-subtle)] pt-2 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                    <span>100% Adherencia</span>
+                    <span>Promedio</span>
+                    <span>0% Adherencia</span>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between mt-3 border-t border-[var(--border-subtle)] pt-2 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                <span>100% Adherencia</span>
-                <span>Promedio</span>
-                <span>0% Adherencia</span>
-              </div>
             </div>
           </div>
 
@@ -222,37 +252,51 @@ export default function CoachDashboard() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Próximos Cambios Programados
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Cambios programados
               </h3>
-              <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">AutoCron</span>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "rgba(255, 255, 255, 0.08)", color: "var(--text-secondary)" }}>AutoCron</span>
             </div>
             
             <div className="p-5 flex-1 overflow-y-auto max-h-[180px] space-y-3">
               {isLoading ? (
-                <p className="text-[12px] text-zinc-400 text-center py-6">Buscando planificaciones...</p>
+                <RowSkeleton count={3} />
               ) : stats.upcomingChanges.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Sin cambios programados para este mes</p>
-                  <Link href="/coach/students" className="text-[10px] text-zinc-400 hover:underline mt-1 inline-block">
-                    Programar cambio de etapa +
-                  </Link>
-                </div>
+                <EmptyState
+                  icon={CalendarClock}
+                  message="No hay cambios programados"
+                  cta={
+                    <Link href="/coach/students" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                      Programar cambio de etapa
+                    </Link>
+                  }
+                />
               ) : (
-                stats.upcomingChanges.map((change) => (
+                stats.upcomingChanges.slice(0, 5).map((change) => (
                   <div key={change.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] text-[12px]">
                     <div>
                       <strong className="font-medium" style={{ color: "var(--text-primary)" }}>{change.name}</strong>
-                      <span className="mx-2 text-zinc-300">|</span>
+                      <span className="mx-2" style={{ color: "var(--text-tertiary)" }}>|</span>
                       <span style={{ color: "var(--text-secondary)" }}>
                         Nueva Etapa: {change.stage} (E{change.stageNumber})
                       </span>
                     </div>
-                    <span className="text-[10px] font-medium tabular-nums text-zinc-400 bg-white border border-[var(--border-subtle)] px-2 py-0.5 rounded-md">
-                      📅 {change.date.split("-").slice(1).join("/")}
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-medium tabular-nums border border-[var(--border-subtle)] px-2 py-0.5 rounded-md"
+                      style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)" }}
+                    >
+                      <CalendarClock size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
+                      {change.date.split("-").slice(1).join("/")}
                     </span>
                   </div>
                 ))
+              )}
+              {!isLoading && stats.upcomingChanges.length > 5 && (
+                <div className="text-center pt-1">
+                  <Link href="/coach/periodization" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                    Ver todos ({stats.upcomingChanges.length})
+                  </Link>
+                </div>
               )}
             </div>
           </div>
@@ -265,29 +309,28 @@ export default function CoachDashboard() {
           style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
         >
           <div className="px-5 py-4 border-b border-[var(--border-subtle)]">
-            <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-              Actividad Reciente del Dashboard
+            <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+              Actividad reciente
             </h3>
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">
-            {[
-              { time: "Hace 10m", title: "Pesaje Reportado", desc: "María López García reportó peso diario: 62.5 kg (-1.5 kg).", icon: "⚖️" },
-              { time: "Hace 1h", title: "Entrenamiento Completado", desc: "Carlos Ruiz Hernández marcó como completada la rutina 'Pull'.", icon: "💪" },
-              { time: "Hace 3h", title: "Nuevo Alumno Creado", desc: "Has registrado a Camila Herrera Solís en etapa de Definición.", icon: "👤" },
-              { time: "Ayer", title: "Factura Emitida", desc: "Se generó cobro automático recurrente de Stripe para Pedro Sánchez Ríos.", icon: "💳" }
-            ].map((feed, i) => (
-              <div key={i} className="px-5 py-4 flex items-start gap-4 text-[12px]">
-                <span className="text-lg shrink-0 mt-0.5">{feed.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <strong className="font-semibold" style={{ color: "var(--text-primary)" }}>{feed.title}</strong>
-                    <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>{feed.time}</span>
-                  </div>
-                  <p className="mt-1" style={{ color: "var(--text-secondary)" }}>{feed.desc}</p>
-                </div>
+            {isLoading ? (
+              <div className="p-5">
+                <RowSkeleton count={3} />
               </div>
-            ))}
+            ) : feedItems.length === 0 ? (
+              <EmptyState icon={Activity} message="Aún no hay actividad reciente" className="py-10" />
+            ) : (
+              feedItems.slice(0, FEED_CAP).map((item) => <FeedRow key={item.key} item={item} />)
+            )}
           </div>
+          {!isLoading && feedItems.length > FEED_CAP && (
+            <div className="px-5 py-3 border-t border-[var(--border-subtle)] text-center">
+              <Link href="/coach/activity" className="text-[12px] hover:underline" style={{ color: "var(--text-primary)" }}>
+                Ver toda la actividad
+              </Link>
+            </div>
+          )}
         </div>
 
       </div>

@@ -1,7 +1,12 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { type Student } from "@/lib/mock-data";
+import { useRouter } from "next/navigation";
+import { Flame, SearchX, Shield, ShieldOff, Utensils, User as UserIcon, Loader2 } from "lucide-react";
+import { type Student, type PaymentStatus } from "@/lib/mock-data";
+import { PAYMENT_STATUS_LABELS, statusTone } from "@/lib/status-labels";
+import { EmptyState } from "@/components/empty-state";
 
 /* ═══════════════════════════════════════════
    Helpers
@@ -17,13 +22,9 @@ function getStageStyle(stage: string) {
   return map[stage] || { color: "var(--text-secondary)", bg: "var(--bg-hover)" };
 }
 
-function getPaymentLabel(status: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    active: { label: "Activo", color: "var(--color-success)" },
-    inactive: { label: "Inactivo", color: "var(--color-danger)" },
-    grace_period: { label: "Gracia", color: "var(--color-warning)" },
-  };
-  return map[status] || { label: status, color: "var(--text-secondary)" };
+function getPaymentLabel(status: PaymentStatus) {
+  const meta = PAYMENT_STATUS_LABELS[status];
+  return { label: meta.label, color: statusTone(status).color };
 }
 
 function formatWeight(current: number, previous: number) {
@@ -79,7 +80,7 @@ function Checkbox({
         className="sr-only peer"
       />
       <span
-        className="w-[15px] h-[15px] rounded-[4px] flex items-center justify-center peer-focus-visible:ring-1 peer-focus-visible:ring-white/20"
+        className="w-[15px] h-[15px] rounded-[4px] flex items-center justify-center peer-focus-visible:ring-1 peer-focus-visible:ring-[color:var(--ring-on-dark)]"
         style={{
           border: `1px solid ${checked || indeterminate ? "var(--text-primary)" : "var(--border-strong)"}`,
           background: checked || indeterminate ? "var(--text-primary)" : "transparent",
@@ -120,86 +121,60 @@ function StudentCard({
 
   return (
     <div
-      className="px-5 py-5 animate-fade-in"
+      className="flex items-center gap-3 px-4 animate-fade-in"
       style={{
+        minHeight: 64,
         background: isSelected ? "var(--bg-active)" : "transparent",
         borderBottom: "1px solid var(--border-subtle)",
         transition: "background var(--transition-fast)",
       }}
     >
-      <div className="flex items-start gap-4">
-        {/* Avatar — checkbox on tap */}
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium cursor-pointer"
-          style={{
-            background: isSelected ? "var(--text-primary)" : "var(--bg-surface-overlay)",
-            color: isSelected ? "var(--text-inverse)" : "var(--text-secondary)",
-            border: `1px solid ${isSelected ? "var(--text-primary)" : "var(--border-default)"}`,
-            transition: "all var(--transition-fast)",
-          }}
-          onClick={(e) => { e.preventDefault(); onToggle(); }}
-        >
-          {isSelected ? (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          ) : (
-            student.avatarInitials
-          )}
+      {/* Avatar — checkbox on tap */}
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium cursor-pointer"
+        style={{
+          background: isSelected ? "var(--text-primary)" : "var(--bg-surface-overlay)",
+          color: isSelected ? "var(--text-inverse)" : "var(--text-secondary)",
+          border: `1px solid ${isSelected ? "var(--text-primary)" : "var(--border-default)"}`,
+          transition: "all var(--transition-fast)",
+        }}
+        onClick={(e) => { e.preventDefault(); onToggle(); }}
+      >
+        {isSelected ? (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        ) : (
+          student.avatarInitials
+        )}
+      </div>
+
+      {/* Content — links to detail (una línea por dato) */}
+      <Link href={`/coach/students/${student.id}`} className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
+            {student.name}
+          </span>
+          <span className="text-[11px] shrink-0" style={{ color: payment.color }}>
+            {payment.label}
+          </span>
         </div>
 
-        {/* Content — links to detail */}
-        <Link href={`/coach/students/${student.id}`} className="flex-1 min-w-0">
-          {/* Name + Payment */}
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[14px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
-              {student.name}
-            </p>
-            <span
-              className="text-[11px] shrink-0"
-              style={{ color: payment.color }}
-            >
-              {payment.label}
+        <div className="flex items-center gap-2 mt-0.5 text-[12px] tabular-nums overflow-hidden">
+          <span className="shrink-0" style={{ color: "var(--text-secondary)" }}>{student.currentWeight} kg</span>
+          <span className="shrink-0" style={{ color: weight.color }}>{weight.text}</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] shrink-0" style={{ color: stage.color, background: stage.bg }}>
+            {student.stage}
+          </span>
+          <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>{student.completionRate}%</span>
+          {student.streak > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] shrink-0" style={{ color: "var(--color-warning)" }}>
+              <Flame size={12} strokeWidth={1.75} />
+              <span className="tabular-nums">{student.streak}</span>
             </span>
-          </div>
-
-          {/* Meta row */}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-[12px] tabular-nums" style={{ color: "var(--text-secondary)" }}>
-              {student.currentWeight} kg
-            </span>
-            <span className="text-[11px] tabular-nums" style={{ color: weight.color }}>
-              {weight.text}
-            </span>
-            <span
-              className="text-[11px] px-2 py-0.5 rounded-full"
-              style={{ color: stage.color, background: stage.bg }}
-            >
-              {student.stage}
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div className="flex items-center gap-2 mt-3">
-            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${student.completionRate}%`,
-                  background: "var(--text-tertiary)",
-                  transition: "width 0.6s ease-out",
-                }}
-              />
-            </div>
-            <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-              {student.completionRate}%
-            </span>
-            {student.streak > 0 && (
-              <span className="text-[10px]">🔥{student.streak}</span>
-            )}
-          </div>
-        </Link>
-      </div>
+          )}
+        </div>
+      </Link>
     </div>
   );
 }
@@ -213,32 +188,73 @@ interface StudentTableProps {
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
   onToggleAll: () => void;
+  onStatusToggle: (id: string, currentStatus: PaymentStatus) => Promise<void>;
 }
+
+type OpenMenu = {
+  student: Student;
+  top: number;
+  right: number;
+};
 
 export default function StudentTable({
   students,
   selectedIds,
   onToggleSelect,
   onToggleAll,
+  onStatusToggle,
 }: StudentTableProps) {
+  const router = useRouter();
   const allSelected = students.length > 0 && students.every((s) => selectedIds.has(s.id));
   const someSelected = students.some((s) => selectedIds.has(s.id)) && !allSelected;
+
+  const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al hacer mousedown fuera del dropdown
+  useEffect(() => {
+    if (!openMenu) return;
+    function close(e: MouseEvent) {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setOpenMenu(null);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [openMenu]);
+
+  function handleOpenMenu(e: React.MouseEvent, student: Student) {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setOpenMenu({
+      student,
+      top: rect.bottom + 6,
+      right: window.innerWidth - rect.right,
+    });
+  }
+
+  async function handleToggleStatus(student: Student) {
+    setStatusLoading(true);
+    setOpenMenu(null);
+    await onStatusToggle(student.id, student.paymentStatus);
+    setStatusLoading(false);
+  }
 
   return (
     <>
       {/* ═══ DESKTOP TABLE ═══ */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto">
         <table id="students-table" className="w-full" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th className="w-12 px-5 py-3 text-left" style={{ background: "var(--bg-surface)" }}>
+              <th className="sticky top-0 z-10 w-12 pl-6 pr-2 py-4 text-left" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
                 <Checkbox checked={allSelected} indeterminate={someSelected} onChange={onToggleAll} id="select-all-students" />
               </th>
-              {["Nombre", "Peso", "Etapa", "Estado", "Adherencia", ""].map((h, i) => (
+              {["Nombre", "Peso", "Etapa", "Estado", "Adherencia", ""].map((h, i, arr) => (
                 <th
                   key={i}
-                  className="px-4 py-3 text-left text-[11px] font-normal tracking-[0.06em] uppercase whitespace-nowrap"
-                  style={{ color: "var(--text-tertiary)", background: "var(--bg-surface)" }}
+                  className={`sticky top-0 z-10 px-4 py-4 text-left text-[11px] font-normal tracking-[0.06em] uppercase whitespace-nowrap ${i === arr.length - 1 ? "pr-6" : ""}`}
+                  style={{ color: "var(--text-tertiary)", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}
                 >
                   {h}
                 </th>
@@ -256,9 +272,11 @@ export default function StudentTable({
                 <tr
                   key={student.id}
                   id={`student-row-${student.id}`}
-                  className="group animate-fade-in"
+                  onClick={() => router.push(`/coach/students/${student.id}`)}
+                  className="group animate-fade-in cursor-pointer"
                   style={{
                     animationDelay: `${idx * 25}ms`,
+                    height: "var(--row-h-compact)",
                     background: isSelected ? "var(--bg-active)" : "transparent",
                     transition: "background var(--transition-fast)",
                   }}
@@ -269,14 +287,14 @@ export default function StudentTable({
                     if (!isSelected) e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  {/* Checkbox */}
-                  <td className="w-12 px-5 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  {/* Checkbox — no dispara la navegación de la fila */}
+                  <td className="w-12 pl-6 pr-2" onClick={(e) => e.stopPropagation()} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <Checkbox checked={isSelected} onChange={() => onToggleSelect(student.id)} />
                   </td>
 
-                  {/* Name — clickable link to detail */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <Link href={`/coach/students/${student.id}`} className="flex items-center gap-3.5 group/name">
+                  {/* Nombre · email en una sola línea */}
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-medium"
                         style={{
@@ -287,19 +305,19 @@ export default function StudentTable({
                       >
                         {student.avatarInitials}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium truncate max-w-[180px] group-hover/name:underline underline-offset-2 decoration-white/20" style={{ color: "var(--text-primary)" }}>
+                      <div className="flex items-baseline gap-1.5 min-w-0">
+                        <span className="text-[15px] font-medium truncate group-hover:underline underline-offset-2 decoration-[color:var(--underline-on-dark)]" style={{ color: "var(--text-primary)", maxWidth: "200px" }}>
                           {student.name}
-                        </p>
-                        <p className="text-[11px] truncate max-w-[180px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                          {student.email}
-                        </p>
+                        </span>
+                        <span className="text-[12px] truncate" style={{ color: "var(--text-tertiary)" }} title={student.email}>
+                          · {student.email}
+                        </span>
                       </div>
-                    </Link>
+                    </div>
                   </td>
 
-                  {/* Weight */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  {/* Peso · delta · fecha en una línea */}
+                  <td className="px-4 whitespace-nowrap" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <span className="text-[13px] tabular-nums" style={{ color: "var(--text-primary)" }}>
                       {student.currentWeight}
                     </span>
@@ -313,7 +331,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Stage */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <span
                       className="text-[11px] px-2.5 py-1 rounded-full font-medium"
                       style={{ color: stage.color, background: stage.bg }}
@@ -323,7 +341,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Payment */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${student.paymentStatus === "grace_period" ? "animate-subtle-pulse" : ""}`}
@@ -336,7 +354,7 @@ export default function StudentTable({
                   </td>
 
                   {/* Adherence */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="px-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <div className="flex items-center gap-2.5">
                       <div className="w-14 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
                         <div
@@ -358,31 +376,28 @@ export default function StudentTable({
                         {student.completionRate}%
                       </span>
                       {student.streak > 0 && (
-                        <span className="text-[10px] opacity-60">🔥{student.streak}</span>
+                        <span className="inline-flex items-center gap-0.5 text-[10px]" style={{ color: "var(--color-warning)" }}>
+                          <Flame size={14} strokeWidth={1.75} />
+                          <span className="tabular-nums">{student.streak}</span>
+                        </span>
                       )}
                     </div>
                   </td>
 
                   {/* Actions */}
-                  <td className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="pl-4 pr-6" onClick={(e) => e.stopPropagation()} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <button
                       id={`actions-${student.id}`}
-                      className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 cursor-pointer"
+                      onMouseDown={(e) => handleOpenMenu(e, student)}
+                      className="w-[34px] h-[34px] flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 cursor-pointer"
                       style={{
-                        color: "var(--text-tertiary)",
+                        color: openMenu?.student.id === student.id ? "var(--text-secondary)" : "var(--text-tertiary)",
+                        background: openMenu?.student.id === student.id ? "var(--bg-active)" : "transparent",
                         transition: "all var(--transition-fast)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--bg-active)";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--text-tertiary)";
                       }}
                       aria-label={`Acciones para ${student.name}`}
                     >
-                      <IconMore />
+                      {statusLoading && openMenu === null ? <Loader2 size={14} className="animate-spin" /> : <IconMore />}
                     </button>
                   </td>
                 </tr>
@@ -393,7 +408,7 @@ export default function StudentTable({
       </div>
 
       {/* ═══ MOBILE CARD LIST ═══ */}
-      <div className="lg:hidden">
+      <div className="md:hidden">
         {students.map((student, idx) => (
           <div key={student.id} style={{ animationDelay: `${idx * 25}ms` }}>
             <StudentCard
@@ -407,13 +422,88 @@ export default function StudentTable({
 
       {/* ═══ EMPTY STATE ═══ */}
       {students.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-          <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
-            Sin resultados
-          </p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)", opacity: 0.6 }}>
-            Ajusta los filtros
-          </p>
+        <EmptyState
+          icon={SearchX}
+          message="Sin resultados"
+          hint="Ajusta los filtros para ver más alumnos."
+          className="py-16 animate-fade-in"
+        />
+      )}
+
+      {/* ═══ ACTION DROPDOWN (fixed overlay, evita overflow-clip de la tabla) ═══ */}
+      {openMenu && (
+        <div
+          ref={dropdownRef}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: openMenu.top,
+            right: openMenu.right,
+            zIndex: 9999,
+            minWidth: 210,
+            background: "rgba(16,16,18,0.98)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 14,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            overflow: "hidden",
+            animation: "dropIn 0.14s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <style>{`
+            @keyframes dropIn {
+              from { opacity:0; transform:translateY(-6px) scale(0.97); }
+              to   { opacity:1; transform:translateY(0)    scale(1); }
+            }
+          `}</style>
+
+          {/* Ver ficha */}
+          <button
+            onClick={() => { router.push(`/coach/students/${openMenu.student.id}`); setOpenMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            style={{ height: 46, color: "rgba(255,255,255,0.88)", fontSize: 13 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <UserIcon size={14} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />
+            Ver ficha completa
+          </button>
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.055)", margin: "0 12px" }} />
+
+          {/* Toggle estado */}
+          {(() => {
+            const isActive = ["active", "grace_period"].includes(openMenu.student.paymentStatus);
+            return (
+              <button
+                onClick={() => handleToggleStatus(openMenu.student)}
+                className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+                style={{ height: 46, color: isActive ? "#f87171" : "#34d399", fontSize: 13 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isActive ? "rgba(248,113,113,0.06)" : "rgba(52,211,153,0.06)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {isActive
+                  ? <ShieldOff size={14} style={{ flexShrink: 0 }} />
+                  : <Shield size={14} style={{ flexShrink: 0 }} />}
+                {isActive ? "Suspender cuenta" : "Reactivar cuenta"}
+              </button>
+            );
+          })()}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.055)", margin: "0 12px" }} />
+
+          {/* Editar plan nutricional */}
+          <button
+            onClick={() => { router.push(`/coach/students/${openMenu.student.id}`); setOpenMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            style={{ height: 46, color: "rgba(255,255,255,0.5)", fontSize: 13 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <Utensils size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+            Editar plan nutricional
+          </button>
         </div>
       )}
     </>

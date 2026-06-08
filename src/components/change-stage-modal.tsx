@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { type Stage } from "@/lib/mock-data";
-import { DIET_TEMPLATES, ROUTINE_TEMPLATES } from "@/lib/templates";
 
 interface ChangeStageModalProps {
   isOpen: boolean;
@@ -21,6 +20,20 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
   // Set default scheduled date to 15 days in the future or the 15th of the month
   const [executionDate, setExecutionDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [diets, setDiets] = useState<{ id: string; name: string; totalCalories?: number }[]>([]);
+  const [routines, setRoutines] = useState<{ id: string; name: string; daysPerWeek?: number }[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    Promise.all([
+      fetch("/api/templates?type=diet").then((r) => r.json()),
+      fetch("/api/templates?type=routine").then((r) => r.json()),
+    ]).then(([d, r]) => {
+      setDiets(Array.isArray(d) ? d : []);
+      setRoutines(Array.isArray(r) ? r : []);
+    }).catch(() => {});
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -78,7 +91,8 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 backdrop-blur-sm transition-opacity duration-300"
+        style={{ background: "var(--scrim)" }}
         onClick={onClose}
       />
 
@@ -167,9 +181,9 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
               }}
             >
               <option value="">Mantener dieta actual o sin cambios</option>
-              {DIET_TEMPLATES.map((t) => (
+              {diets.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({t.totalCalories} kcal)
+                  {t.name}{t.totalCalories ? ` (${t.totalCalories} kcal)` : ""}
                 </option>
               ))}
             </select>
@@ -191,9 +205,9 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
               }}
             >
               <option value="">Mantener rutina actual o sin cambios</option>
-              {ROUTINE_TEMPLATES.map((t) => (
+              {routines.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({t.daysPerWeek} días/sem)
+                  {t.name}{t.daysPerWeek ? ` (${t.daysPerWeek} días/sem)` : ""}
                 </option>
               ))}
             </select>
@@ -219,7 +233,7 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
                   name="timing"
                   checked={timing === "immediate"}
                   onChange={() => setTiming("immediate")}
-                  className="accent-zinc-900"
+                  className="accent-[var(--accent-primary)]"
                 />
                 <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>Inmediato</span>
               </label>
@@ -237,7 +251,7 @@ export default function ChangeStageModal({ isOpen, onClose, studentIds, onSucces
                   name="timing"
                   checked={timing === "scheduled"}
                   onChange={() => setTiming("scheduled")}
-                  className="accent-zinc-900"
+                  className="accent-[var(--accent-primary)]"
                 />
                 <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>Programar</span>
               </label>

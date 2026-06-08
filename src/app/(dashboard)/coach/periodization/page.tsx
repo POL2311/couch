@@ -2,11 +2,17 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { Calendar, CalendarRange } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
+import { RowSkeleton, Skeleton } from "@/components/skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import BulkPeriodizationWizard from "@/components/bulk-periodization-wizard";
 
 export default function PeriodizationPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const fetchStudents = async () => {
     try {
@@ -66,26 +72,28 @@ export default function PeriodizationPage() {
 
   return (
     <>
-      {/* Header */}
-      <header
-        className="px-4 lg:px-8 py-5 flex items-center justify-between shrink-0"
-        style={{ borderBottom: "1px solid var(--border-subtle)" }}
-      >
-        <div>
-          <h1 className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            Periodización y Ciclos
-          </h1>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Supervisa la distribución de tus alumnos por objetivos y los cambios de etapa programados.
-          </p>
-        </div>
-      </header>
+      {/* Header canónico */}
+      <PageHeader
+        title="Periodización y Ciclos"
+        hint="Supervisa la distribución de tus alumnos por objetivos y los cambios de etapa programados."
+        cta={
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="shrink-0 inline-flex items-center justify-center gap-2 cursor-pointer transition-opacity hover:opacity-85 rounded-full md:rounded-xl w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)]"
+            style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
+            aria-label="Programación masiva"
+          >
+            <CalendarRange size={18} strokeWidth={2} className="shrink-0" />
+            <span className="hidden md:inline text-[13px] font-medium">Programación masiva</span>
+          </button>
+        }
+      />
 
       {/* Content */}
-      <div className="flex-1 px-4 lg:px-8 py-6 space-y-6 overflow-y-auto pb-24 lg:pb-8">
+      <div className="flex-1 px-4 md:px-8 py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
         
         {/* Stage distribution KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Volumen", count: metrics.volumen, color: "var(--stage-volumen)", bg: "var(--stage-volumen-subtle)" },
             { label: "Definición", count: metrics.definicion, color: "var(--stage-definicion)", bg: "var(--stage-definicion-subtle)" },
@@ -99,9 +107,13 @@ export default function PeriodizationPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>{item.label}</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: item.color, background: item.bg }}>
-                  {isLoading ? "—" : `${item.count} alumnos`}
-                </span>
+                {isLoading ? (
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                ) : (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: item.color, background: item.bg }}>
+                    {item.count} alumnos
+                  </span>
+                )}
               </div>
               <div className="mt-4 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-surface-overlay)" }}>
                 <div
@@ -117,55 +129,60 @@ export default function PeriodizationPage() {
         </div>
 
         {/* Center Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           
           {/* Timeline of Scheduled Changes (Col 1 & 2) */}
           <div
-            className="lg:col-span-2 rounded-xl border overflow-hidden flex flex-col"
+            className="md:col-span-2 rounded-xl border overflow-hidden flex flex-col"
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Cronograma de Cambios Programados
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Cronograma de cambios
               </h3>
-              <span className="text-[10px] text-zinc-400">Ejecución automática</span>
+              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Ejecución automática</span>
             </div>
 
             <div className="p-5 flex-1 space-y-4">
               {isLoading ? (
-                <p className="text-[12px] text-zinc-400 text-center py-6">Cargando cronograma...</p>
+                <RowSkeleton count={4} />
               ) : metrics.scheduled.length === 0 ? (
-                <div className="text-center py-12">
-                  <span className="text-2xl">📅</span>
-                  <p className="text-[13px] mt-2 font-medium" style={{ color: "var(--text-secondary)" }}>Sin planificaciones programadas</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                    Usa las acciones en lote de la lista de alumnos para automatizar cambios.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  message="No hay cambios programados"
+                  hint="Usa las acciones en lote de la lista de alumnos para automatizar cambios."
+                />
               ) : (
-                <div className="relative border-l border-zinc-200 pl-4 ml-2 space-y-6">
+                <div className="relative border-l border-[color:var(--border-default)] pl-4 ml-2 space-y-6">
                   {metrics.scheduled.map((change) => (
                     <div key={change.id} className="relative animate-fade-in">
-                      {/* Timeline dot */}
-                      <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-white" />
-                      
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] hover:border-zinc-300 transition-all">
+                      {/* Timeline dot — estado "programado" = warning; recorte vía color de la superficie detrás */}
+                      <span
+                        className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[color:var(--bg-surface)]"
+                        style={{ background: "var(--color-warning)" }}
+                      />
+
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] hover:border-[color:var(--border-strong)] transition-all">
                         <div>
                           <Link href={`/coach/students/${change.id}`} className="text-[13px] font-semibold hover:underline" style={{ color: "var(--text-primary)" }}>
                             {change.name}
                           </Link>
                           <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                            Transición a <strong className="font-medium text-zinc-800">{change.targetStage} (E{change.targetStageNumber})</strong>
+                            Transición a <strong className="font-medium" style={{ color: "var(--text-primary)" }}>{change.targetStage} (E{change.targetStageNumber})</strong>
                           </p>
                         </div>
                         
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[11px] font-semibold tabular-nums text-zinc-500 bg-white border border-[var(--border-subtle)] px-2.5 py-1 rounded-md">
+                          <span
+                            className="text-[11px] font-semibold tabular-nums border border-[var(--border-subtle)] px-2.5 py-1 rounded-md"
+                            style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)" }}
+                          >
                             Fecha: {new Date(change.executionDate + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                           </span>
                           <button
                             onClick={() => cancelScheduledChange(change.id)}
-                            className="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                            className="p-2.5 rounded-md transition-colors cursor-pointer hover:bg-[color:var(--color-danger-subtle)]"
+                            style={{ color: "var(--color-danger)" }}
                             title="Cancelar programación"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -187,8 +204,8 @@ export default function PeriodizationPage() {
             style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
           >
             <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)]">
-              <h3 className="text-[12px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>
-                Distribución de Alumnos
+              <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
+                Distribución de alumnos
               </h3>
             </div>
             
@@ -221,6 +238,14 @@ export default function PeriodizationPage() {
         </div>
 
       </div>
+
+      {wizardOpen && (
+        <BulkPeriodizationWizard
+          students={students}
+          onClose={() => setWizardOpen(false)}
+          onSuccess={fetchStudents}
+        />
+      )}
     </>
   );
 }
