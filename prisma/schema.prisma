@@ -7,9 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL") // Descomentar si usas Vercel Postgres / Neon con pooler
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -29,10 +28,7 @@ model User {
   role         Role     @default(CLIENT)
   createdAt    DateTime @default(now())
 
-  // Perfil de coach (si role = COACH)
   coachProfile Coach?   @relation("CoachUser")
-
-  // Vínculo de un usuario Cliente con su ficha de alumno (si role = CLIENT)
   student      Student? @relation("StudentUser")
 }
 
@@ -54,7 +50,7 @@ model Coach {
 // Alumno (ficha técnica completa)
 // ─────────────────────────────────────────────
 model Student {
-  id             String   @id @default(cuid())
+  id             String @id @default(cuid())
   name           String
   email          String
   avatarInitials String
@@ -64,35 +60,31 @@ model Student {
   lastWeighIn    String
   stage          String
   stageNumber    Int
+
   paymentStatus        String  @default("inactive")
   stripeCustomerId     String?
   stripeSubscriptionId String?
   joinedDate           String
-  streak         Int      @default(0)
-  completionRate Int      @default(0)
+  streak               Int     @default(0)
+  completionRate       Int     @default(0)
 
-  // Detalle
-  height    Float?
-  bodyFat   Float?
-  photoName String? // foto principal/inicial
-  notes     String  @default("")
+  height        Float?
+  bodyFat       Float?
+  photoName     String?
+  notes         String  @default("")
   nextStageDate String?
 
-  // Estructuras complejas serializadas (JSON en texto)
   dietJson    String @default("")
   routineJson String @default("")
 
-  // Relaciones de progreso
-  weightHistory WeightEntry[]
-  measurements  Measurement[]
-  photos        ProgressPhoto[]
+  weightHistory   WeightEntry[]
+  measurements    Measurement[]
+  photos          ProgressPhoto[]
   scheduledChange ScheduledChange?
 
-  // Tenant
   coachId String?
   coach   Coach?  @relation(fields: [coachId], references: [id], onDelete: SetNull)
 
-  // Cuenta del cliente vinculada
   userId String? @unique
   user   User?   @relation("StudentUser", fields: [userId], references: [id], onDelete: SetNull)
 
@@ -132,13 +124,13 @@ model ProgressPhoto {
 }
 
 model ScheduledChange {
-  id              String  @id @default(cuid())
-  studentId       String  @unique
-  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  executionDate   String
-  stage           String
-  stageNumber     Int
-  dietTemplateId  String?
+  id                String  @id @default(cuid())
+  studentId         String  @unique
+  student           Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  executionDate     String
+  stage             String
+  stageNumber       Int
+  dietTemplateId    String?
   routineTemplateId String?
 }
 
@@ -147,9 +139,9 @@ model ScheduledChange {
 // ─────────────────────────────────────────────
 model Template {
   id        String   @id @default(cuid())
-  type      String // "diet" | "routine"
+  type      String
   name      String
-  dataJson  String // payload completo de la plantilla
+  dataJson  String
   coachId   String?
   coach     Coach?   @relation(fields: [coachId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
