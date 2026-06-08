@@ -1494,7 +1494,11 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "profile",  label: "Perfil",   icon: User },
 ];
 
-function BottomNav({ active, onChange }: { active: TabId; onChange: (t: TabId) => void }) {
+function BottomNav({ active, onChange, onSignOut }: {
+  active: TabId;
+  onChange: (t: TabId) => void;
+  onSignOut: () => void;
+}) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50"
       style={{
@@ -1510,7 +1514,7 @@ function BottomNav({ active, onChange }: { active: TabId; onChange: (t: TabId) =
           return (
             <button key={id} onClick={() => onChange(id)}
               className="flex flex-col items-center gap-1 flex-1 py-2 cursor-pointer transition-all duration-200"
-              style={{ opacity: isActive ? 1 : 0.38 }}>
+              style={{ minHeight: 44, opacity: isActive ? 1 : 0.38 }}>
               <div className="relative">
                 <Icon size={21} strokeWidth={isActive ? 2 : 1.5}
                   style={{ color: isActive ? "#fff" : "rgba(255,255,255,0.6)", transition: "all 0.2s ease" }} />
@@ -1526,6 +1530,21 @@ function BottomNav({ active, onChange }: { active: TabId; onChange: (t: TabId) =
             </button>
           );
         })}
+
+        {/* Logout tab */}
+        <button
+          onClick={onSignOut}
+          aria-label="Cerrar sesión"
+          className="flex flex-col items-center gap-1 flex-1 py-2 cursor-pointer transition-all duration-200 active:opacity-50"
+          style={{ minHeight: 44, opacity: 0.38 }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.38"; }}
+        >
+          <LogOut size={21} strokeWidth={1.5} style={{ color: "rgba(255,255,255,0.6)", transition: "all 0.2s ease" }} />
+          <span className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.38)", fontWeight: 400 }}>
+            Salir
+          </span>
+        </button>
       </div>
       <style>{`@keyframes dotPop { from{transform:translateX(-50%) scale(0)} to{transform:translateX(-50%) scale(1)} }`}</style>
     </div>
@@ -1666,7 +1685,11 @@ export default function PortalPage() {
       </div>
 
       {/* Bottom nav */}
-      <BottomNav active={activeTab} onChange={switchTab} />
+      <BottomNav
+        active={activeTab}
+        onChange={switchTab}
+        onSignOut={() => signOut({ callbackUrl: "/login" })}
+      />
 
       {/* Sheets */}
       <BottomSheet open={!!activeMeal} onClose={() => setActiveMeal(null)}>

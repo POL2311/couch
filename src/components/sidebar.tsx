@@ -179,7 +179,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-5 items-center backdrop-blur-xl"
+      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 items-center backdrop-blur-xl"
       style={{
         height: "72px",
         background: "var(--bg-sidebar)",
@@ -202,6 +202,7 @@ export function MobileBottomNav() {
             aria-label={item.label}
             className="flex flex-col items-center justify-center gap-1 py-2 px-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
             style={{
+              minHeight: 44,
               color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
               transition: "color var(--transition-fast)",
             }}
@@ -216,6 +217,26 @@ export function MobileBottomNav() {
           </Link>
         );
       })}
+
+      {/* Logout tab */}
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        aria-label="Cerrar sesión"
+        className="flex flex-col items-center justify-center gap-1 py-2 px-1 w-full outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)] active:opacity-60"
+        style={{
+          minHeight: 44,
+          color: "var(--text-sidebar-secondary)",
+          transition: "color var(--transition-fast)",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-sidebar-primary)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-sidebar-secondary)"; }}
+      >
+        <LogOut strokeWidth={1.5} className="w-6 h-6 shrink-0 opacity-70" />
+        <span className="text-[10px] tracking-tight">Salir</span>
+      </button>
     </nav>
   );
 }
