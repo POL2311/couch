@@ -9,10 +9,9 @@ import {
 } from "./mock-data";
 
 /* ═══════════════════════════════════════════
-   Capa de datos — Prisma + SQLite
-   Mantiene las firmas previas (JSON/db.ts) para
-   compatibilidad con las API routes existentes y
-   añade operaciones para las nuevas funcionalidades.
+   Capa de datos — Prisma + PostgreSQL (Neon)
+   Mantiene las firmas previas para compatibilidad
+   con las API routes existentes.
    ═══════════════════════════════════════════ */
 
 export interface ScheduledChange {

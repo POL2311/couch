@@ -1,4 +1,4 @@
-// MyCoach — Esquema relacional (Prisma + SQLite)
+// MyCoach — Esquema relacional (Prisma + PostgreSQL)
 // Diseñado a la medida del SaaS: usuarios con 3 roles, coaches, alumnos,
 // historial de progreso, plantillas dinámicas y cambios programados.
 
@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL") // Descomentar si usas Vercel Postgres / Neon con pooler
 }
 
 enum Role {
