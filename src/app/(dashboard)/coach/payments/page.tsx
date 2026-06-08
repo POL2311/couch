@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Plug, ChevronRight, X, CreditCard, Search, CheckCircle2 } from "lucide-react";
+import { Plug, ChevronRight, X, CreditCard, Search, CheckCircle2, Loader2 } from "lucide-react";
 import { Skeleton, RowSkeleton } from "@/components/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { DetailOverlay } from "@/components/detail-overlay";
@@ -37,12 +37,14 @@ function PaymentDetailBody({
   dueDate,
   onClose,
   onRemind,
+  onStripeClick,
 }: {
   student: Student;
   status: { label: string; color: string; bg: string };
   dueDate: string;
   onClose: () => void;
   onRemind: () => void;
+  onStripeClick: () => void;
 }) {
   const needsAction = student.paymentStatus === "grace_period";
   return (
@@ -97,7 +99,7 @@ function PaymentDetailBody({
           </button>
         )}
         <button
-          onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
+          onClick={onStripeClick}
           className="w-full py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
           style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
         >
@@ -130,16 +132,68 @@ function Facepile({ items }: { items: Student[] }) {
 
 const STRIPE_HINT = "Las mensualidades se cobran automáticamente los días de corte del cliente.";
 
+type ConnectData = { stripeConnectId: string | null; stripeOnboardingComplete: boolean };
+
 /* Botón compacto (atajo, no acción primaria) */
-function StripeButton() {
+function StripeButton({
+  label,
+  loading,
+  onClick,
+}: {
+  label: string;
+  loading?: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
-      onClick={() => alert("Redirigiendo a Panel Stripe Express de MyCoach...")}
-      className="px-3 py-1.5 rounded-lg border text-[11px] font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)]"
+      onClick={onClick}
+      disabled={loading}
+      className="px-3 py-1.5 rounded-lg border text-[11px] font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer hover:bg-[color:var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
       style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
     >
-      Ver Dashboard de Stripe
+      {loading && <Loader2 size={10} strokeWidth={2} className="animate-spin shrink-0" />}
+      {label}
     </button>
+  );
+}
+
+function connectBtnLabel(data: ConnectData | null): string {
+  if (!data) return "Cargando...";
+  if (data.stripeOnboardingComplete) return "Ver Dashboard de Stripe";
+  if (data.stripeConnectId) return "Continuar registro";
+  return "Conectar Stripe";
+}
+
+function ConnectStatusLabel({ data }: { data: ConnectData | null }) {
+  if (!data) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse" style={{ background: "var(--text-tertiary)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-tertiary)" }}>Verificando...</span>
+      </div>
+    );
+  }
+  if (data.stripeOnboardingComplete) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Conectado con éxito</span>
+      </div>
+    );
+  }
+  if (data.stripeConnectId) {
+    return (
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-warning)" }} />
+        <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Onboarding pendiente</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--text-tertiary)" }} />
+      <span className="text-[13px] truncate" style={{ color: "var(--text-secondary)" }}>Sin conectar</span>
+    </div>
   );
 }
 
@@ -188,6 +242,36 @@ export default function PaymentsPage() {
     };
     fetchStudents();
   }, []);
+
+  // ── Stripe Connect ───────────────────────────────────────────────────
+  const [connectData, setConnectData] = useState<ConnectData | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  const handleConnectClick = useCallback(async () => {
+    setConnectLoading(true);
+    try {
+      const res = await fetch("/api/coach/connect", { method: "POST" });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      console.error("[Connect] Error:", err);
+    } finally {
+      setConnectLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const connectParam = sp.get("connect");
+    if (connectParam) window.history.replaceState(null, "", window.location.pathname);
+
+    fetch("/api/coach/connect")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setConnectData(data); })
+      .catch(() => setConnectData({ stripeConnectId: null, stripeOnboardingComplete: false }));
+
+    if (connectParam === "refresh") handleConnectClick();
+  }, [handleConnectClick]);
 
   // Compute dynamic payment states
   const metrics = useMemo(() => {
@@ -551,15 +635,18 @@ export default function PaymentsPage() {
                 <h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>
                   Pasarela de pagos
                 </h3>
-                <InfoHint text={`Stripe · ${STRIPE_HINT}`} />
+                <InfoHint text={`Stripe Connect · ${STRIPE_HINT}`} />
               </div>
               <div className="mt-4 flex items-center gap-3">
                 <Plug size={20} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
-                  <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>Conectado con éxito</span>
+                <ConnectStatusLabel data={connectData} />
+                <div className="ml-auto">
+                  <StripeButton
+                    label={connectBtnLabel(connectData)}
+                    loading={connectLoading}
+                    onClick={handleConnectClick}
+                  />
                 </div>
-                <div className="ml-auto"><StripeButton /></div>
               </div>
             </div>
 
@@ -580,9 +667,14 @@ export default function PaymentsPage() {
               </h3>
               {/* Grupo 1: estado Stripe */}
               <div className="px-5 py-4 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-success)" }} />
-                <span className="text-[13px] truncate min-w-0" style={{ color: "var(--text-primary)" }}>Stripe conectado</span>
-                <div className="ml-auto"><StripeButton /></div>
+                <ConnectStatusLabel data={connectData} />
+                <div className="ml-auto">
+                  <StripeButton
+                    label={connectBtnLabel(connectData)}
+                    loading={connectLoading}
+                    onClick={handleConnectClick}
+                  />
+                </div>
               </div>
               {/* Grupo 2: plan + tarjeta */}
               <div className="px-5 py-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
@@ -609,6 +701,7 @@ export default function PaymentsPage() {
               dueDate={dueDate}
               onClose={close}
               onRemind={() => { remind(selected); close(); }}
+              onStripeClick={handleConnectClick}
             />
           </DetailOverlay>
         );

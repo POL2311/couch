@@ -10,6 +10,7 @@ export type StatusTone = "success" | "warning" | "danger";
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, { label: string; short: string; tone: StatusTone }> = {
   active: { label: "Al día", short: "Al día", tone: "success" },
   grace_period: { label: "Pago pendiente", short: "Pendiente", tone: "warning" },
+  past_due: { label: "Pago vencido", short: "Vencido", tone: "warning" },
   inactive: { label: "Suspendido", short: "Suspendido", tone: "danger" },
 };
 

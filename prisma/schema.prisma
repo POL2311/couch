@@ -39,12 +39,14 @@ model User {
 // Coach (multi-tenant): dueño de alumnos y plantillas
 // ─────────────────────────────────────────────
 model Coach {
-  id        String     @id @default(cuid())
-  userId    String     @unique
-  user      User       @relation("CoachUser", fields: [userId], references: [id], onDelete: Cascade)
-  students  Student[]
-  templates Template[]
-  createdAt DateTime   @default(now())
+  id                       String     @id @default(cuid())
+  userId                   String     @unique
+  user                     User       @relation("CoachUser", fields: [userId], references: [id], onDelete: Cascade)
+  students                 Student[]
+  templates                Template[]
+  stripeConnectId          String?
+  stripeOnboardingComplete Boolean    @default(false)
+  createdAt                DateTime   @default(now())
 }
 
 // ─────────────────────────────────────────────
@@ -61,8 +63,10 @@ model Student {
   lastWeighIn    String
   stage          String
   stageNumber    Int
-  paymentStatus  String
-  joinedDate     String
+  paymentStatus        String  @default("inactive")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  joinedDate           String
   streak         Int      @default(0)
   completionRate Int      @default(0)
 

@@ -14,6 +14,12 @@ export async function GET() {
   const student = await getStudentById(user.studentId);
   const detail = await getStudentDetail(user.studentId);
   if (!student || !detail) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  // Paywall: bloquear acceso si la suscripción está inactiva
+  if (student.paymentStatus === "inactive" || student.paymentStatus === "past_due") {
+    return NextResponse.json({ error: "ACCOUNT_BLOCKED" }, { status: 403 });
+  }
+
   return NextResponse.json({ student, detail });
 }
 

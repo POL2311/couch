@@ -10,7 +10,7 @@ import BulkActionBar from "@/components/bulk-action-bar";
 import AddStudentModal from "@/components/add-student-modal";
 import ChangeStageModal from "@/components/change-stage-modal";
 import { RowSkeleton } from "@/components/skeleton";
-import { type Student, type Stage } from "@/lib/mock-data";
+import { type Student, type Stage, type PaymentStatus } from "@/lib/mock-data";
 
 /* ═══════════════════════════════════════════
    Coach Students Dashboard Page
@@ -154,6 +154,26 @@ export default function StudentsPage() {
 
   const [isChangeStageModalOpen, setIsChangeStageModalOpen] = useState(false);
 
+  const handleStatusToggle = useCallback(async (id: string, currentStatus: PaymentStatus) => {
+    const newStatus = ["active", "grace_period"].includes(currentStatus) ? "inactive" : "active";
+    try {
+      const res = await fetch("/api/coach/students/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: id, status: newStatus }),
+      });
+      if (res.ok) {
+        setStudents((prev) =>
+          prev.map((s) => s.id === id ? { ...s, paymentStatus: newStatus as PaymentStatus } : s)
+        );
+      } else {
+        console.error("[Coach] Error cambiando estado del alumno");
+      }
+    } catch (err) {
+      console.error("[Coach] Error de red al cambiar estado:", err);
+    }
+  }, []);
+
   const handleScheduleStageChange = useCallback(() => {
     if (selectedIds.size === 0) return;
     setIsChangeStageModalOpen(true);
@@ -269,6 +289,7 @@ export default function StudentsPage() {
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
             onToggleAll={handleToggleAll}
+            onStatusToggle={handleStatusToggle}
           />
         )}
 

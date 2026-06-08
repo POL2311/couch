@@ -5108,7 +5108,12 @@
       "notes": "Alumno registrado correctamente. Asigne su dieta y rutina.",
       "height": 66,
       "bodyFat": 54,
-      "photoName": "/uploads/student_1780701199904.png"
+      "photoName": "/uploads/student_1780701199904.png",
+      "scheduledChange": {
+        "executionDate": "2026-07-02",
+        "stage": "Volumen",
+        "stageNumber": 1
+      }
     }
   }
 }

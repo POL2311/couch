@@ -2,7 +2,7 @@
    Mock Data — Students for Coach Dashboard
    ═══════════════════════════════════════════ */
 
-export type PaymentStatus = "active" | "inactive" | "grace_period";
+export type PaymentStatus = "active" | "inactive" | "grace_period" | "past_due";
 export type Stage = "Volumen" | "Definición" | "Mantenimiento" | "Recomposición";
 
 export interface Student {

@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flame, SearchX } from "lucide-react";
+import { Flame, SearchX, Shield, ShieldOff, Utensils, User as UserIcon, Loader2 } from "lucide-react";
 import { type Student, type PaymentStatus } from "@/lib/mock-data";
 import { PAYMENT_STATUS_LABELS, statusTone } from "@/lib/status-labels";
 import { EmptyState } from "@/components/empty-state";
@@ -187,17 +188,57 @@ interface StudentTableProps {
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
   onToggleAll: () => void;
+  onStatusToggle: (id: string, currentStatus: PaymentStatus) => Promise<void>;
 }
+
+type OpenMenu = {
+  student: Student;
+  top: number;
+  right: number;
+};
 
 export default function StudentTable({
   students,
   selectedIds,
   onToggleSelect,
   onToggleAll,
+  onStatusToggle,
 }: StudentTableProps) {
   const router = useRouter();
   const allSelected = students.length > 0 && students.every((s) => selectedIds.has(s.id));
   const someSelected = students.some((s) => selectedIds.has(s.id)) && !allSelected;
+
+  const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al hacer mousedown fuera del dropdown
+  useEffect(() => {
+    if (!openMenu) return;
+    function close(e: MouseEvent) {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setOpenMenu(null);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [openMenu]);
+
+  function handleOpenMenu(e: React.MouseEvent, student: Student) {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setOpenMenu({
+      student,
+      top: rect.bottom + 6,
+      right: window.innerWidth - rect.right,
+    });
+  }
+
+  async function handleToggleStatus(student: Student) {
+    setStatusLoading(true);
+    setOpenMenu(null);
+    await onStatusToggle(student.id, student.paymentStatus);
+    setStatusLoading(false);
+  }
 
   return (
     <>
@@ -344,26 +385,19 @@ export default function StudentTable({
                   </td>
 
                   {/* Actions */}
-                  <td className="pl-4 pr-6" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="pl-4 pr-6" onClick={(e) => e.stopPropagation()} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <button
                       id={`actions-${student.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-2 rounded-md opacity-0 group-hover:opacity-100 cursor-pointer"
+                      onMouseDown={(e) => handleOpenMenu(e, student)}
+                      className="w-[34px] h-[34px] flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 cursor-pointer"
                       style={{
-                        color: "var(--text-tertiary)",
+                        color: openMenu?.student.id === student.id ? "var(--text-secondary)" : "var(--text-tertiary)",
+                        background: openMenu?.student.id === student.id ? "var(--bg-active)" : "transparent",
                         transition: "all var(--transition-fast)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--bg-active)";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--text-tertiary)";
                       }}
                       aria-label={`Acciones para ${student.name}`}
                     >
-                      <IconMore />
+                      {statusLoading && openMenu === null ? <Loader2 size={14} className="animate-spin" /> : <IconMore />}
                     </button>
                   </td>
                 </tr>
@@ -394,6 +428,83 @@ export default function StudentTable({
           hint="Ajusta los filtros para ver más alumnos."
           className="py-16 animate-fade-in"
         />
+      )}
+
+      {/* ═══ ACTION DROPDOWN (fixed overlay, evita overflow-clip de la tabla) ═══ */}
+      {openMenu && (
+        <div
+          ref={dropdownRef}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: openMenu.top,
+            right: openMenu.right,
+            zIndex: 9999,
+            minWidth: 210,
+            background: "rgba(16,16,18,0.98)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 14,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            overflow: "hidden",
+            animation: "dropIn 0.14s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          <style>{`
+            @keyframes dropIn {
+              from { opacity:0; transform:translateY(-6px) scale(0.97); }
+              to   { opacity:1; transform:translateY(0)    scale(1); }
+            }
+          `}</style>
+
+          {/* Ver ficha */}
+          <button
+            onClick={() => { router.push(`/coach/students/${openMenu.student.id}`); setOpenMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            style={{ height: 46, color: "rgba(255,255,255,0.88)", fontSize: 13 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <UserIcon size={14} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />
+            Ver ficha completa
+          </button>
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.055)", margin: "0 12px" }} />
+
+          {/* Toggle estado */}
+          {(() => {
+            const isActive = ["active", "grace_period"].includes(openMenu.student.paymentStatus);
+            return (
+              <button
+                onClick={() => handleToggleStatus(openMenu.student)}
+                className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+                style={{ height: 46, color: isActive ? "#f87171" : "#34d399", fontSize: 13 }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isActive ? "rgba(248,113,113,0.06)" : "rgba(52,211,153,0.06)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {isActive
+                  ? <ShieldOff size={14} style={{ flexShrink: 0 }} />
+                  : <Shield size={14} style={{ flexShrink: 0 }} />}
+                {isActive ? "Suspender cuenta" : "Reactivar cuenta"}
+              </button>
+            );
+          })()}
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.055)", margin: "0 12px" }} />
+
+          {/* Editar plan nutricional */}
+          <button
+            onClick={() => { router.push(`/coach/students/${openMenu.student.id}`); setOpenMenu(null); }}
+            className="w-full flex items-center gap-3 px-4 cursor-pointer transition-colors"
+            style={{ height: 46, color: "rgba(255,255,255,0.5)", fontSize: 13 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <Utensils size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+            Editar plan nutricional
+          </button>
+        </div>
       )}
     </>
   );
