@@ -43,3 +43,8 @@ next-env.d.ts
 # prisma — base de datos local SQLite
 /prisma/*.db
 /prisma/*.db-journal
+
+# Subidas en runtime (fotos de progreso)
+/public/uploads
+# IDE
+.idea/

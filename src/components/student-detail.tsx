@@ -1,990 +1,419 @@
 "use client";
 
-import Link from "next/link";
-import { Flame, Calendar, Ruler, ArrowLeft, Droplet, UserX, Plus, Trash2, Loader2, Check, Camera, Download, X } from "lucide-react";
-import { Skeleton } from "@/components/skeleton";
-import { EmptyState } from "@/components/empty-state";
-import { useState, useEffect, useCallback } from "react";
+/* ═══════════════════════════════════════════
+   Ficha del alumno (WEB) — paridad con la app:
+   header fijo + 4 pestañas (Resumen, Entrenamiento,
+   Nutrición, Progreso) con los mismos cálculos.
+   ═══════════════════════════════════════════ */
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
-  type Student,
-  type StudentDetail,
-  type RoutineDay,
-  type PaymentStatus,
-} from "@/lib/mock-data";
-import { PAYMENT_STATUS_LABELS, statusTone } from "@/lib/status-labels";
-import ChangeStageModal from "@/components/change-stage-modal";
-import TemplateEditorModal from "@/components/template-editor";
-import { downloadBadge } from "@/lib/badge";
+  ChevronLeft, ChevronRight, Settings2, LayoutGrid, Dumbbell, Utensils, TrendingUp,
+  AlertTriangle, CheckCircle2, ChevronDown, X, Loader2, CalendarDays,
+} from "lucide-react";
+import * as I from "@/lib/insights";
 
-/* ═══════════════════════════════════════════
-   Icons
-   ═══════════════════════════════════════════ */
-
-function IconBack() {
-  return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-    </svg>
-  );
-}
-
-function IconEdit() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-    </svg>
-  );
-}
-
-function IconDumbbell({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m6.5 6.5 11 11" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-1-1" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m3 3 1 1" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m18 22 4-4a6 6 0 1 0-8-8l-4 4a6 6 0 1 0-8-8L2 10a6 6 0 1 0 8 8l4-4a6 6 0 1 0 8 8z" />
-    </svg>
-  );
-}
-
-function IconUtensils({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7 2v4" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15V2v0a5 5 0 0 0-5 5v8c0 1.1.9 2 2 2h3Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v7" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18 17v5" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 11v11" />
-    </svg>
-  );
-}
-
-function IconTrendingUp({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points="16 7 22 7 22 13" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconUsers({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-    </svg>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Helpers
-   ═══════════════════════════════════════════ */
-
-function getStageColor(stage: string) {
-  const map: Record<string, { color: string; bg: string }> = {
-    Volumen: { color: "var(--stage-volumen)", bg: "var(--stage-volumen-subtle)" },
-    Definición: { color: "var(--stage-definicion)", bg: "var(--stage-definicion-subtle)" },
-    Mantenimiento: { color: "var(--stage-mantenimiento)", bg: "var(--stage-mantenimiento-subtle)" },
-    Recomposición: { color: "var(--stage-recomposicion)", bg: "var(--stage-recomposicion-subtle)" },
-  };
-  return map[stage] || { color: "var(--text-secondary)", bg: "var(--bg-hover)" };
-}
-
-function getPaymentInfo(status: PaymentStatus) {
-  const meta = PAYMENT_STATUS_LABELS[status];
-  return { label: meta.label, color: statusTone(status).color };
-}
-
-function formatDateLong(dateStr: string) {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-async function putDetail(studentId: string, detailUpdates: any) {
-  const res = await fetch(`/api/students/${studentId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ detailUpdates }),
-  });
-  if (!res.ok) throw new Error("Error al guardar");
-}
-
-/* ═══════════════════════════════════════════
-   Weight Chart (CSS-only sparkline)
-   ═══════════════════════════════════════════ */
-
-function WeightChart({ history }: { history: { date: string; weight: number }[] }) {
-  if (history.length < 1) return null;
-  if (history.length === 1) {
-    return (
-      <div className="animate-fade-in text-center py-6">
-        <p className="text-3xl font-light tabular-nums" style={{ color: "var(--text-primary)" }}>
-          {history[0].weight} <span className="text-[13px] font-normal text-[var(--text-tertiary)]">kg</span>
-        </p>
-        <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-          Peso inicial registrado el {formatDateLong(history[0].date)}
-        </p>
-      </div>
-    );
-  }
-
-  const weights = history.map((h) => h.weight);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = max - min || 1;
-  const chartH = 120;
-  const chartW = 100;
-
-  const points = history.map((h, i) => {
-    const x = (i / (history.length - 1)) * chartW;
-    const y = chartH - ((h.weight - min) / range) * (chartH - 16);
-    return `${x},${y}`;
-  }).join(" ");
-
-  const firstWeight = history[0];
-  const lastWeight = history[history.length - 1];
-  const diff = lastWeight.weight - firstWeight.weight;
-
-  return (
-    <div className="animate-fade-in">
-      <div className="flex items-end gap-3 mb-5">
-        <span className="text-3xl font-light tabular-nums" style={{ color: "var(--text-primary)" }}>
-          {lastWeight.weight}
-        </span>
-        <span className="text-[13px] mb-1" style={{ color: "var(--text-tertiary)" }}>kg</span>
-        <span
-          className="text-[13px] mb-1 tabular-nums ml-1"
-          style={{ color: diff <= 0 ? "var(--color-success)" : "var(--color-info)" }}
-        >
-          {diff > 0 ? "+" : ""}{diff.toFixed(1)} kg
-        </span>
-        <span className="text-[11px] mb-1" style={{ color: "var(--text-tertiary)" }}>
-          desde {formatDateLong(firstWeight.date).split(" de ").slice(1).join(" de ")}
-        </span>
-      </div>
-
-      <div className="relative" style={{ height: `${chartH}px` }}>
-        <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" className="w-full h-full" style={{ overflow: "visible" }}>
-          <polygon points={`0,${chartH} ${points} ${chartW},${chartH}`} fill="url(#weightGradient)" />
-          <polyline points={points} fill="none" stroke="var(--text-secondary)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <circle cx={chartW} cy={chartH - ((lastWeight.weight - min) / range) * (chartH - 16)} r="2.5" fill="var(--text-primary)" vectorEffect="non-scaling-stroke" />
-          <defs>
-            <linearGradient id="weightGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.06)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-
-      <div className="flex justify-between mt-2">
-        <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-          {new Date(firstWeight.date + "T00:00:00").toLocaleDateString("es-MX", { month: "short" })}
-        </span>
-        <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-          {new Date(lastWeight.date + "T00:00:00").toLocaleDateString("es-MX", { month: "short" })}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Section Wrapper + EditButton
-   ═══════════════════════════════════════════ */
-
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-        <h3 className="text-[13px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--text-secondary)" }}>{title}</h3>
-        {action}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function EditButton({ label, onClick, icon }: { label: string; onClick?: () => void; icon?: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] cursor-pointer"
-      style={{ color: "var(--text-tertiary)", border: "1px solid var(--border-default)", transition: "all var(--transition-fast)" }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-default)"; e.currentTarget.style.color = "var(--text-tertiary)"; }}
-    >
-      {icon ?? <IconEdit />}
-      {label}
-    </button>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Plan picker (dieta / rutina): reemplazar con plantilla
-   o editar campos manualmente
-   ═══════════════════════════════════════════ */
-
-function PlanPickerModal({
-  type, current, studentId, onClose, onSuccess,
-}: {
-  type: "diet" | "routine";
-  current: any;
-  studentId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [selected, setSelected] = useState("");
-  const [applying, setApplying] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/templates?type=${type}`).then((r) => r.json()).then(setTemplates).catch(() => {});
-  }, [type]);
-
-  const applyTemplate = async () => {
-    const tpl = templates.find((t) => t.id === selected);
-    if (!tpl) return;
-    setApplying(true);
-    try {
-      const { id, type: _t, ...data } = tpl;
-      await putDetail(studentId, type === "diet" ? { diet: data } : { routine: data });
-      onSuccess();
-      onClose();
-    } finally {
-      setApplying(false);
-    }
-  };
-
-  const saveManual = async (data: any) => {
-    await putDetail(studentId, type === "diet" ? { diet: data } : { routine: data });
-    onSuccess();
-    onClose();
-  };
-
-  if (editorOpen) {
-    return (
-      <TemplateEditorModal
-        type={type}
-        initial={current}
-        title={type === "diet" ? "Editar dieta del alumno" : "Editar rutina del alumno"}
-        saveLabel="Guardar cambios"
-        onClose={() => setEditorOpen(false)}
-        onSave={saveManual}
-      />
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-[65] flex items-center justify-center p-4">
-      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "var(--scrim)" }} onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl z-10 animate-fade-in" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-strong)" }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-          <h3 className="text-[15px] font-medium" style={{ color: "var(--text-primary)" }}>
-            {type === "diet" ? "Cambiar dieta" : "Cambiar rutina"}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg cursor-pointer" style={{ color: "var(--text-tertiary)" }} aria-label="Cerrar"><X size={18} /></button>
-        </div>
-
-        <div className="px-6 py-5 space-y-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] uppercase tracking-wider font-medium" style={{ color: "var(--text-secondary)" }}>
-              Reemplazar con una plantilla
-            </label>
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              className="px-3.5 py-2.5 rounded-lg text-[13px] outline-none border focus:border-[var(--border-strong)] cursor-pointer"
-              style={{ background: "var(--bg-surface-raised)", borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
-            >
-              <option value="">Selecciona una plantilla…</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <button
-              onClick={applyTemplate}
-              disabled={!selected || applying}
-              className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-85 disabled:opacity-50"
-              style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-            >
-              {applying ? <Loader2 size={15} className="animate-spin" /> : "Aplicar plantilla"}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
-            <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>o</span>
-            <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
-          </div>
-
-          <button
-            onClick={() => setEditorOpen(true)}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-medium cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)]"
-            style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}
-          >
-            <IconEdit /> Editar campos manualmente
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Diet Section
-   ═══════════════════════════════════════════ */
-
-function DietSection({ detail, studentId, onRefresh }: { detail: StudentDetail; studentId: string; onRefresh: () => void }) {
-  const { diet } = detail;
-  const [open, setOpen] = useState(false);
-  const empty = !diet || diet.totalCalories === 0 || diet.meals.length === 0;
-
-  return (
-    <>
-      <Section title="Dieta asignada" action={<EditButton label={empty ? "Asignar" : "Cambiar"} onClick={() => setOpen(true)} />}>
-        {empty ? (
-          <div className="px-5 py-8 text-center">
-            <svg className="w-8 h-8 mx-auto mb-2 text-[color:var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-            </svg>
-            <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>Sin dieta asignada</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>Asigna macros y comidas para comenzar.</p>
-          </div>
-        ) : (
-          <>
-            <div className="px-5 pt-4 pb-4">
-              <p className="text-[14px] font-medium mb-3" style={{ color: "var(--text-primary)" }}>{diet.name}</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { v: diet.totalCalories, l: "Calorías" },
-                  { v: `${diet.macros.protein}g`, l: "Proteína" },
-                  { v: `${diet.macros.carbs}g`, l: "Carbos" },
-                  { v: `${diet.macros.fat}g`, l: "Grasas" },
-                ].map((m, i) => (
-                  <div key={i} className="rounded-xl p-2.5 text-center" style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}>
-                    <span className="block text-[14px] font-medium tabular-nums" style={{ color: "var(--text-primary)" }}>{m.v}</span>
-                    <span className="block text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{m.l}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              {diet.meals.map((meal, i) => (
-                <div key={i} className="px-5 py-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[12px] tabular-nums w-12" style={{ color: "var(--text-tertiary)" }}>{meal.time}</span>
-                      <span className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>{meal.name}</span>
-                    </div>
-                    <span className="text-[11px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>{meal.calories} kcal</span>
-                  </div>
-                  <div className="mt-2 space-y-1" style={{ marginLeft: "60px" }}>
-                    {meal.items.map((item, j) => (
-                      <p key={j} className="text-[12px]" style={{ color: "var(--text-secondary)" }}>{item}</p>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </Section>
-      {open && <PlanPickerModal type="diet" current={diet} studentId={studentId} onClose={() => setOpen(false)} onSuccess={onRefresh} />}
-    </>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Routine Section
-   ═══════════════════════════════════════════ */
-
-function RoutineSection({ detail, studentId, onRefresh }: { detail: StudentDetail; studentId: string; onRefresh: () => void }) {
-  const { routine } = detail;
-  const [activeDay, setActiveDay] = useState(0);
-  const [open, setOpen] = useState(false);
-  const empty = !routine || routine.daysPerWeek === 0 || routine.days.length === 0;
-
-  const currentDay: RoutineDay | undefined = routine.days[activeDay];
-
-  return (
-    <>
-      <Section title="Rutina asignada" action={<EditButton label={empty ? "Asignar" : "Cambiar"} onClick={() => setOpen(true)} />}>
-        {empty ? (
-          <div className="px-5 py-8 text-center">
-            <svg className="w-8 h-8 mx-auto mb-2 text-[color:var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
-            </svg>
-            <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>Sin rutina asignada</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>Crea un plan de entrenamiento semanal.</p>
-          </div>
-        ) : (
-          <>
-            <div className="px-5 pt-4 pb-1">
-              <p className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>{routine.name}</p>
-              <p className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)" }}>{routine.daysPerWeek} días / semana</p>
-            </div>
-            <div className="flex gap-1 px-5 py-3 overflow-x-auto no-scrollbar">
-              {routine.days.map((day, i) => {
-                const isActive = activeDay === i;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setActiveDay(i)}
-                    className="px-3.5 py-1.5 rounded-lg text-[12px] whitespace-nowrap cursor-pointer"
-                    style={{
-                      background: isActive ? "var(--accent-primary)" : "var(--bg-surface-raised)",
-                      color: isActive ? "var(--text-inverse)" : "var(--text-secondary)",
-                      border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--border-subtle)",
-                      fontWeight: isActive ? 600 : 500,
-                      transition: "all var(--transition-fast)",
-                    }}
-                  >
-                    {day.day.slice(0, 3)}
-                  </button>
-                );
-              })}
-            </div>
-            {currentDay && (
-              <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                <div className="px-5 py-3">
-                  <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>{currentDay.label}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{currentDay.muscleGroup}</p>
-                </div>
-                {currentDay.exercises.map((ex, i) => (
-                  <div key={i} className="flex items-center px-5 py-3.5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] mr-3.5" style={{ background: "var(--bg-surface-overlay)", color: "var(--text-tertiary)", border: "1px solid var(--border-subtle)" }}>
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px]" style={{ color: "var(--text-primary)" }}>{ex.name}</p>
-                    </div>
-                    <div className="flex items-center gap-4 ml-4">
-                      <span className="text-[12px] tabular-nums" style={{ color: "var(--text-secondary)" }}>{ex.sets}×{ex.reps}</span>
-                      {ex.weight && <span className="text-[11px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>{ex.weight}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </Section>
-      {open && <PlanPickerModal type="routine" current={routine} studentId={studentId} onClose={() => setOpen(false)} onSuccess={onRefresh} />}
-    </>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Measurements Section (editable)
-   ═══════════════════════════════════════════ */
-
-const MEASURE_FIELDS: { label: string; key: string }[] = [
-  { label: "Pecho", key: "chest" },
-  { label: "Cintura", key: "waist" },
-  { label: "Cadera", key: "hips" },
-  { label: "Brazo Izq", key: "armL" },
-  { label: "Brazo Der", key: "armR" },
-  { label: "Muslo Izq", key: "thighL" },
-  { label: "Muslo Der", key: "thighR" },
+const C = {
+  surface: "var(--bg-surface)", raised: "var(--bg-surface-raised)", border: "var(--border-subtle)",
+  primary: "var(--text-primary)", secondary: "var(--text-secondary)", tertiary: "var(--text-tertiary)",
+  success: "var(--color-success)", warning: "var(--color-warning)", danger: "var(--color-danger)", info: "var(--color-info)",
+};
+type TabId = "resumen" | "entrenamiento" | "nutricion" | "progreso";
+const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: "resumen", label: "Resumen", icon: LayoutGrid },
+  { id: "entrenamiento", label: "Entreno", icon: Dumbbell },
+  { id: "nutricion", label: "Nutrición", icon: Utensils },
+  { id: "progreso", label: "Progreso", icon: TrendingUp },
 ];
-
-function MeasurementsSection({ detail, studentId, onRefresh }: { detail: any; studentId: string; onRefresh: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const measurements = detail.measurements || [];
-  const latest = measurements[measurements.length - 1];
-  const prev = measurements.length > 1 ? measurements[measurements.length - 2] : null;
-
-  if (!latest && !editing) {
-    return (
-      <Section title="Medidas corporales" action={<EditButton label="Registrar" onClick={() => setEditing(true)} />}>
-        <div className="px-5 py-8 text-center">
-          <Ruler size={28} strokeWidth={1.25} className="mx-auto mb-2" style={{ color: "var(--text-tertiary)" }} />
-          <p className="text-[12px] font-medium" style={{ color: "var(--text-secondary)" }}>Sin medidas registradas</p>
-        </div>
-      </Section>
-    );
-  }
-
-  if (editing) {
-    return (
-      <MeasurementsEditor
-        studentId={studentId}
-        measurements={measurements}
-        latest={latest}
-        onClose={() => setEditing(false)}
-        onSuccess={() => { setEditing(false); onRefresh(); }}
-      />
-    );
-  }
-
-  return (
-    <Section title="Medidas corporales" action={<EditButton label="Actualizar" onClick={() => setEditing(true)} />}>
-      <div className="px-5 py-2">
-        <p className="text-[11px] mb-3" style={{ color: "var(--text-tertiary)" }}>Última medición: {formatDateLong(latest.date)}</p>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ background: "var(--border-subtle)" }}>
-        {MEASURE_FIELDS.map((f) => {
-          const val = latest[f.key] as number;
-          const prevVal = prev ? (prev[f.key] as number) : null;
-          const diff = prevVal !== null && prevVal > 0 ? val - prevVal : null;
-          return (
-            <div key={f.key} className="flex flex-col items-center py-4" style={{ background: "var(--bg-surface)" }}>
-              <span className="text-[11px] uppercase tracking-[0.06em]" style={{ color: "var(--text-tertiary)" }}>{f.label}</span>
-              <span className="text-[18px] font-light tabular-nums mt-1" style={{ color: "var(--text-primary)" }}>{val > 0 ? `${val}` : "—"}</span>
-              {diff !== null && diff !== 0 && (
-                <span className="text-[10px] tabular-nums mt-0.5" style={{ color: f.key === "waist" ? (diff < 0 ? "var(--color-success)" : "var(--color-danger)") : "var(--text-tertiary)" }}>
-                  {diff > 0 ? "+" : ""}{diff.toFixed(1)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-        <div style={{ background: "var(--bg-surface)" }} />
-      </div>
-    </Section>
-  );
-}
-
-function MeasurementsEditor({ studentId, measurements, latest, onClose, onSuccess }: any) {
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    for (const f of MEASURE_FIELDS) init[f.key] = latest && latest[f.key] ? String(latest[f.key]) : "";
-    return init;
-  });
-  const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const entry: any = { date: today };
-      for (const f of MEASURE_FIELDS) entry[f.key] = parseFloat(values[f.key]) || 0;
-      // Reemplaza si ya hay medición de hoy; si no, añade
-      const rest = measurements.filter((m: any) => m.date !== today);
-      const next = [...rest, entry].sort((a: any, b: any) => a.date.localeCompare(b.date));
-      await putDetail(studentId, { measurements: next });
-      onSuccess();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Section
-      title="Medidas corporales"
-      action={
-        <button onClick={onClose} className="text-[11px] px-3 py-1.5 rounded-xl cursor-pointer" style={{ color: "var(--text-tertiary)", border: "1px solid var(--border-default)" }}>
-          Cancelar
-        </button>
-      }
-    >
-      <div className="px-5 py-4">
-        <p className="text-[11px] mb-3" style={{ color: "var(--text-tertiary)" }}>Nuevos valores (cm) — se registran con la fecha de hoy.</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {MEASURE_FIELDS.map((f) => (
-            <div key={f.key} className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>{f.label}</label>
-              <input
-                type="number" step="0.1" inputMode="decimal"
-                value={values[f.key]}
-                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                className="px-3 py-2 rounded-lg text-[13px] outline-none border focus:border-[var(--border-strong)] tabular-nums"
-                style={{ background: "var(--bg-surface-raised)", borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
-              />
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={save}
-          disabled={saving}
-          className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-medium cursor-pointer transition-opacity hover:opacity-85 disabled:opacity-50"
-          style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}
-        >
-          {saving ? <Loader2 size={15} className="animate-spin" /> : <><Check size={15} /> Guardar medición</>}
-        </button>
-      </div>
-    </Section>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Notes Section (editable)
-   ═══════════════════════════════════════════ */
-
-function NotesSection({ notes, studentId, onRefresh }: { notes: string; studentId: string; onRefresh: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(notes);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
-
-  useEffect(() => { setValue(notes); }, [notes]);
-
-  const save = async () => {
-    setStatus("saving");
-    try {
-      await putDetail(studentId, { notes: value });
-      setStatus("saved");
-      onRefresh();
-      setTimeout(() => { setStatus("idle"); setEditing(false); }, 900);
-    } catch {
-      setStatus("idle");
-    }
-  };
-
-  return (
-    <Section
-      title="Notas del coach"
-      action={
-        editing ? (
-          <div className="flex items-center gap-2">
-            <button onClick={() => { setEditing(false); setValue(notes); }} className="text-[11px] px-3 py-1.5 rounded-xl cursor-pointer" style={{ color: "var(--text-tertiary)", border: "1px solid var(--border-default)" }}>
-              Cancelar
-            </button>
-            <button onClick={save} disabled={status === "saving"} className="inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-xl cursor-pointer disabled:opacity-50" style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}>
-              {status === "saving" ? <Loader2 size={13} className="animate-spin" /> : status === "saved" ? <><Check size={13} /> Guardado</> : "Guardar"}
-            </button>
-          </div>
-        ) : (
-          <EditButton label="Editar" onClick={() => setEditing(true)} />
-        )
-      }
-    >
-      <div className="px-5 py-4 min-h-[160px] flex items-start">
-        {editing ? (
-          <textarea
-            autoFocus
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Escribe notas sobre el progreso, ajustes o recordatorios del alumno…"
-            className="w-full min-h-[130px] resize-y text-[13px] leading-relaxed rounded-xl px-3 py-2.5 outline-none border focus:border-[var(--border-strong)]"
-            style={{ background: "var(--bg-surface-raised)", borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
-          />
-        ) : (
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            {notes || "Sin notas registradas para este alumno."}
-          </p>
-        )}
-      </div>
-    </Section>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Photos Section (registro fotográfico múltiple)
-   ═══════════════════════════════════════════ */
-
-function PhotosSection({ studentId, photos, studentName, onRefresh }: { studentId: string; photos: any[]; studentName: string; onRefresh: () => void }) {
-  const [uploading, setUploading] = useState(false);
-
-  const upload = async (file: File) => {
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("photo", file);
-      fd.append("label", new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }));
-      const res = await fetch(`/api/students/${studentId}/photos`, { method: "POST", body: fd });
-      if (res.ok) onRefresh();
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const remove = async (photoId: string) => {
-    if (!confirm("¿Eliminar este registro fotográfico?")) return;
-    const res = await fetch(`/api/students/${studentId}/photos?photoId=${photoId}`, { method: "DELETE" });
-    if (res.ok) onRefresh();
-  };
-
-  return (
-    <Section
-      title="Registro fotográfico"
-      action={
-        <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] cursor-pointer" style={{ color: "var(--text-tertiary)", border: "1px solid var(--border-default)" }}>
-          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-          {uploading ? "Subiendo…" : "Añadir foto"}
-          <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
-        </label>
-      }
-    >
-      <div className="px-5 py-5">
-        {photos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[120px] text-center">
-            <Camera size={28} strokeWidth={1.25} className="mb-2" style={{ color: "var(--text-tertiary)" }} />
-            <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Sin fotos de progreso. Sube la primera.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {photos.map((p) => (
-              <div key={p.id} className="relative group rounded-xl overflow-hidden" style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}>
-                <img src={p.url} alt={`Progreso de ${studentName}`} className="w-full h-32 object-cover" />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2" style={{ background: "var(--scrim)" }}>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-lg text-[10px] font-medium" style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}>Ver</a>
-                  <button onClick={() => remove(p.id)} className="p-1.5 rounded-lg cursor-pointer" style={{ background: "var(--bg-surface)", color: "var(--color-danger)" }} aria-label="Eliminar"><Trash2 size={13} /></button>
-                </div>
-                {p.label && <span className="absolute bottom-1 left-1 text-[9px] px-1.5 py-0.5 rounded-md" style={{ background: "var(--scrim)", color: "var(--text-secondary)" }}>{p.label}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Section>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   Main Detail View
-   ═══════════════════════════════════════════ */
+const DAY_SHORT = ["L", "M", "X", "J", "V", "S", "D"];
 
 export default function StudentDetailClient({ studentId }: { studentId: string }) {
-  const [student, setStudent] = useState<Student | null>(null);
-  const [detail, setDetail] = useState<(StudentDetail & { height?: number; bodyFat?: number; photoName?: string; scheduledChange?: any; photos?: any[] }) | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [student, setStudent] = useState<any>(null);
+  const [detail, setDetail] = useState<I.StudentDetail | null>(null);
+  const [logs, setLogs] = useState<I.ExerciseLog[]>([]);
+  const [carreras, setCarreras] = useState<I.Carrera[]>([]);
+  const [checks, setChecks] = useState<I.Check[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<TabId>("resumen");
+  const [manageOpen, setManageOpen] = useState(false);
 
-  const [isChangeStageModalOpen, setIsChangeStageModalOpen] = useState(false);
-
-  const fetchDetail = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/students/${studentId}`);
-      if (!response.ok) throw new Error("Alumno no encontrado");
-      const data = await response.json();
-      setStudent(data.student);
-      setDetail(data.detail);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Error al cargar los detalles del alumno");
-    } finally {
-      setIsLoading(false);
-    }
+  const load = useCallback(async () => {
+    const [full, lg, rn, ck] = await Promise.all([
+      fetch(`/api/students/${studentId}`).then((r) => r.json()),
+      fetch(`/api/students/${studentId}/logs`).then((r) => r.json()),
+      fetch(`/api/students/${studentId}/carreras`).then((r) => r.json()),
+      fetch(`/api/students/${studentId}/checks`).then((r) => r.json()),
+    ]);
+    setStudent(full?.student ?? null);
+    setDetail(full?.detail ?? null);
+    setLogs(Array.isArray(lg) ? lg : []);
+    setCarreras(Array.isArray(rn) ? rn : []);
+    setChecks(Array.isArray(ck) ? ck : []);
   }, [studentId]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    fetchDetail();
-  }, [fetchDetail]);
+  useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 p-4 md:p-8 space-y-5">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-        </div>
-        <Skeleton className="h-64 rounded-2xl" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="animate-spin" style={{ color: C.primary }} /></div>;
+  if (!student || !detail) return <div className="p-10 text-center" style={{ color: C.tertiary }}>No se encontró el alumno.</div>;
 
-  if (error || !student || !detail) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <EmptyState
-          icon={UserX}
-          message={error || "Alumno no encontrado"}
-          cta={
-            <Link href="/coach/students" className="text-[13px] inline-flex items-center gap-1 hover:underline" style={{ color: "var(--text-primary)" }}>
-              <ArrowLeft size={14} strokeWidth={1.75} />
-              Volver a alumnos
-            </Link>
-          }
-          className="animate-fade-in px-4"
-        />
-      </div>
-    );
-  }
-
-  const stageStyle = getStageColor(student.stage);
-  const paymentInfo = getPaymentInfo(student.paymentStatus);
-  const startWeight = detail.weightHistory[0]?.weight ?? student.currentWeight;
-
-  const handleBadge = () =>
-    downloadBadge({
-      name: student.name,
-      photoUrl: detail.photoName,
-      currentWeight: student.currentWeight,
-      startWeight,
-      streak: student.streak,
-      height: detail.height,
-      bodyFat: detail.bodyFat,
-      stage: `${student.stage} · E${student.stageNumber}`,
-      weightHistory: detail.weightHistory,
-    });
+  const wp = I.weightProgress(detail.weightHistory);
 
   return (
-    <>
-      {/* ── Header ── */}
-      <header
-        className="sticky top-0 z-30 px-4 md:px-8 shrink-0"
-        style={{
-          background: "var(--bg-sidebar)",
-          WebkitBackdropFilter: "blur(20px) saturate(120%)",
-          backdropFilter: "blur(20px) saturate(120%)",
-          borderBottom: "1px solid var(--border-subtle)",
-        }}
-      >
-        <div className="flex items-center gap-4 py-3">
-          <Link
-            href="/coach/students"
-            id="btn-back"
-            className="p-2 -ml-2 rounded-xl cursor-pointer"
-            style={{ color: "var(--text-tertiary)", transition: "color var(--transition-fast)" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
-          >
-            <IconBack />
-          </Link>
-
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[12px] font-medium overflow-hidden"
-              style={{ background: "var(--bg-surface-overlay)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}
-            >
-              {detail.photoName ? <img src={detail.photoName} alt={student.name} className="w-full h-full object-cover" /> : student.avatarInitials}
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-[15px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{student.name}</h1>
-              <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>{student.email}</p>
+    <div className="max-w-3xl mx-auto px-4 md:px-8 pb-16">
+      {/* Header fijo */}
+      <div className="sticky top-0 z-20 pt-4 pb-3" style={{ background: "var(--bg-root)" }}>
+        <div className="flex items-center gap-3 mb-3">
+          <button onClick={() => router.back()} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.surface, border: `1px solid ${C.border}` }}><ChevronLeft size={18} style={{ color: C.secondary }} /></button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[18px] font-semibold truncate" style={{ color: C.primary }}>{student.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(255,255,255,0.06)", color: C.secondary }}>{student.stage}</span>
+              <span className="text-[13px]" style={{ color: C.tertiary }}>{student.currentWeight} kg{wp.delta !== 0 ? ` · ${wp.delta > 0 ? "+" : ""}${wp.delta}` : ""}</span>
             </div>
           </div>
+          <button onClick={() => setManageOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}><Settings2 size={14} /> Gestionar</button>
+        </div>
+        <div className="flex p-1 rounded-xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-medium cursor-pointer transition-colors" style={{ background: active ? "rgba(255,255,255,0.08)" : "transparent", color: active ? C.primary : C.tertiary }}>
+                <t.icon size={13} /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBadge}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-medium cursor-pointer animate-fade-in"
-              style={{ background: "var(--bg-surface-raised)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", transition: "all var(--transition-fast)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-            >
-              <Download size={15} strokeWidth={1.75} /> Insignia
+      <div className="pt-4">
+        {tab === "resumen" && <SummaryTab student={student} detail={detail} logs={logs} carreras={carreras} checks={checks} onGoTo={setTab} />}
+        {tab === "entrenamiento" && <TrainingTab detail={detail} logs={logs} />}
+        {tab === "nutricion" && <NutritionTab detail={detail} checks={checks} />}
+        {tab === "progreso" && <ProgressTab detail={detail} carreras={carreras} />}
+      </div>
+
+      {manageOpen && <ManageModal studentId={studentId} currentStage={student.stage} onClose={() => setManageOpen(false)} onApplied={() => { setManageOpen(false); load(); }} />}
+    </div>
+  );
+}
+
+function Card({ title, right, children }: { title?: string; right?: any; children: any }) {
+  return (
+    <div className="rounded-2xl overflow-hidden mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+      {title && <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-[14px] font-medium" style={{ color: C.primary }}>{title}</span>{right}</div>}
+      {children}
+    </div>
+  );
+}
+function Sparkline({ data, color = C.success, height = 70, suffix = "" }: { data: number[]; color?: string; height?: number; suffix?: string }) {
+  if (!data || data.length < 2) return <span className="text-[12px]" style={{ color: C.tertiary }}>Sin datos suficientes</span>;
+  const W = 320, min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * W},${height - ((v - min) / range) * (height - 14) - 7}`).join(" ");
+  return (
+    <div>
+      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"><polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <div className="flex justify-between mt-1.5 text-[11px]"><span style={{ color: C.tertiary }}>{data[0]}{suffix}</span><span className="font-medium" style={{ color: C.primary }}>{data[data.length - 1]}{suffix}</span></div>
+    </div>
+  );
+}
+function Bars({ data, color = C.info, height = 80 }: { data: { label: string; value: number }[]; color?: string; height?: number }) {
+  if (!data.length) return <span className="text-[12px]" style={{ color: C.tertiary }}>Sin datos</span>;
+  const max = Math.max(...data.map((d) => d.value)) || 1, W = 320, gap = 6, bw = (W - gap * (data.length - 1)) / data.length;
+  return (
+    <div>
+      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none">{data.map((d, i) => { const h = Math.max((d.value / max) * (height - 6), 2); return <rect key={i} x={i * (bw + gap)} y={height - h} width={bw} height={h} rx={3} fill={color} opacity={0.85} />; })}</svg>
+      <div className="flex justify-between mt-1.5">{data.map((d, i) => <span key={i} className="text-[9px] text-center" style={{ width: bw, color: C.tertiary }}>{d.label}</span>)}</div>
+    </div>
+  );
+}
+function silhouettePath(track: any[], W: number, H: number, pad = 10): string {
+  if (!track || track.length < 2) return "";
+  const lats = track.map((p) => p.lat), lngs = track.map((p) => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const meanLat = ((minLat + maxLat) / 2) * (Math.PI / 180);
+  const spanLat = maxLat - minLat || 1e-6, spanLng = (maxLng - minLng) * Math.cos(meanLat) || 1e-6;
+  const w = W - pad * 2, h = H - pad * 2, scale = Math.min(w / spanLng, h / spanLat);
+  const offX = pad + (w - spanLng * scale) / 2, offY = pad + (h - spanLat * scale) / 2;
+  return track.map((p, i) => `${i === 0 ? "M" : "L"} ${(offX + (p.lng - minLng) * Math.cos(meanLat) * scale).toFixed(1)} ${(offY + (maxLat - p.lat) * scale).toFixed(1)}`).join(" ");
+}
+
+function SummaryTab({ student, detail, logs, carreras, checks, onGoTo }: any) {
+  const lastAct = useMemo(() => I.lastActivityDate(logs, carreras, detail.weightHistory), [logs, carreras, detail]);
+  const wk = I.trainingLastDays(logs, detail.routine, lastAct ?? I.todayStr(), 7);
+  const diet = I.dietComplianceRecent(checks, detail);
+  const wp = I.weightProgress(detail.weightHistory);
+  const daysAgo = lastAct ? I.daysBetween(lastAct, I.todayStr()) : null;
+  const flags = I.redFlags(detail, logs, checks, student.paymentStatus);
+  const [weekStart, setWeekStart] = useState(() => I.weekStartOf(lastAct ?? I.todayStr()));
+  const [selDate, setSelDate] = useState<string | null>(null);
+  const days = I.weekDays(weekStart);
+  const trainedSet = useMemo(() => new Set(logs.map((l: any) => l.date)), [logs]);
+  const mealSet = useMemo(() => new Set(checks.filter((c: any) => c.kind === "meal").map((c: any) => c.date)), [checks]);
+  const lastLabel = daysAgo === null ? "—" : daysAgo <= 0 ? "Hoy" : daysAgo === 1 ? "Ayer" : `${daysAgo} días`;
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <Kpi label="Peso" value={`${wp.current}`} unit="kg" sub={wp.delta !== 0 ? `${wp.delta > 0 ? "+" : ""}${wp.delta} kg` : "—"} />
+        <Kpi label="Entreno (sem)" value={`${wk.done}/${wk.planned}`} accent={wk.done >= wk.planned ? C.success : wk.done === 0 ? C.danger : C.warning} />
+        <Kpi label="Dieta" value={diet.days ? `${diet.pct}%` : "—"} sub={diet.days ? `${diet.days} días` : "sin registro"} accent={diet.pct >= 80 ? C.success : diet.days ? C.warning : C.tertiary} />
+        <Kpi label="Últ. actividad" value={lastLabel} />
+      </div>
+
+      <div className="rounded-2xl p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+        {flags.length === 0 ? (
+          <div className="flex items-center gap-2"><CheckCircle2 size={16} style={{ color: C.success }} /><span className="text-[13px]" style={{ color: C.secondary }}>Todo en orden — sin focos rojos.</span></div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase font-medium tracking-wider" style={{ color: C.tertiary }}>Focos rojos</p>
+            {flags.map((f, i) => <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "rgba(248,113,113,0.1)" }}><AlertTriangle size={14} style={{ color: C.danger }} /><span className="text-[13px]" style={{ color: C.danger }}>{f}</span></div>)}
+          </div>
+        )}
+      </div>
+
+      <Card title="Peso" right={<button onClick={() => onGoTo("progreso")} className="text-[12px] cursor-pointer" style={{ color: C.tertiary }}>Ver todo</button>}>
+        <div className="p-5"><Sparkline data={detail.weightHistory.map((w: any) => w.weight)} /></div>
+      </Card>
+
+      <Card title="Resumen por día" right={<span className="text-[12px]" style={{ color: C.tertiary }}>Toca un día</span>}>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <button onClick={() => setWeekStart(I.addDays(weekStart, -7))} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronLeft size={16} style={{ color: C.secondary }} /></button>
+          <div className="flex items-center gap-2"><CalendarDays size={14} style={{ color: C.tertiary }} /><input type="date" value={selDate ?? days[0]} onChange={(e) => { if (e.target.value) { setWeekStart(I.weekStartOf(e.target.value)); setSelDate(e.target.value); } }} className="bg-transparent text-[12px]" style={{ color: C.secondary }} /></div>
+          <button onClick={() => setWeekStart(I.addDays(weekStart, 7))} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronRight size={16} style={{ color: C.secondary }} /></button>
+        </div>
+        <div className="flex px-3 pb-4">
+          {days.map((date, i) => (
+            <button key={date} onClick={() => setSelDate(date)} className="flex-1 flex flex-col items-center py-2 mx-0.5 rounded-xl cursor-pointer" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <span className="text-[10px] font-medium" style={{ color: C.tertiary }}>{DAY_SHORT[i]}</span>
+              <span className="text-[14px] font-semibold mt-0.5" style={{ color: C.secondary }}>{parseInt(date.split("-")[2])}</span>
+              <span className="flex gap-1 mt-1.5 h-1.5">{trainedSet.has(date) && <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.info }} />}{mealSet.has(date) && <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.success }} />}</span>
             </button>
-            <button
-              onClick={() => setIsChangeStageModalOpen(true)}
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer animate-fade-in"
-              style={{ background: "var(--text-primary)", color: "var(--text-inverse)", transition: "opacity var(--transition-fast)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-            >
-              Cambiar Etapa
-            </button>
-          </div>
+          ))}
         </div>
+      </Card>
 
-        {/* Meta row */}
-        <div className="flex items-center gap-4 pb-3 overflow-x-auto no-scrollbar">
-          <span className="text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap" style={{ color: stageStyle.color, background: stageStyle.bg }}>
-            {student.stage} · E{student.stageNumber}
-          </span>
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className={`w-1.5 h-1.5 rounded-full ${student.paymentStatus === "grace_period" ? "animate-subtle-pulse" : ""}`} style={{ background: paymentInfo.color }} />
-            <span className="text-[11px]" style={{ color: paymentInfo.color }}>{paymentInfo.label}</span>
-          </div>
-          {detail.nextStageDate && (
-            <span className="text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>Próx. etapa: {formatDateLong(detail.nextStageDate)}</span>
-          )}
-          {student.streak > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--color-warning)" }}>
-              <Flame size={14} strokeWidth={1.75} /><span className="tabular-nums">{student.streak}</span> días
-            </span>
-          )}
-          {detail.height && (
-            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
-              <Ruler size={14} strokeWidth={1.75} /><span className="tabular-nums">{detail.height}</span> cm
-            </span>
-          )}
-          {detail.bodyFat && (
-            <span className="inline-flex items-center gap-1 text-[11px] whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
-              <Droplet size={14} strokeWidth={1.75} /><span className="tabular-nums">{detail.bodyFat}</span>% grasa
-            </span>
-          )}
-        </div>
-      </header>
+      {selDate && <DaySummary date={selDate} logs={logs} checks={checks} detail={detail} onClose={() => setSelDate(null)} />}
+    </div>
+  );
+}
+function Kpi({ label, value, unit, sub, accent = C.primary }: any) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+      <p className="text-[10px] uppercase font-medium tracking-wider" style={{ color: C.tertiary }}>{label}</p>
+      <p className="text-[22px] font-semibold mt-1.5" style={{ color: accent }}>{value}{unit && <span className="text-[12px] ml-1" style={{ color: C.tertiary }}>{unit}</span>}</p>
+      {sub && <p className="text-[11px] mt-0.5" style={{ color: C.tertiary }}>{sub}</p>}
+    </div>
+  );
+}
+function DaySummary({ date, logs, checks, detail, onClose }: any) {
+  const s = I.daySummary(date, logs, checks, detail);
+  const planMeals = detail.diet?.meals ?? [];
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0" style={{ background: "var(--scrim)" }} />
+      <div className="relative w-full max-w-lg rounded-t-3xl md:rounded-3xl p-6 z-10 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4"><div><p className="text-[18px] font-semibold" style={{ color: C.primary }}>{I.prettyDate(date)}</p><p className="text-[12px]" style={{ color: C.tertiary }}>Resumen del día</p></div><button onClick={onClose} className="cursor-pointer"><X size={18} style={{ color: C.tertiary }} /></button></div>
+        <p className="text-[13px] font-medium mb-2 flex items-center gap-2" style={{ color: C.secondary }}><Dumbbell size={15} style={{ color: C.info }} /> Entrenamiento</p>
+        {!s.trained ? <div className="rounded-xl p-4 mb-4" style={{ background: C.raised }}><span className="text-[13px]" style={{ color: C.tertiary }}>No registró entrenamiento.</span></div> : (
+          <div className="rounded-xl overflow-hidden mb-4" style={{ background: C.raised }}>{s.exercises.map((ex: any, i: number) => (
+            <div key={ex.id} className="px-4 py-3" style={{ borderBottom: i < s.exercises.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <p className="text-[13px] font-medium" style={{ color: C.primary }}>{ex.exerciseName}</p>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">{ex.sets.map((st: any, j: number) => <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: st.done ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: st.done ? C.success : C.secondary }}>{st.reps || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>)}</div>
+            </div>))}</div>
+        )}
+        <p className="text-[13px] font-medium mb-2 flex items-center gap-2" style={{ color: C.secondary }}><Utensils size={15} style={{ color: C.success }} /> Comidas <span className="ml-auto text-[12px]" style={{ color: C.tertiary }}>{s.mealsDone.length}/{s.mealsTotal}</span></p>
+        <div className="rounded-xl overflow-hidden" style={{ background: C.raised }}>{planMeals.map((m: any, i: number) => { const done = s.mealsDone.includes(m.name); return (
+          <div key={i} className="flex items-center px-4 py-3" style={{ borderBottom: i < planMeals.length - 1 ? `1px solid ${C.border}` : "none" }}>
+            <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: done ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${done ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.1)"}` }}>{done && <CheckCircle2 size={12} style={{ color: C.success }} />}</span>
+            <span className="text-[13px] ml-3 flex-1" style={{ color: done ? C.secondary : C.tertiary }}>{m.time} · {m.name}</span>
+          </div>); })}</div>
+      </div>
+    </div>
+  );
+}
 
-      {/* ── Banner de Cambio Programado ── */}
-      {detail.scheduledChange && (
-        <div className="mx-4 md:mx-8 mt-5 p-4 rounded-2xl flex items-center justify-between border animate-fade-in" style={{ background: "var(--color-warning-subtle)", borderColor: "var(--color-warning)" }}>
-          <div className="flex items-center gap-3">
-            <Calendar size={16} strokeWidth={1.75} style={{ color: "var(--text-secondary)" }} />
-            <div>
-              <p className="text-[13px] font-semibold" style={{ color: "var(--color-warning)" }}>Cambio de Etapa Programado</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                Este alumno cambiará a la etapa de <strong className="font-semibold">{detail.scheduledChange.stage} (E{detail.scheduledChange.stageNumber})</strong> el día <strong className="font-semibold">{formatDateLong(detail.scheduledChange.executionDate)}</strong>.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={async () => {
-              if (confirm("¿Deseas cancelar este cambio programado?")) {
-                try {
-                  const response = await fetch(`/api/students/${studentId}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ detailUpdates: { scheduledChange: null } }),
-                  });
-                  if (response.ok) fetchDetail();
-                } catch (err) { console.error(err); }
-              }
-            }}
-            className="px-3 py-1.5 rounded-xl border text-[11px] font-medium cursor-pointer transition-all duration-150"
-            style={{ borderColor: "var(--color-warning)", color: "var(--color-warning)", background: "transparent" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-warning)"; e.currentTarget.style.color = "white"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--color-warning)"; }}
-          >
-            Cancelar Programación
-          </button>
+function TrainingTab({ detail, logs }: any) {
+  const lastAct = logs.length ? logs.map((l: any) => l.date).sort().slice(-1)[0] : I.todayStr();
+  const [weekStart, setWeekStart] = useState(() => I.weekStartOf(lastAct));
+  const week = I.weekTraining(logs, detail.routine, weekStart);
+  const recs = I.records(logs).slice(0, 6);
+  const vol = I.volumeByDate(logs).slice(-8);
+  const exercises = I.byExercise(logs);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [visible, setVisible] = useState(6);
+  const toggle = (n: string) => setExpanded((p) => { const s = new Set(p); s.has(n) ? s.delete(n) : s.add(n); return s; });
+  const STC: any = { done: C.success, missed: C.danger, rest: "#3a3a3c" };
+  const STB: any = { done: "rgba(52,211,153,0.12)", missed: "rgba(248,113,113,0.12)", rest: "rgba(255,255,255,0.04)" };
+
+  return (
+    <div>
+      <Card title="Cumplimiento semanal" right={<span className="text-[13px] font-semibold" style={{ color: week.done >= week.planned ? C.success : week.done === 0 ? C.danger : C.warning }}>{week.done}/{week.planned}</span>}>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <button onClick={() => setWeekStart(I.addDays(weekStart, -7))} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronLeft size={16} style={{ color: C.secondary }} /></button>
+          <span className="text-[12px] font-medium" style={{ color: C.secondary }}>{I.fmtShort(week.byDay[0].date)} – {I.fmtShort(week.byDay[6].date)}</span>
+          <button onClick={() => setWeekStart(I.addDays(weekStart, 7))} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronRight size={16} style={{ color: C.secondary }} /></button>
         </div>
+        <div className="flex px-3 pb-3">{week.byDay.map((d, i) => (
+          <div key={d.date} className="flex-1 flex flex-col items-center mx-0.5 py-2 rounded-xl" style={{ background: STB[d.status] }}>
+            <span className="text-[10px] font-medium" style={{ color: C.tertiary }}>{DAY_SHORT[i]}</span>
+            <span className="w-6 h-6 rounded-full flex items-center justify-center mt-1.5 text-[10px] font-bold" style={{ background: STC[d.status], color: d.status === "rest" ? C.secondary : "#000" }}>{parseInt(d.date.split("-")[2])}</span>
+          </div>))}</div>
+        <div className="flex gap-4 px-4 pb-4 text-[11px]" style={{ color: C.tertiary }}>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: STC.done }} />Entrenó</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: STC.missed }} />No entrenó</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: STC.rest }} />Descanso</span>
+        </div>
+      </Card>
+
+      <Card title="Récords (mejor peso)">
+        {recs.length === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin récords con peso aún.</p> : (
+          <div className="p-3 grid grid-cols-2 gap-2">{recs.map((r) => <div key={r.name} className="rounded-xl px-3 py-2.5" style={{ background: C.raised }}><p className="text-[11px] truncate" style={{ color: C.tertiary }}>{r.name}</p><p className="text-[16px] font-semibold mt-0.5" style={{ color: C.primary }}>{r.weight} kg</p></div>)}</div>
+        )}
+      </Card>
+
+      <Card title="Carga total por sesión (kg×reps)"><div className="p-5">{vol.length < 2 ? <p className="text-[13px]" style={{ color: C.tertiary }}>Pocas sesiones.</p> : <Bars data={vol.map((v) => ({ label: I.fmtShort(v.date), value: v.volume }))} />}</div></Card>
+
+      <Card title="Historial por ejercicio">
+        {exercises.length === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin sesiones registradas.</p> : (
+          <>
+            {exercises.slice(0, visible).map((ex, idx) => {
+              const open = expanded.has(ex.name); const series = ex.sessions.map((s) => I.maxWeight(s)).filter((w) => w > 0);
+              return (
+                <div key={ex.name} style={{ borderTop: idx === 0 ? "none" : `1px solid ${C.border}` }}>
+                  <button onClick={() => toggle(ex.name)} className="w-full flex items-center px-5 py-3.5 text-left cursor-pointer">
+                    <div className="flex-1"><p className="text-[13px] font-medium" style={{ color: C.primary }}>{ex.name}</p><p className="text-[11px] mt-0.5" style={{ color: C.tertiary }}>{ex.muscleGroup ?? ""} · {ex.sessions.length} sesiones</p></div>
+                    <ChevronDown size={16} style={{ color: C.tertiary, transform: open ? "rotate(180deg)" : "none" }} />
+                  </button>
+                  {open && <div className="px-5 pb-4 space-y-3">
+                    {!ex.bodyweight && series.length >= 2 && <div className="rounded-xl p-3" style={{ background: C.raised }}><p className="text-[11px] mb-1" style={{ color: C.tertiary }}>Progresión de peso máx</p><Sparkline data={series} color={C.info} height={50} suffix=" kg" /></div>}
+                    {[...ex.sessions].reverse().map((s) => (
+                      <div key={s.id} className="rounded-xl p-3" style={{ background: C.raised }}>
+                        <div className="flex items-center justify-between"><span className="text-[12px] font-medium" style={{ color: C.secondary }}>{I.prettyDate(s.date)}</span><span className="text-[11px]" style={{ color: C.tertiary }}>prescrito {s.prescribedSets}×{s.prescribedReps}{s.prescribedWeight ? ` @ ${s.prescribedWeight}` : ""}</span></div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">{s.sets.map((st, j) => <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: st.done ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: st.done ? C.success : C.secondary }}>{st.reps || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>)}</div>
+                      </div>))}
+                  </div>}
+                </div>
+              );
+            })}
+            {exercises.length > visible && <button onClick={() => setVisible((v) => v + 6)} className="w-full px-5 py-3.5 text-[13px] font-medium cursor-pointer" style={{ borderTop: `1px solid ${C.border}`, color: C.secondary }}>Cargar más ({exercises.length - visible})</button>}
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function NutritionTab({ detail, checks }: any) {
+  const [date, setDate] = useState(() => I.lastDietDate(checks));
+  const meals = detail.diet?.meals ?? [];
+  const macros = detail.diet?.macros ?? { protein: 0, carbs: 0, fat: 0 };
+  const doneNames = I.mealsDoneOn(checks, date);
+  const trend = I.dietComplianceByDate(checks, detail).slice(-10);
+  const recent = I.dietComplianceRecent(checks, detail);
+  const total = meals.length, done = Math.min(doneNames.length, total), pct = total ? Math.round((done / total) * 100) : 0, hasRec = doneNames.length > 0;
+
+  return (
+    <div>
+      <Card>
+        <div className="flex items-center justify-between px-4 py-3">
+          <button onClick={() => setDate(I.addDays(date, -1))} className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronLeft size={16} style={{ color: C.secondary }} /></button>
+          <div className="flex items-center gap-2"><CalendarDays size={15} style={{ color: C.tertiary }} /><input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="bg-transparent text-[14px] font-medium" style={{ color: C.primary }} /></div>
+          <button onClick={() => setDate(I.addDays(date, 1))} className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronRight size={16} style={{ color: C.secondary }} /></button>
+        </div>
+      </Card>
+      <div className="rounded-2xl p-5 mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+        <div className="flex items-center justify-between mb-3"><span className="text-[11px] uppercase font-medium tracking-wider" style={{ color: C.tertiary }}>Cumplimiento del día</span><span className="text-[14px] font-semibold" style={{ color: !hasRec ? C.tertiary : pct >= 80 ? C.success : C.warning }}>{hasRec ? `${done}/${total} · ${pct}%` : "sin registro"}</span></div>
+        <div className="h-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}><div className="h-full rounded-full" style={{ width: `${hasRec ? pct : 0}%`, background: pct >= 80 ? C.success : C.warning }} /></div>
+      </div>
+      <Card title={detail.diet?.name || "Dieta no asignada"} right={detail.diet?.totalCalories ? <span className="text-[12px]" style={{ color: C.tertiary }}>{detail.diet.totalCalories} kcal</span> : null}>
+        {total === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin dieta asignada.</p> : (<>
+          <div className="flex gap-2 p-4">{[["Proteína", macros.protein], ["Carbos", macros.carbs], ["Grasa", macros.fat]].map(([l, v]) => <div key={l as string} className="flex-1 rounded-xl py-3 text-center" style={{ background: C.raised }}><p className="text-[16px] font-semibold" style={{ color: C.primary }}>{v as any}g</p><p className="text-[11px]" style={{ color: C.tertiary }}>{l}</p></div>)}</div>
+          {meals.map((m: any, i: number) => { const marked = doneNames.includes(m.name); return (
+            <div key={i} className="flex items-center px-5 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
+              <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: marked ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${marked ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.1)"}` }}>{marked && <CheckCircle2 size={12} style={{ color: C.success }} />}</span>
+              <div className="flex-1 ml-3 min-w-0"><p className="text-[13px] font-medium" style={{ color: C.secondary }}>{m.time} · {m.name}</p><p className="text-[11px] truncate" style={{ color: C.tertiary }}>{m.items.join(" · ")}</p></div>
+              <span className="text-[11px]" style={{ color: C.tertiary }}>{m.calories} kcal</span>
+            </div>); })}
+        </>)}
+      </Card>
+      <Card title="Cumplimiento reciente" right={recent.days > 0 ? <span className="text-[12px]" style={{ color: C.tertiary }}>{recent.pct}% · {recent.days} días</span> : null}>
+        <div className="p-5">{trend.length < 2 ? <p className="text-[13px]" style={{ color: C.tertiary }}>Aún no hay suficientes días.</p> : <Bars data={trend.map((d) => ({ label: I.fmtShort(d.date), value: Math.round((d.done / (d.total || 1)) * 100) }))} color={C.success} />}</div>
+      </Card>
+      <div className="flex items-start gap-2 px-4 py-3 rounded-xl" style={{ background: "rgba(96,165,250,0.08)" }}><AlertTriangle size={14} style={{ color: C.info, marginTop: 1 }} /><span className="text-[12px]" style={{ color: C.secondary }}>El cumplimiento se basa en las comidas que el alumno marca. El registro de alimentos consumidos llegará en una fase futura.</span></div>
+    </div>
+  );
+}
+
+function ProgressTab({ detail, carreras }: any) {
+  const [months, setMonths] = useState(6);
+  const wh = I.weightInRange(detail.weightHistory, months);
+  const wp = I.weightProgress(wh);
+  const ms = detail.measurements ?? []; const first = ms[0], last = ms[ms.length - 1];
+  const photos = detail.photos ?? [];
+  const RANGES = [{ label: "1m", m: 1 }, { label: "3m", m: 3 }, { label: "6m", m: 6 }, { label: "Todo", m: 0 }];
+  const fmtDistance = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+  const fmtDuration = (s: number) => { const mm = Math.floor(s / 60), ss = Math.floor(s % 60); return `${mm}:${String(ss).padStart(2, "0")}`; };
+
+  return (
+    <div>
+      <Card title="Peso" right={<span className="text-[13px] font-medium" style={{ color: wp.delta < 0 ? C.success : wp.delta > 0 ? C.warning : C.tertiary }}>{wp.delta !== 0 ? `${wp.delta > 0 ? "+" : ""}${wp.delta} kg` : "—"}</span>}>
+        <div className="flex gap-2 px-4 pt-3">{RANGES.map((r) => { const a = months === r.m; return <button key={r.label} onClick={() => setMonths(r.m)} className="flex-1 py-2 rounded-lg text-[12px] font-medium cursor-pointer" style={{ background: a ? "rgba(255,255,255,0.08)" : C.raised, color: a ? C.primary : C.tertiary }}>{r.label}</button>; })}</div>
+        <div className="p-5">{wh.length < 2 ? <p className="text-[13px]" style={{ color: C.tertiary }}>Pocos datos en este rango.</p> : <Sparkline data={wh.map((w) => w.weight)} suffix=" kg" height={90} />}</div>
+      </Card>
+      {last && <Card title="Medidas (cm)">
+        <div className="grid grid-cols-3 p-3">{([["Pecho", "chest"], ["Cintura", "waist"], ["Cadera", "hips"], ["Brazo I", "armL"], ["Brazo D", "armR"], ["Muslo I", "thighL"], ["Muslo D", "thighR"]] as const).map(([l, k]) => { const v = (last as any)[k]; const d = first ? Math.round((v - (first as any)[k]) * 10) / 10 : 0; return (
+          <div key={k} className="p-2"><div className="rounded-xl py-3 text-center" style={{ background: C.raised }}><p className="text-[16px] font-semibold" style={{ color: C.primary }}>{v}</p><p className="text-[10px]" style={{ color: C.tertiary }}>{l}</p>{first && d !== 0 && <p className="text-[10px]" style={{ color: d > 0 ? C.success : C.warning }}>{d > 0 ? "+" : ""}{d}</p>}</div></div>); })}</div>
+      </Card>}
+      {photos.length > 0 && <Card title={`Fotos de progreso (${photos.length})`}>
+        <div className="grid grid-cols-3 p-3 gap-2">{photos.map((p: any) => <div key={p.id}><img src={p.url} alt={p.label} className="w-full rounded-xl object-cover" style={{ aspectRatio: "3/4", background: C.raised }} /><p className="text-[10px] mt-1 text-center truncate" style={{ color: C.tertiary }}>{p.label}{p.weight ? ` · ${p.weight}kg` : ""}</p></div>)}</div>
+      </Card>}
+      <Card title={`MD-Route · Carreras (${carreras.length})`}>
+        {carreras.length === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin carreras.</p> : (
+          <div className="p-3 space-y-3">{carreras.map((c: any) => (
+            <div key={c.id} className="rounded-xl overflow-hidden" style={{ background: C.raised }}>
+              <div className="flex justify-center py-2"><svg width={220} height={80}><path d={silhouettePath(c.track, 220, 80)} fill="none" stroke={C.primary} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" /></svg></div>
+              <div className="flex justify-between px-4 py-2.5 text-[12px]" style={{ borderTop: `1px solid ${C.border}` }}><span style={{ color: C.tertiary }}>{c.date}</span><div className="flex gap-4" style={{ color: C.secondary }}><span>{fmtDistance(c.distanceM)}</span><span>{fmtDuration(c.durationS)}</span><span>{c.avgSpeedKmh} km/h</span></div></div>
+            </div>))}</div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function ManageModal({ studentId, currentStage, onClose, onApplied }: any) {
+  const STAGES = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [stage, setStage] = useState(currentStage);
+  const [dietId, setDietId] = useState<string>("");
+  const [routineId, setRoutineId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { fetch("/api/templates").then((r) => r.json()).then(setTemplates).catch(() => {}); }, []);
+  const diets = templates.filter((t) => t.type === "diet"), routines = templates.filter((t) => t.type === "routine");
+  const apply = async () => {
+    setSaving(true);
+    await fetch("/api/students/change-stage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentIds: [studentId], stage, stageNumber: STAGES.indexOf(stage) + 1, dietTemplateId: dietId || undefined, routineTemplateId: routineId || undefined }) });
+    onApplied();
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "var(--scrim)" }} />
+      <div className="relative w-full max-w-md rounded-2xl p-6 z-10 space-y-4 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: "1px solid var(--border-strong)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between"><h3 className="text-[16px] font-medium" style={{ color: C.primary }}>Gestionar alumno</h3><button onClick={onClose} className="cursor-pointer"><X size={18} style={{ color: C.tertiary }} /></button></div>
+        <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Etapa</p><div className="flex flex-wrap gap-2">{STAGES.map((s) => <button key={s} onClick={() => setStage(s)} className="px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: stage === s ? "rgba(255,255,255,0.08)" : C.raised, border: `1px solid ${stage === s ? "var(--border-strong)" : C.border}`, color: stage === s ? C.primary : C.secondary }}>{s}</button>)}</div></div>
+        <SelectList label="Asignar dieta" items={diets} selected={dietId} onSelect={setDietId} />
+        <SelectList label="Asignar rutina" items={routines} selected={routineId} onSelect={setRoutineId} />
+        <button onClick={apply} disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}>{saving ? <Loader2 size={16} className="animate-spin" /> : "Aplicar cambios"}</button>
+      </div>
+    </div>
+  );
+}
+function SelectList({ label, items, selected, onSelect }: any) {
+  return (
+    <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>{label}</p>
+      {items.length === 0 ? <p className="text-[12px]" style={{ color: C.tertiary }}>No hay plantillas.</p> : (
+        <div className="space-y-2">{items.map((t: any) => <button key={t.id} onClick={() => onSelect(selected === t.id ? "" : t.id)} className="w-full text-left px-4 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: selected === t.id ? "rgba(255,255,255,0.06)" : C.raised, border: `1px solid ${selected === t.id ? "var(--border-strong)" : C.border}`, color: selected === t.id ? C.primary : C.secondary }}>{t.name}</button>)}</div>
       )}
-
-      {/* ── Content ── */}
-      <div className="flex-1 px-4 md:px-8 py-6 pb-24 md:pb-8 space-y-5">
-        <div id="progreso" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Section title="Progreso de peso">
-            <div className="px-5 py-5">
-              <WeightChart history={detail.weightHistory} />
-            </div>
-          </Section>
-          <MeasurementsSection detail={detail} studentId={studentId} onRefresh={fetchDetail} />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div id="dieta" className="scroll-mt-24">
-            <DietSection detail={detail} studentId={studentId} onRefresh={fetchDetail} />
-          </div>
-          <div id="rutina" className="scroll-mt-24">
-            <RoutineSection detail={detail} studentId={studentId} onRefresh={fetchDetail} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <PhotosSection studentId={studentId} photos={detail.photos || []} studentName={student.name} onRefresh={fetchDetail} />
-          <NotesSection notes={detail.notes} studentId={studentId} onRefresh={fetchDetail} />
-        </div>
-      </div>
-
-      {/* Mobile Bottom Navigation Bar (Detail specific) */}
-      <div
-        className="fixed bottom-0 left-0 right-0 h-16 z-50 md:hidden flex items-center justify-around px-6 backdrop-blur-xl"
-        style={{ background: "var(--bg-sidebar)", WebkitBackdropFilter: "blur(24px)", backdropFilter: "blur(24px)", borderTop: "1px solid var(--border-subtle)" }}
-      >
-        <Link href="/coach/students" className="flex flex-col items-center justify-center p-3 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]" style={{ color: "var(--text-sidebar-secondary)" }} title="Alumnos">
-          <IconUsers className="w-6 h-6" />
-        </Link>
-        <button onClick={() => document.getElementById("progreso")?.scrollIntoView({ behavior: "smooth" })} className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]" style={{ color: "var(--text-sidebar-secondary)" }} title="Progreso">
-          <IconTrendingUp className="w-6 h-6" />
-        </button>
-        <button onClick={() => document.getElementById("dieta")?.scrollIntoView({ behavior: "smooth" })} className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]" style={{ color: "var(--text-sidebar-secondary)" }} title="Dieta">
-          <IconUtensils className="w-6 h-6" />
-        </button>
-        <button onClick={() => document.getElementById("rutina")?.scrollIntoView({ behavior: "smooth" })} className="flex flex-col items-center justify-center p-3 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]" style={{ color: "var(--text-sidebar-secondary)" }} title="Rutina">
-          <IconDumbbell className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* ── Change Stage Modal ── */}
-      <ChangeStageModal isOpen={isChangeStageModalOpen} onClose={() => setIsChangeStageModalOpen(false)} studentIds={[studentId]} onSuccess={fetchDetail} />
-    </>
+    </div>
   );
 }

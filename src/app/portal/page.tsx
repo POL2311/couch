@@ -5,7 +5,7 @@ import { signOut } from "next-auth/react";
 import {
   Flame, Ruler, Droplet, LogOut, Camera, Loader2, CheckCircle2,
   Download, TrendingDown, Dumbbell, Utensils, ChevronRight, X,
-  ArrowLeftRight, Info, Weight, BarChart3, RefreshCw,
+  ArrowLeftRight, Weight, RefreshCw,
   LayoutGrid, TrendingUp, Users, User, Sparkles,
   Shield, CreditCard, Calendar, ChevronDown, ChevronUp,
   AlertTriangle,
@@ -819,70 +819,90 @@ function MealSheet({ meal }: { meal: Meal }) {
    EXERCISE SHEET
 ══════════════════════════════════════════════════════════════ */
 
-function ExerciseSheet({ exercise }: { exercise: Exercise }) {
-  const [sets, setSets] = useState<{ kg: string; reps: string }[]>(
-    Array.from({ length: exercise.sets }, () => ({ kg: "", reps: "" }))
+function ExerciseSheet({ exercise, onComplete }: { exercise: Exercise & { muscleGroup?: string }; onComplete: (payload: any) => Promise<void> | void }) {
+  const ex = exercise as any;
+  const bodyweight = !!ex.bodyweight;
+  const [saving, setSaving] = useState(false);
+  // Mismo modelo que la app: cada serie tiene reps + peso (prellenados desde lo prescrito) + su propio check.
+  const [rows, setRows] = useState<{ reps: string; weight: string; done: boolean }[]>(
+    Array.from({ length: Math.max(exercise.sets || 1, 1) }, () => ({ reps: String(exercise.reps ?? ""), weight: ex.weight ?? "", done: false }))
   );
-  const upd = (i: number, f: "kg" | "reps", v: string) =>
-    setSets(p => p.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
+  const upd = (i: number, patch: Partial<{ reps: string; weight: string; done: boolean }>) =>
+    setRows((p) => p.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const doneCount = rows.filter((r) => r.done).length;
 
-  const tips = exercise.tips ?? [
-    "Mantén la espalda recta durante todo el movimiento.",
-    "Controla la fase excéntrica (bajada) en 2–3 segundos.",
-    "Activa el core antes de iniciar el movimiento.",
-  ];
+  const complete = async () => {
+    setSaving(true);
+    await onComplete({
+      ejercicioId: ex.ejercicioId ?? null,
+      exerciseName: exercise.name,
+      muscleGroup: exercise.muscleGroup ?? null,
+      bodyweight,
+      prescribedSets: exercise.sets,
+      prescribedReps: String(exercise.reps ?? ""),
+      prescribedWeight: ex.weight ?? null,
+      sets: rows,
+      completed: true,
+    });
+    setSaving(false);
+  };
 
   return (
     <>
-      <div className="mb-5 mt-1">
-        <h2 className="text-[21px] font-semibold tracking-tight" style={{ color: "#fff" }}>{exercise.name}</h2>
-        <p className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.32)" }}>
-          {exercise.sets} series · {exercise.reps} reps{exercise.muscleGroup ? ` · ${exercise.muscleGroup}` : ""}
-        </p>
-      </div>
-      <div className="w-full rounded-2xl mb-5 flex items-center justify-center"
-        style={{ height: 140, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
-        <div className="flex flex-col items-center gap-2">
-          <Dumbbell size={24} style={{ color: "rgba(255,255,255,0.1)" }} strokeWidth={1.25} />
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>Guía visual próximamente</span>
+      {/* Header — idéntico a la app */}
+      <div className="flex items-center gap-2 mb-5 mt-1">
+        <Dumbbell size={18} style={{ color: "rgba(255,255,255,0.5)" }} />
+        <div className="min-w-0">
+          <h2 className="text-[19px] font-semibold tracking-tight truncate" style={{ color: "#fff" }}>{exercise.name}</h2>
+          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.32)" }}>
+            Prescrito: {exercise.sets}×{exercise.reps}{ex.weight ? ` @ ${ex.weight}` : ""}{bodyweight ? " · peso corporal" : ""}
+          </p>
         </div>
       </div>
-      <div className="mb-5">
-        <SectionLabel icon={Info} text="Instrucciones del Coach" />
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-          {tips.map((tip, i) => (
-            <div key={i} className="flex gap-3 px-4 py-3"
-              style={{ borderBottom: i < tips.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-              <span className="text-[9px] font-medium mt-0.5 shrink-0 tabular-nums" style={{ color: "rgba(255,255,255,0.18)" }}>{String(i+1).padStart(2,"0")}</span>
-              <span className="text-[12px] leading-relaxed" style={{ color: "rgba(255,255,255,0.62)" }}>{tip}</span>
+
+      {/* Cabecera de columnas */}
+      <div className="flex px-3 mb-2">
+        <span className="w-10 text-[10px] uppercase" style={{ color: "rgba(255,255,255,0.16)", letterSpacing: "0.8px" }}>Serie</span>
+        <span className="flex-1 text-center text-[10px] uppercase" style={{ color: "rgba(255,255,255,0.16)", letterSpacing: "0.8px" }}>Reps</span>
+        {!bodyweight && <span className="flex-1 text-center text-[10px] uppercase" style={{ color: "rgba(255,255,255,0.16)", letterSpacing: "0.8px" }}>Peso</span>}
+        <span className="w-10 text-center text-[10px] uppercase" style={{ color: "rgba(255,255,255,0.16)", letterSpacing: "0.8px" }}>✓</span>
+      </div>
+
+      {/* Una fila por serie con su propio check (igual que la app) */}
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center px-3 py-2 rounded-xl"
+            style={{ background: r.done ? "rgba(52,211,153,0.06)" : "rgba(255,255,255,0.03)", border: `1px solid ${r.done ? "rgba(52,211,153,0.25)" : "rgba(255,255,255,0.07)"}` }}>
+            <span className="w-10 text-[14px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>S{i + 1}</span>
+            <div className="flex-1 px-1">
+              <input value={r.reps} onChange={(e) => upd(i, { reps: e.target.value })} type="number" inputMode="numeric" placeholder="—"
+                className="w-full text-center text-[15px] font-medium py-2 rounded-lg outline-none"
+                style={{ background: "rgba(255,255,255,0.055)", color: r.reps ? "#fff" : "rgba(255,255,255,0.2)" }} />
             </div>
-          ))}
-        </div>
+            {!bodyweight && (
+              <div className="flex-1 px-1">
+                <input value={r.weight} onChange={(e) => upd(i, { weight: e.target.value })} type="number" inputMode="decimal" placeholder="kg"
+                  className="w-full text-center text-[15px] font-medium py-2 rounded-lg outline-none"
+                  style={{ background: "rgba(255,255,255,0.055)", color: r.weight ? "#fff" : "rgba(255,255,255,0.2)" }} />
+              </div>
+            )}
+            <button onClick={() => upd(i, { done: !r.done })} className="w-10 flex items-center justify-center cursor-pointer">
+              <span className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: r.done ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${r.done ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"}` }}>
+                {r.done && <CheckCircle2 size={14} strokeWidth={2.5} style={{ color: "#34d399" }} />}
+              </span>
+            </button>
+          </div>
+        ))}
       </div>
-      <div>
-        <SectionLabel icon={BarChart3} text="Registro de Carga" />
-        <div className="grid grid-cols-3 px-4 mb-1.5">
-          {["Serie","Peso (kg)","Reps"].map((h,i) => (
-            <span key={h} className={`text-[9px] uppercase tracking-wide ${i > 0 ? "text-center" : ""}`}
-              style={{ color: "rgba(255,255,255,0.16)" }}>{h}</span>
-          ))}
-        </div>
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-          {sets.map((s, i) => (
-            <div key={i} className="grid grid-cols-3 items-center px-4 py-3"
-              style={{ borderBottom: i < sets.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>S{i+1}</span>
-              {(["kg","reps"] as const).map((f, fi) => (
-                <input key={f} type="number" inputMode={f === "kg" ? "decimal" : "numeric"}
-                  placeholder="—" value={s[f]}
-                  onChange={e => upd(i, f, e.target.value)}
-                  className={`w-14 ${fi === 0 ? "mx-auto" : "ml-auto"} text-center text-[13px] font-medium rounded-xl py-1.5 outline-none`}
-                  style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.08)", color: s[f] ? "#fff" : "rgba(255,255,255,0.16)" }} />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+
+      {/* Contador + completar — igual que la app */}
+      <p className="text-[12px] text-center mt-4 mb-3" style={{ color: "rgba(255,255,255,0.32)" }}>{doneCount} de {rows.length} series completadas</p>
+      <button onClick={complete} disabled={saving}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[14px] font-medium cursor-pointer disabled:opacity-50"
+        style={{ background: "#fff", color: "#000" }}>
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <><CheckCircle2 size={15} /> Completar ejercicio</>}
+      </button>
     </>
   );
 }
@@ -890,15 +910,6 @@ function ExerciseSheet({ exercise }: { exercise: Exercise }) {
 /* ══════════════════════════════════════════════════════════════
    SHARED SMALL COMPONENTS
 ══════════════════════════════════════════════════════════════ */
-
-function SectionLabel({ icon: Icon, text }: { icon: any; text: string }) {
-  return (
-    <div className="flex items-center gap-1.5 mb-2.5">
-      <Icon size={11} style={{ color: "rgba(255,255,255,0.22)" }} />
-      <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.22)" }}>{text}</p>
-    </div>
-  );
-}
 
 function CardWrap({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -938,13 +949,12 @@ function StatCard({ label, value, unit, sub, subColor, icon: Icon, accent }: any
   );
 }
 
-function MealCard({ meal, onClick }: { meal: Meal; onClick: () => void }) {
-  const [done, setDone] = useState(false);
+function MealCard({ meal, done, onToggle, onClick }: { meal: Meal; done: boolean; onToggle: () => void; onClick: () => void }) {
   return (
     <div className="rounded-2xl overflow-hidden transition-all duration-300"
       style={{ background: done ? "rgba(52,211,153,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${done ? "rgba(52,211,153,0.13)" : "rgba(255,255,255,0.065)"}` }}>
       <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-3">
-        <button onClick={() => setDone(d => !d)}
+        <button onClick={onToggle}
           className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200"
           style={{ background: done ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${done ? "rgba(52,211,153,0.42)" : "rgba(255,255,255,0.09)"}` }}>
           {done && <CheckCircle2 size={11} strokeWidth={2.5} style={{ color: "#34d399" }} />}
@@ -1081,10 +1091,13 @@ function ProgressForm({ onSaved }: { onSaved: () => void }) {
 
 function TabHoy({
   student, detail, meals, day,
+  mealChecks, onMealToggle,
   onMealOpen, onExerciseOpen,
 }: {
   student: Student; detail: Detail; meals: Meal[];
   day: RoutineDay | undefined;
+  mealChecks: string[];
+  onMealToggle: (name: string) => void;
   onMealOpen: (m: Meal) => void;
   onExerciseOpen: (e: Exercise & { muscleGroup?: string }) => void;
 }) {
@@ -1107,7 +1120,7 @@ function TabHoy({
         <SectionHeader icon={Utensils} title="Tu dieta de hoy" />
         {meals.length === 0
           ? <p className="text-[11px] py-3 text-center" style={{ color: "rgba(255,255,255,0.18)" }}>Tu coach aún no asigna tu dieta.</p>
-          : <div className="space-y-2">{meals.map((m, i) => <MealCard key={i} meal={m} onClick={() => onMealOpen(m)} />)}</div>
+          : <div className="space-y-2">{meals.map((m, i) => <MealCard key={i} meal={m} done={mealChecks.includes(m.name)} onToggle={() => onMealToggle(m.name)} onClick={() => onMealOpen(m)} />)}</div>
         }
       </CardWrap>
 
@@ -1136,13 +1149,26 @@ function TabHoy({
    TAB: PROGRESO
 ══════════════════════════════════════════════════════════════ */
 
+function silhouettePath(track: any[], W: number, H: number, pad = 10): string {
+  if (!track || track.length < 2) return "";
+  const lats = track.map((p) => p.lat), lngs = track.map((p) => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const meanLat = ((minLat + maxLat) / 2) * (Math.PI / 180);
+  const spanLat = maxLat - minLat || 1e-6, spanLng = (maxLng - minLng) * Math.cos(meanLat) || 1e-6;
+  const w = W - pad * 2, h = H - pad * 2, scale = Math.min(w / spanLng, h / spanLat);
+  const offX = pad + (w - spanLng * scale) / 2, offY = pad + (h - spanLat * scale) / 2;
+  return track.map((p, i) => `${i === 0 ? "M" : "L"} ${(offX + (p.lng - minLng) * Math.cos(meanLat) * scale).toFixed(1)} ${(offY + (maxLat - p.lat) * scale).toFixed(1)}`).join(" ");
+}
+
 function TabProgreso({
-  student, detail, startWeight, onBadge,
+  student, detail, startWeight, carreras, onBadge,
 }: {
-  student: Student; detail: Detail; startWeight: number;
+  student: Student; detail: Detail; startWeight: number; carreras: any[];
   onBadge: () => void;
 }) {
   const diff = +(student.currentWeight - startWeight).toFixed(1);
+  const fmtDist = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+  const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
   return (
     <div className="space-y-4">
@@ -1170,6 +1196,24 @@ function TabProgreso({
         <SectionHeader icon={Weight} title="Registrar progreso de hoy" />
         <ProgressForm onSaved={() => {}} />
       </CardWrap>
+
+      {/* Carreras MD-Route */}
+      {carreras.length > 0 && (
+        <CardWrap>
+          <SectionHeader icon={TrendingUp} title={`Mis carreras (${carreras.length})`} />
+          <div className="space-y-3">
+            {carreras.map((c) => (
+              <div key={c.id} className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="flex justify-center py-2"><svg width={220} height={80}><path d={silhouettePath(c.track, 220, 80)} fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" /></svg></div>
+                <div className="flex justify-between px-4 py-2.5 text-[12px]" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.4)" }}>{c.date}</span>
+                  <div className="flex gap-4" style={{ color: "rgba(255,255,255,0.7)" }}><span>{fmtDist(c.distanceM)}</span><span>{fmtDur(c.durationS)}</span><span>{c.avgSpeedKmh} km/h</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardWrap>
+      )}
 
       {/* Badge */}
       <button onClick={onBadge}
@@ -1574,6 +1618,31 @@ export default function PortalPage() {
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null);
   const [activeExercise, setActiveExercise] = useState<(Exercise & { muscleGroup?: string }) | null>(null);
 
+  // Persistencia (paridad con la app): checks de dieta + carreras MD-Route
+  const [mealChecks, setMealChecks] = useState<string[]>([]); // nombres de comidas marcadas hoy
+  const [carreras, setCarreras] = useState<any[]>([]);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    fetch(`/api/me/checks?date=${todayStr}`).then((r) => (r.ok ? r.json() : { checks: [] })).then((d) => setMealChecks((d.checks || []).filter((c: string) => c.startsWith("meal:")).map((c: string) => c.slice(5)))).catch(() => {});
+    fetch("/api/carreras").then((r) => (r.ok ? r.json() : [])).then((d) => setCarreras(Array.isArray(d) ? d : [])).catch(() => {});
+  }, [todayStr]);
+
+  const toggleMeal = useCallback(async (name: string) => {
+    const willBe = !mealChecks.includes(name);
+    setMealChecks((prev) => (willBe ? [...prev, name] : prev.filter((n) => n !== name)));
+    try {
+      await fetch("/api/me/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: todayStr, kind: "meal", itemKey: name, done: willBe }) });
+    } catch {
+      setMealChecks((prev) => (willBe ? prev.filter((n) => n !== name) : [...prev, name]));
+    }
+  }, [mealChecks, todayStr]);
+
+  const completeExercise = useCallback(async (payload: any) => {
+    await fetch("/api/me/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+  }, []);
+
   // Cancel subscription sheet
   const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -1671,11 +1740,12 @@ export default function PortalPage() {
       >
         {activeTab === "today" && (
           <TabHoy student={student} detail={detail} meals={meals} day={day}
+            mealChecks={mealChecks} onMealToggle={toggleMeal}
             onMealOpen={setActiveMeal}
             onExerciseOpen={setActiveExercise} />
         )}
         {activeTab === "progress" && (
-          <TabProgreso student={student} detail={detail} startWeight={startWeight}
+          <TabProgreso student={student} detail={detail} startWeight={startWeight} carreras={carreras}
             onBadge={() => downloadBadge({ name: student.name, photoUrl: detail.photoName, currentWeight: student.currentWeight, startWeight, streak: student.streak, height: detail.height, bodyFat: detail.bodyFat, stage: `${student.stage} · E${student.stageNumber}`, weightHistory: detail.weightHistory })} />
         )}
         {activeTab === "squads" && <TabSalas />}
@@ -1696,7 +1766,7 @@ export default function PortalPage() {
         {activeMeal && <MealSheet meal={activeMeal} />}
       </BottomSheet>
       <BottomSheet open={!!activeExercise} onClose={() => setActiveExercise(null)}>
-        {activeExercise && <ExerciseSheet exercise={activeExercise} />}
+        {activeExercise && <ExerciseSheet exercise={activeExercise} onComplete={async (payload) => { await completeExercise(payload); setActiveExercise(null); }} />}
       </BottomSheet>
 
       {/* Cancel subscription sheet */}

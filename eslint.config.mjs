@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // App móvil (Expo/React Native) — vive aislada en /mobile, fuera del build de la web.
+    "mobile/**",
   ]),
 ]);
 
