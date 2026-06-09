@@ -30,6 +30,7 @@ model User {
 
   coachProfile Coach?   @relation("CoachUser")
   student      Student? @relation("StudentUser")
+  carreras     Carrera[]
 }
 
 // ─────────────────────────────────────────────
@@ -41,6 +42,7 @@ model Coach {
   user                     User       @relation("CoachUser", fields: [userId], references: [id], onDelete: Cascade)
   students                 Student[]
   templates                Template[]
+  ejercicios               Ejercicio[]
   stripeConnectId          String?
   stripeOnboardingComplete Boolean    @default(false)
   createdAt                DateTime   @default(now())
@@ -81,6 +83,8 @@ model Student {
   measurements    Measurement[]
   photos          ProgressPhoto[]
   scheduledChange ScheduledChange?
+  dailyChecks     DailyCheck[]
+  exerciseLogs    ExerciseLog[]
 
   coachId String?
   coach   Coach?  @relation(fields: [coachId], references: [id], onDelete: SetNull)
@@ -145,4 +149,71 @@ model Template {
   coachId   String?
   coach     Coach?   @relation(fields: [coachId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Registro de ejecución del alumno (sesión por ejercicio)
+// Guarda lo PRESCRITO y lo que REALMENTE hizo (serie por serie).
+// ─────────────────────────────────────────────
+model ExerciseLog {
+  id               String   @id @default(cuid())
+  studentId        String
+  student          Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date             String   // YYYY-MM-DD
+  ejercicioId      String?  // referencia al catálogo (si aplica)
+  exerciseName     String
+  muscleGroup      String?
+  bodyweight       Boolean  @default(false)
+  prescribedSets   Int      @default(0)
+  prescribedReps   String   @default("")
+  prescribedWeight String?
+  setsJson         String   @default("[]") // [{ reps, weight, done }]
+  completed        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Catálogo de ejercicios recurrentes (por coach)
+// ─────────────────────────────────────────────
+model Ejercicio {
+  id          String   @id @default(cuid())
+  coachId     String
+  coach       Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  name        String
+  muscleGroup String   // Pecho, Espalda, Pierna, Hombro, Brazo, Core...
+  equipment   String   // Barra, Mancuerna, Polea, Peso corporal, Máquina...
+  bodyweight  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Cumplimiento diario (checks de dieta/rutina del alumno)
+// ─────────────────────────────────────────────
+model DailyCheck {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  kind      String   // "meal" | "exercise"
+  itemKey   String   // identificador del ítem (nombre de comida, o "día|ejercicio")
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, date, kind, itemKey])
+}
+
+// ─────────────────────────────────────────────
+// Carreras (módulo Strava) — MODELO NUEVO (móvil)
+// Cada usuario sube y ve las suyas; el coach ve las de sus alumnos.
+// ─────────────────────────────────────────────
+model Carrera {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  distanceM   Float
+  durationS   Int
+  avgSpeedKmh Float
+  trackJson   String   // JSON.stringify(GpsPoint[]) — puntos GPS de la silueta
+  photoUrl    String?  // foto de fondo elegida para compartir
+  createdAt   DateTime @default(now())
 }
