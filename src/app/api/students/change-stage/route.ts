@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
       dietTemplateId,
       routineTemplateId,
       executionDate,
+      macroOverrides,
+      routineSettings,
     } = body;
 
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
@@ -32,6 +34,8 @@ export async function POST(request: NextRequest) {
       dietTemplateId: dietTemplateId || undefined,
       routineTemplateId: routineTemplateId || undefined,
       executionDate: executionDate || undefined,
+      macroOverrides: macroOverrides || undefined,
+      routineSettings: routineSettings || undefined,
     });
 
     return NextResponse.json({ success: true });

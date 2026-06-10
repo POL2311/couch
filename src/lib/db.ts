@@ -398,6 +398,8 @@ export async function applyStageChange(
     dietTemplateId?: string;
     routineTemplateId?: string;
     executionDate?: string;
+    macroOverrides?: { protein?: number; carbs?: number; fat?: number; calories?: number };
+    routineSettings?: { splitBlock?: string; phaseWeek?: number; phaseTotalWeeks?: number; trackRpe?: boolean; weightLimits?: boolean };
   }
 ): Promise<void> {
   const todayStr = new Date().toISOString().split("T")[0];
@@ -415,8 +417,42 @@ export async function applyStageChange(
     if (targetDate <= todayStr) {
       // Aplicación inmediata
       const data: any = { stage: changeData.stage, stageNumber: changeData.stageNumber };
-      if (dietTemplate) data.dietJson = JSON.stringify(stripTemplate(dietTemplate));
-      if (routineTemplate) data.routineJson = JSON.stringify(stripTemplate(routineTemplate));
+      if (dietTemplate) {
+        const dietData: any = stripTemplate(dietTemplate);
+        if (changeData.macroOverrides) {
+          const mo = changeData.macroOverrides;
+          if (!dietData.macros) dietData.macros = {};
+          if (mo.protein  != null) dietData.macros.protein  = mo.protein;
+          if (mo.carbs    != null) dietData.macros.carbs    = mo.carbs;
+          if (mo.fat      != null) dietData.macros.fat      = mo.fat;
+          if (mo.calories != null) dietData.totalCalories   = mo.calories;
+        }
+        data.dietJson = JSON.stringify(dietData);
+      } else if (changeData.macroOverrides && student.dietJson) {
+        try {
+          const existing: any = JSON.parse(student.dietJson);
+          const mo = changeData.macroOverrides;
+          if (!existing.macros) existing.macros = {};
+          if (mo.protein  != null) existing.macros.protein  = mo.protein;
+          if (mo.carbs    != null) existing.macros.carbs    = mo.carbs;
+          if (mo.fat      != null) existing.macros.fat      = mo.fat;
+          if (mo.calories != null) existing.totalCalories   = mo.calories;
+          data.dietJson = JSON.stringify(existing);
+        } catch { /* leave as-is */ }
+      }
+      if (routineTemplate) {
+        const routineData: any = stripTemplate(routineTemplate);
+        if (changeData.routineSettings) {
+          Object.assign(routineData, changeData.routineSettings);
+        }
+        data.routineJson = JSON.stringify(routineData);
+      } else if (changeData.routineSettings && student.routineJson) {
+        try {
+          const existing: any = JSON.parse(student.routineJson);
+          Object.assign(existing, changeData.routineSettings);
+          data.routineJson = JSON.stringify(existing);
+        } catch { /* leave as-is */ }
+      }
       await prisma.student.update({ where: { id }, data });
       await prisma.scheduledChange.deleteMany({ where: { studentId: id } });
     } else {

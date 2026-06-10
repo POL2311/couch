@@ -468,36 +468,241 @@ function ProgressTab({ detail, carreras }: any) {
 function ManageModal({ studentId, currentStage, onClose, onApplied }: any) {
   const STAGES = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
   const [templates, setTemplates] = useState<any[]>([]);
-  const [stage, setStage] = useState(currentStage);
-  const [dietId, setDietId] = useState<string>("");
+  const [stage, setStage]         = useState(currentStage);
+  const [dietId, setDietId]       = useState<string>("");
   const [routineId, setRoutineId] = useState<string>("");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]       = useState(false);
+
+  /* ── Macro overrides ── */
+  const [protein,   setProtein]   = useState("");
+  const [carbs,     setCarbs]     = useState("");
+  const [fat,       setFat]       = useState("");
+  const [calories,  setCalories]  = useState("");
+
+  /* ── Routine settings ── */
+  const [splitBlock,       setSplitBlock]       = useState("");
+  const [phaseWeek,        setPhaseWeek]        = useState("");
+  const [phaseTotalWeeks,  setPhaseTotalWeeks]  = useState("");
+  const [trackRpe,         setTrackRpe]         = useState(false);
+  const [weightLimits,     setWeightLimits]     = useState(false);
+
   useEffect(() => { fetch("/api/templates").then((r) => r.json()).then(setTemplates).catch(() => {}); }, []);
-  const diets = templates.filter((t) => t.type === "diet"), routines = templates.filter((t) => t.type === "routine");
+  const diets    = templates.filter((t) => t.type === "diet");
+  const routines = templates.filter((t) => t.type === "routine");
+
   const apply = async () => {
     setSaving(true);
-    await fetch("/api/students/change-stage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentIds: [studentId], stage, stageNumber: STAGES.indexOf(stage) + 1, dietTemplateId: dietId || undefined, routineTemplateId: routineId || undefined }) });
+    const macroOverrides = (protein || carbs || fat || calories) ? {
+      protein:  protein  ? parseFloat(protein)  : undefined,
+      carbs:    carbs    ? parseFloat(carbs)    : undefined,
+      fat:      fat      ? parseFloat(fat)      : undefined,
+      calories: calories ? parseFloat(calories) : undefined,
+    } : undefined;
+    const routineSettings = (splitBlock || phaseWeek || phaseTotalWeeks || trackRpe || weightLimits) ? {
+      splitBlock:      splitBlock || undefined,
+      phaseWeek:       phaseWeek       ? parseInt(phaseWeek)       : undefined,
+      phaseTotalWeeks: phaseTotalWeeks ? parseInt(phaseTotalWeeks) : undefined,
+      trackRpe,
+      weightLimits,
+    } : undefined;
+    await fetch("/api/students/change-stage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentIds: [studentId], stage,
+        stageNumber: STAGES.indexOf(stage) + 1,
+        dietTemplateId:    dietId    || undefined,
+        routineTemplateId: routineId || undefined,
+        macroOverrides,
+        routineSettings,
+      }),
+    });
     onApplied();
   };
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.72)" }} />
-      <div className="relative w-full max-w-md rounded-2xl p-6 z-10 space-y-4 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between"><h3 className="text-[16px] font-medium" style={{ color: C.primary }}>Gestionar alumno</h3><button onClick={onClose} className="cursor-pointer"><X size={18} style={{ color: C.tertiary }} /></button></div>
-        <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Etapa</p><div className="flex flex-wrap gap-2">{STAGES.map((s) => <button key={s} onClick={() => setStage(s)} className="px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: stage === s ? "rgba(255,255,255,0.08)" : C.raised, border: `1px solid ${stage === s ? "rgba(255,255,255,0.2)" : C.border}`, color: stage === s ? C.primary : C.secondary }}>{s}</button>)}</div></div>
-        <SelectList label="Asignar dieta" items={diets} selected={dietId} onSelect={setDietId} />
-        <SelectList label="Asignar rutina" items={routines} selected={routineId} onSelect={setRoutineId} />
-        <button onClick={apply} disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-medium cursor-pointer disabled:opacity-50" style={{ background: C.info, color: "#000" }}>{saving ? <Loader2 size={16} className="animate-spin" /> : "Aplicar cambios"}</button>
-      </div>
+
+  const sectionLbl = (txt: string) => (
+    <p className="text-[10px] uppercase tracking-wider font-semibold mb-2.5" style={{ color: C.secondary }}>{txt}</p>
+  );
+  const iS = { background: C.raised, border: `1px solid ${C.border}`, color: C.primary } as const;
+  const iC = "flex-1 px-3 py-2.5 rounded-xl text-[13px] outline-none";
+  const Toggle = ({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) => (
+    <div className="flex items-center justify-between py-2.5 px-3.5 rounded-xl"
+      style={{ background: C.raised, border: `1px solid ${C.border}` }}>
+      <span className="text-[13px]" style={{ color: C.secondary }}>{label}</span>
+      <button onClick={() => onChange(!value)}
+        className="w-10 h-5.5 rounded-full relative cursor-pointer transition-colors shrink-0"
+        style={{
+          background: value ? C.info : "rgba(255,255,255,0.1)",
+          width: 38, height: 22,
+        }}>
+        <span className="absolute top-0.5 rounded-full transition-transform"
+          style={{
+            width: 18, height: 18, left: 2,
+            background: "#fff",
+            transform: `translateX(${value ? 16 : 0}px)`,
+          }} />
+      </button>
     </div>
   );
-}
-function SelectList({ label, items, selected, onSelect }: any) {
+
   return (
-    <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>{label}</p>
-      {items.length === 0 ? <p className="text-[12px]" style={{ color: C.tertiary }}>No hay plantillas.</p> : (
-        <div className="space-y-2">{items.map((t: any) => <button key={t.id} onClick={() => onSelect(selected === t.id ? "" : t.id)} className="w-full text-left px-4 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: selected === t.id ? "rgba(255,255,255,0.07)" : C.raised, border: `1px solid ${selected === t.id ? "rgba(255,255,255,0.2)" : C.border}`, color: selected === t.id ? C.primary : C.secondary }}>{t.name}</button>)}</div>
-      )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.78)" }} />
+      <div className="relative w-full max-w-md rounded-2xl z-10 overflow-hidden"
+        style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.8)" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${C.border}` }}>
+          <h3 className="text-[16px] font-semibold" style={{ color: C.primary }}>Gestionar alumno</h3>
+          <button onClick={onClose} className="cursor-pointer w-7 h-7 flex items-center justify-center rounded-lg"
+            style={{ background: C.raised }}>
+            <X size={14} style={{ color: C.secondary }} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="px-6 py-5 space-y-5 max-h-[72vh] overflow-y-auto">
+
+          {/* Etapa */}
+          <div>
+            {sectionLbl("Etapa")}
+            <div className="flex flex-wrap gap-2">
+              {STAGES.map((s) => (
+                <button key={s} onClick={() => setStage(s)}
+                  className="flex-1 px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer transition-colors"
+                  style={{
+                    background: stage === s ? "rgba(255,255,255,0.09)" : C.raised,
+                    border: `1px solid ${stage === s ? "rgba(255,255,255,0.25)" : C.border}`,
+                    color: stage === s ? C.primary : C.secondary,
+                  }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── DIETA ── */}
+          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
+            <div className="px-4 py-3" style={{ background: C.raised, borderBottom: `1px solid ${C.border}` }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.secondary }}>Dieta</p>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Template picker */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Plantilla base</p>
+                {diets.length === 0 ? (
+                  <p className="text-[12px]" style={{ color: C.tertiary }}>No hay plantillas de dieta.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {diets.map((t: any) => (
+                      <button key={t.id} onClick={() => setDietId(dietId === t.id ? "" : t.id)}
+                        className="w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors"
+                        style={{
+                          background: dietId === t.id ? "rgba(96,165,250,0.1)" : C.raised,
+                          border: `1px solid ${dietId === t.id ? `${C.info}50` : C.border}`,
+                          color: dietId === t.id ? C.info : C.secondary,
+                        }}>
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Macro override inputs */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>
+                  Objetivos macro diarios <span style={{ color: C.tertiary }}>(sobreescribe la plantilla)</span>
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["Proteína (g)",  protein,  setProtein,  "150"],
+                    ["Carbos (g)",    carbs,    setCarbs,    "200"],
+                    ["Grasa (g)",     fat,      setFat,      "55" ],
+                    ["Calorías (kcal)", calories, setCalories, "2000"],
+                  ] as [string, string, (v: string) => void, string][]).map(([label, val, setter, ph]) => (
+                    <div key={label}>
+                      <p className="text-[9px] uppercase tracking-wider font-medium mb-1" style={{ color: C.tertiary }}>{label}</p>
+                      <input value={val} onChange={(e) => setter(e.target.value)}
+                        type="number" min="0" placeholder={ph}
+                        className={iC} style={iS} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── RUTINA ── */}
+          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
+            <div className="px-4 py-3" style={{ background: C.raised, borderBottom: `1px solid ${C.border}` }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.secondary }}>Rutina</p>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Template picker */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Plantilla base</p>
+                {routines.length === 0 ? (
+                  <p className="text-[12px]" style={{ color: C.tertiary }}>No hay plantillas de rutina.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {routines.map((t: any) => (
+                      <button key={t.id} onClick={() => setRoutineId(routineId === t.id ? "" : t.id)}
+                        className="w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-colors"
+                        style={{
+                          background: routineId === t.id ? "rgba(96,165,250,0.1)" : C.raised,
+                          border: `1px solid ${routineId === t.id ? `${C.info}50` : C.border}`,
+                          color: routineId === t.id ? C.info : C.secondary,
+                        }}>
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Routine settings */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Configuración del bloque</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider font-medium mb-1" style={{ color: C.tertiary }}>Nombre del bloque / split</p>
+                    <input value={splitBlock} onChange={(e) => setSplitBlock(e.target.value)}
+                      placeholder="Ej. Push / Pull / Legs · Fase fuerza"
+                      className="w-full px-3.5 py-2.5 rounded-xl text-[13px] outline-none" style={iS} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider font-medium mb-1" style={{ color: C.tertiary }}>Semana actual</p>
+                      <input value={phaseWeek} onChange={(e) => setPhaseWeek(e.target.value)}
+                        type="number" min="1" max="52" placeholder="1"
+                        className={iC} style={iS} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider font-medium mb-1" style={{ color: C.tertiary }}>Total de semanas</p>
+                      <input value={phaseTotalWeeks} onChange={(e) => setPhaseTotalWeeks(e.target.value)}
+                        type="number" min="1" max="52" placeholder="4"
+                        className={iC} style={iS} />
+                    </div>
+                  </div>
+                  <Toggle label="Registro de RPE" value={trackRpe} onChange={setTrackRpe} />
+                  <Toggle label="Límites de peso absoluto" value={weightLimits} onChange={setWeightLimits} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-5 pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
+          <button onClick={apply} disabled={saving}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
+            style={{ background: C.info, color: "#000" }}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : "Aplicar cambios"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
