@@ -1,350 +1,630 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { PageHeader, AddButton } from "@/components/page-header";
-import StatsRow from "@/components/stats-row";
-import FilterBar, { type PaymentFilter } from "@/components/filter-bar";
-import StudentTable from "@/components/student-table";
-import BulkActionBar from "@/components/bulk-action-bar";
-import AddStudentModal from "@/components/add-student-modal";
-import ChangeStageModal from "@/components/change-stage-modal";
-import { RowSkeleton } from "@/components/skeleton";
-import { type Student, type Stage, type PaymentStatus } from "@/lib/mock-data";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
+import { Search, Plus, X, Loader2, Flame, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { type Student } from "@/lib/mock-data";
+import { PageHeader } from "@/components/page-header";
 
-/* ═══════════════════════════════════════════
-   Coach Students Dashboard Page
-   ═══════════════════════════════════════════ */
+/* ── Design tokens ── */
+const T = {
+  bg:      "#000000",
+  surface: "#121212",
+  raised:  "#1c1c1e",
+  border:  "rgba(255,255,255,0.08)",
+  divider: "rgba(255,255,255,0.05)",
+  p:       "#f4f4f5",
+  s:       "#a1a1aa",
+  t:       "#52525b",
+  success: "#34d399",
+  warning: "#fbbf24",
+  danger:  "#f87171",
+  info:    "#60a5fa",
+};
+
+const STAGES = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
+
+const STAGE_COLORS: Record<string, { text: string; bg: string }> = {
+  Volumen:          { text: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  "Definición":     { text: "#2dd4bf", bg: "rgba(45,212,191,0.12)"  },
+  Mantenimiento:    { text: "#facc15", bg: "rgba(250,204,21,0.12)"  },
+  "Recomposición":  { text: "#f472b6", bg: "rgba(244,114,182,0.12)" },
+};
+
+const PAYMENT: Record<string, { label: string; color: string }> = {
+  active:       { label: "Al día",     color: "#34d399" },
+  grace_period: { label: "Pendiente",  color: "#fbbf24" },
+  past_due:     { label: "Vencido",    color: "#fbbf24" },
+  inactive:     { label: "Suspendido", color: "#f87171" },
+};
+
+const avatarBg = (c?: string) => {
+  if (c) { const m = c.match(/#[0-9a-fA-F]{3,8}/); if (m) return m[0]; if (c.startsWith("rgb")) return c; }
+  return "#3b82f6";
+};
+
+type Filter = "all" | "active" | "attention" | "inactive";
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all",       label: "Todos"       },
+  { id: "active",    label: "Al día"      },
+  { id: "attention", label: "Pendientes"  },
+  { id: "inactive",  label: "Suspendidos" },
+];
+function matchesFilter(s: Student, f: Filter) {
+  if (f === "all")       return true;
+  if (f === "active")    return s.paymentStatus === "active";
+  if (f === "attention") return s.paymentStatus === "grace_period" || s.paymentStatus === "past_due";
+  if (f === "inactive")  return s.paymentStatus === "inactive";
+  return true;
+}
+
+type SortKey = "name" | "weight" | "completionRate" | "streak";
+type SortDir = "asc" | "desc";
 
 export default function StudentsPage() {
-  const router = useRouter();
-
-  /* ── Students State ── */
   const [students, setStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState<Filter>("all");
+  const [query, setQuery]       = useState("");
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sortKey, setSortKey]   = useState<SortKey>("name");
+  const [sortDir, setSortDir]   = useState<SortDir>("asc");
 
-  // Sync with API on mount safely
-  const fetchStudents = useCallback(async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/students");
-      if (response.ok) {
-        const data = await response.json();
-        setStudents(data);
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-    } finally {
-      setIsLoading(false);
-    }
+      const r = await fetch("/api/students");
+      const d = await r.json();
+      setStudents(Array.isArray(d) ? d : []);
+    } finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
-
-  /* ── Add Student Modal State ── */
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  /* ── Filter State (estado en URL: ?estado&etapa&page) ── */
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
-  const [stageFilter, setStageFilter] = useState<Stage | "all">("all");
-
-  /* ── Selection State ── */
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  /* ── Filtered Students (filtros operan sobre el total) ── */
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
-      if (paymentFilter === "attention") {
-        if (s.paymentStatus !== "grace_period" && s.paymentStatus !== "inactive") return false;
-      } else if (paymentFilter !== "all" && s.paymentStatus !== paymentFilter) {
-        return false;
-      }
-      if (stageFilter !== "all" && s.stage !== stageFilter) return false;
-      return true;
+  const list = useMemo(() => {
+    const filtered = students.filter(
+      (s) => matchesFilter(s, filter) && s.name.toLowerCase().includes(query.toLowerCase())
+    );
+    return [...filtered].sort((a, b) => {
+      let av: string | number = 0, bv: string | number = 0;
+      if (sortKey === "name")           { av = a.name;           bv = b.name; }
+      if (sortKey === "weight")         { av = a.currentWeight;  bv = b.currentWeight; }
+      if (sortKey === "completionRate") { av = a.completionRate; bv = b.completionRate; }
+      if (sortKey === "streak")         { av = a.streak;         bv = b.streak; }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ?  1 : -1;
+      return 0;
     });
-  }, [students, paymentFilter, stageFilter]);
+  }, [students, filter, query, sortKey, sortDir]);
 
-  /* ── Paginación (50/pág) ── */
-  const PAGE_SIZE = 50;
-  const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageStart = (safePage - 1) * PAGE_SIZE;
-  const pageStudents = useMemo(
-    () => filteredStudents.slice(pageStart, pageStart + PAGE_SIZE),
-    [filteredStudents, pageStart]
-  );
+  const allChecked  = list.length > 0 && list.every((s) => selected.has(s.id));
+  const someChecked = list.some((s) => selected.has(s.id)) && !allChecked;
 
-  /* ── Filtros + página en la URL ── */
-  const ESTADO_TO_SLUG: Record<string, string> = { active: "activo", grace_period: "gracia", inactive: "suspendido", attention: "atencion" };
-  const SLUG_TO_ESTADO: Record<string, PaymentFilter> = { activo: "active", gracia: "grace_period", suspendido: "inactive", atencion: "attention" };
-  const ETAPA_TO_SLUG: Record<string, string> = { Volumen: "volumen", Definición: "definicion", Mantenimiento: "mantenimiento", Recomposición: "recomposicion" };
-  const SLUG_TO_ETAPA: Record<string, Stage> = { volumen: "Volumen", definicion: "Definición", mantenimiento: "Mantenimiento", recomposicion: "Recomposición" };
+  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(list.map((s) => s.id)));
+  const toggleOne = (id: string) =>
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // Leer al montar (sobrevive refresh / navegación).
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const est = sp.get("estado");
-    if (est && SLUG_TO_ESTADO[est]) setPaymentFilter(SLUG_TO_ESTADO[est]);
-    const eta = sp.get("etapa");
-    if (eta && SLUG_TO_ETAPA[eta]) setStageFilter(SLUG_TO_ETAPA[eta]);
-    const p = parseInt(sp.get("page") || "1", 10);
-    if (p > 1) setPage(p);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const cycleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  };
 
-  // Escribir cambios (omite la 1ª ejecución para no pisar la hidratación).
-  const firstWrite = useRef(true);
-  useEffect(() => {
-    if (firstWrite.current) { firstWrite.current = false; return; }
-    const sp = new URLSearchParams();
-    if (paymentFilter !== "all") sp.set("estado", ESTADO_TO_SLUG[paymentFilter]);
-    if (stageFilter !== "all") sp.set("etapa", ETAPA_TO_SLUG[stageFilter]);
-    if (safePage > 1) sp.set("page", String(safePage));
-    const qs = sp.toString();
-    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentFilter, stageFilter, safePage]);
-
-  /* ── Handlers de filtro (resetean a página 1) ── */
-  const handlePaymentFilter = useCallback((f: PaymentFilter) => { setPaymentFilter(f); setPage(1); }, []);
-  const handleStageFilter = useCallback((f: Stage | "all") => { setStageFilter(f); setPage(1); }, []);
-  const handleClearFilters = useCallback(() => { setPaymentFilter("all"); setStageFilter("all"); setPage(1); }, []);
-
-  /* ── Stats ── */
-  const stats = useMemo(() => {
-    const total = students.length;
-    const active = students.filter((s) => s.paymentStatus === "active").length;
-    const alerts = students.filter(
-      (s) => s.paymentStatus === "grace_period" || s.paymentStatus === "inactive"
-    ).length;
-    const scheduledChanges = students.filter((s: any) => s.scheduledChange != null).length;
-    return { total, active, alerts, scheduledChanges };
-  }, [students]);
-
-  /* ── Selection Handlers ── */
-  const handleToggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleToggleAll = useCallback(() => {
-    setSelectedIds((prev) => {
-      // "Seleccionar todo" opera sobre la página visible.
-      const ids = pageStudents.map((s) => s.id);
-      const allSelected = ids.length > 0 && ids.every((id) => prev.has(id));
-      if (allSelected) {
-        return new Set();
-      }
-      return new Set(ids);
-    });
-  }, [pageStudents]);
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
-
-  const [isChangeStageModalOpen, setIsChangeStageModalOpen] = useState(false);
-
-  const handleStatusToggle = useCallback(async (id: string, currentStatus: PaymentStatus) => {
-    const newStatus = ["active", "grace_period"].includes(currentStatus) ? "inactive" : "active";
-    try {
-      const res = await fetch("/api/coach/students/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: id, status: newStatus }),
-      });
-      if (res.ok) {
-        setStudents((prev) =>
-          prev.map((s) => s.id === id ? { ...s, paymentStatus: newStatus as PaymentStatus } : s)
-        );
-      } else {
-        console.error("[Coach] Error cambiando estado del alumno");
-      }
-    } catch (err) {
-      console.error("[Coach] Error de red al cambiar estado:", err);
-    }
-  }, []);
-
-  const handleScheduleStageChange = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    setIsChangeStageModalOpen(true);
-  }, [selectedIds.size]);
-
-  const handleAddStudent = useCallback(async (newStudentData: {
-    name: string;
-    email: string;
-    stage: Stage;
-    stageNumber: number;
-    startingWeight: number;
-    height: number;
-    bodyFat?: number;
-    chest?: number;
-    waist?: number;
-    hips?: number;
-    photo?: File | null;
-  }) => {
-    try {
-      const formData = new FormData();
-      formData.append("name", newStudentData.name);
-      formData.append("email", newStudentData.email);
-      formData.append("stage", newStudentData.stage);
-      formData.append("stageNumber", String(newStudentData.stageNumber));
-      formData.append("startingWeight", String(newStudentData.startingWeight));
-      formData.append("height", String(newStudentData.height));
-      
-      if (newStudentData.bodyFat !== undefined) {
-        formData.append("bodyFat", String(newStudentData.bodyFat));
-      }
-      if (newStudentData.chest !== undefined) {
-        formData.append("chest", String(newStudentData.chest));
-      }
-      if (newStudentData.waist !== undefined) {
-        formData.append("waist", String(newStudentData.waist));
-      }
-      if (newStudentData.hips !== undefined) {
-        formData.append("hips", String(newStudentData.hips));
-      }
-      if (newStudentData.photo) {
-        formData.append("photo", newStudentData.photo);
-      }
-
-      const response = await fetch("/api/students", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al agregar alumno");
-      }
-
-      const createdStudent = await response.json();
-      
-      // Update local state
-      setStudents((prev) => [createdStudent, ...prev]);
-      
-      // Redirect to detail page
-      router.push(`/coach/students/${createdStudent.id}`);
-    } catch (error) {
-      console.error(error);
-      alert("Hubo un error al registrar al alumno.");
-    }
-  }, [router]);
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k ? null : sortDir === "asc"
+      ? <ChevronUp size={10} className="inline ml-0.5" />
+      : <ChevronDown size={10} className="inline ml-0.5" />;
 
   return (
     <>
-      {/* ── Header canónico ── */}
       <PageHeader
         title="Alumnos"
-        count={isLoading ? undefined : stats.total}
-        hint="Gestión de tus alumnos: progreso, etapa y estado de pago."
-        cta={<AddButton label="Agregar alumno" onClick={() => setIsAddModalOpen(true)} />}
+        hint={`${students.length} en total`}
+        cta={
+          <button onClick={() => setWizardOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
+            style={{ background: T.info, color: "#000" }}>
+            <Plus size={15} /> Nuevo
+          </button>
+        }
       />
 
-      {/* ── KPI Stats (Atención → filtra gracia+suspendido) ── */}
-      <StatsRow
-        totalStudents={stats.total}
-        activeStudents={stats.active}
-        alertStudents={stats.alerts}
-        scheduledChanges={stats.scheduledChanges}
-        onAlertClick={() => handlePaymentFilter("attention")}
-      />
+      <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
 
-      {/* ── Table Area ── */}
-      <div
-        className="flex-1 mx-4 md:mx-8 mb-6 rounded-xl overflow-hidden"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border-subtle)",
-        }}
-      >
-        {/* ── Filter Bar ── */}
-        <FilterBar
-          activePaymentFilter={paymentFilter}
-          activeStageFilter={stageFilter}
-          onPaymentFilterChange={handlePaymentFilter}
-          onStageFilterChange={handleStageFilter}
-          totalStudents={students.length}
-          filteredCount={filteredStudents.length}
-          students={students}
-          onClear={handleClearFilters}
-        />
+        {/* ── Search + filters ── */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="flex items-center flex-1 px-3.5 rounded-xl"
+            style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+            <Search size={14} style={{ color: T.t }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar alumno…"
+              className="flex-1 py-2.5 px-2 text-[13px] bg-transparent outline-none"
+              style={{ color: T.p }} />
+            {query && (
+              <button onClick={() => setQuery("")} className="cursor-pointer">
+                <X size={13} style={{ color: T.t }} />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto shrink-0">
+            {FILTERS.map((f) => {
+              const a = filter === f.id;
+              return (
+                <button key={f.id} onClick={() => setFilter(f.id)}
+                  className="px-3.5 py-2 rounded-xl text-[12px] font-medium whitespace-nowrap cursor-pointer transition-colors"
+                  style={{
+                    background: a ? T.p : T.surface,
+                    border: `1px solid ${a ? T.p : T.border}`,
+                    color: a ? T.bg : T.s,
+                  }}>
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-        {/* ── Student Table ── */}
-        {isLoading ? (
-          <div className="p-5">
-            <RowSkeleton count={6} />
+        {/* ── Table ── */}
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin" style={{ color: T.s }} />
+          </div>
+        ) : list.length === 0 ? (
+          <div className="flex flex-col items-center py-20 gap-3">
+            <p className="text-[14px] font-medium" style={{ color: T.s }}>Sin resultados</p>
+            <p className="text-[12px]" style={{ color: T.t }}>
+              {query ? `No hay alumnos que coincidan con "${query}"` : "No hay alumnos en esta categoría"}
+            </p>
           </div>
         ) : (
-          <StudentTable
-            students={pageStudents}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onToggleAll={handleToggleAll}
-            onStatusToggle={handleStatusToggle}
-          />
-        )}
+          <div className="w-full rounded-xl overflow-hidden"
+            style={{ border: `1px solid ${T.border}`, boxShadow: "0 2px 16px rgba(0,0,0,0.6)" }}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" style={{ background: T.bg }}>
+                {/* THEAD */}
+                <thead>
+                  <tr style={{ background: T.surface, borderBottom: `1px solid ${T.border}` }}>
+                    <th className="w-10 pl-4 pr-2 py-3">
+                      <input type="checkbox" checked={allChecked}
+                        ref={(el) => { if (el) el.indeterminate = someChecked; }}
+                        onChange={toggleAll}
+                        className="w-3.5 h-3.5 rounded cursor-pointer accent-sky-400" />
+                    </th>
+                    <th className="text-left px-4 py-3">
+                      <button onClick={() => cycleSort("name")}
+                        className="text-[10px] font-semibold tracking-widest uppercase cursor-pointer"
+                        style={{ color: T.t }}>
+                        Nombre <SortIcon k="name" />
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-3 min-w-[120px]">
+                      <button onClick={() => cycleSort("weight")}
+                        className="text-[10px] font-semibold tracking-widest uppercase cursor-pointer"
+                        style={{ color: T.t }}>
+                        Peso <SortIcon k="weight" />
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-3 min-w-[130px]">
+                      <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: T.t }}>
+                        Etapa
+                      </span>
+                    </th>
+                    <th className="text-left px-4 py-3 min-w-[120px]">
+                      <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: T.t }}>
+                        Estado
+                      </span>
+                    </th>
+                    <th className="text-left px-4 py-3 min-w-[180px]">
+                      <button onClick={() => cycleSort("completionRate")}
+                        className="text-[10px] font-semibold tracking-widest uppercase cursor-pointer"
+                        style={{ color: T.t }}>
+                        Adherencia <SortIcon k="completionRate" />
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-3 w-[90px]">
+                      <button onClick={() => cycleSort("streak")}
+                        className="text-[10px] font-semibold tracking-widest uppercase cursor-pointer"
+                        style={{ color: T.t }}>
+                        Racha <SortIcon k="streak" />
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                {/* TBODY */}
+                <tbody>
+                  {list.map((s, idx) => {
+                    const pay        = PAYMENT[s.paymentStatus] ?? PAYMENT.inactive;
+                    const stageStyle = STAGE_COLORS[s.stage] ?? { text: T.t, bg: "rgba(255,255,255,0.06)" };
+                    const delta      = Math.round((s.currentWeight - s.previousWeight) * 10) / 10;
+                    const deltaColor = delta < 0 ? T.success : delta > 0 ? T.danger : T.t;
+                    const adherence  = Math.min(Math.max(s.completionRate ?? 0, 0), 100);
+                    const isSelected = selected.has(s.id);
+                    const isLast     = idx === list.length - 1;
+                    return (
+                      <tr key={s.id}
+                        className="transition-colors duration-100"
+                        style={{
+                          borderBottom: isLast ? "none" : `1px solid ${T.divider}`,
+                          background: isSelected ? "rgba(96,165,250,0.05)" : "transparent",
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = T.surface; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "rgba(96,165,250,0.05)" : "transparent"; }}>
 
-        {/* ── Paginación (50/pág) ── */}
-        {!isLoading && filteredStudents.length > 0 && (
-          <div className="flex items-center justify-end gap-3 px-5 py-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-              {pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, filteredStudents.length)} de {filteredStudents.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(safePage - 1)}
-                disabled={safePage <= 1}
-                className="px-2.5 py-1 rounded-lg text-[12px] cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
-              >
-                Anterior
-              </button>
-              <button
-                onClick={() => setPage(safePage + 1)}
-                disabled={safePage >= totalPages}
-                className="px-2.5 py-1 rounded-lg text-[12px] cursor-pointer transition-colors hover:bg-[color:var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
-              >
-                Siguiente
-              </button>
+                        {/* Checkbox */}
+                        <td className="pl-4 pr-2 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleOne(s.id)}
+                            className="w-3.5 h-3.5 rounded cursor-pointer accent-sky-400" />
+                        </td>
+
+                        {/* Nombre */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold text-white"
+                              style={{ background: avatarBg(s.avatarColor) }}>
+                              {s.avatarInitials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-semibold truncate" style={{ color: T.p }}>{s.name}</p>
+                              <p className="text-[11px] truncate mt-0.5" style={{ color: T.t }}>{s.email}</p>
+                            </div>
+                          </Link>
+                        </td>
+
+                        {/* Peso */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="block">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[14px] font-bold tabular-nums" style={{ color: T.p }}>{s.currentWeight}</span>
+                              <span className="text-[10px]" style={{ color: T.t }}>kg</span>
+                              {delta !== 0 && (
+                                <span className="text-[11px] font-semibold tabular-nums" style={{ color: deltaColor }}>
+                                  {delta > 0 ? "+" : ""}{delta}
+                                </span>
+                              )}
+                            </div>
+                            {s.lastWeighIn && <p className="text-[10px] mt-0.5" style={{ color: T.t }}>{s.lastWeighIn}</p>}
+                          </Link>
+                        </td>
+
+                        {/* Etapa */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="block">
+                            <span className="inline-block px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap"
+                              style={{ background: stageStyle.bg, color: stageStyle.text }}>
+                              {s.stage}
+                            </span>
+                          </Link>
+                        </td>
+
+                        {/* Estado */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0"
+                              style={{ background: pay.color, boxShadow: `0 0 5px ${pay.color}70` }} />
+                            <span className="text-[12px] font-medium" style={{ color: pay.color }}>{pay.label}</span>
+                          </Link>
+                        </td>
+
+                        {/* Adherencia */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="block">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 rounded-full overflow-hidden"
+                                style={{ background: "rgba(255,255,255,0.07)", minWidth: 72, maxWidth: 110 }}>
+                                <div className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${adherence}%`,
+                                    background: adherence >= 80 ? T.success : adherence >= 50 ? T.warning : T.danger,
+                                  }} />
+                              </div>
+                              <span className="text-[11px] font-semibold tabular-nums shrink-0"
+                                style={{ color: adherence >= 80 ? T.success : adherence >= 50 ? T.warning : T.danger }}>
+                                {adherence}%
+                              </span>
+                            </div>
+                          </Link>
+                        </td>
+
+                        {/* Racha */}
+                        <td className="px-4 py-3.5">
+                          <Link href={`/coach/students/${s.id}`} className="flex items-center gap-1">
+                            <Flame size={13} style={{ color: s.streak > 0 ? T.warning : T.t }} />
+                            <span className="text-[12px] font-semibold tabular-nums"
+                              style={{ color: s.streak > 0 ? T.p : T.t }}>
+                              {s.streak}
+                            </span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table footer */}
+            <div className="flex items-center justify-between px-5 py-2.5"
+              style={{ borderTop: `1px solid ${T.border}`, background: T.surface }}>
+              <p className="text-[11px]" style={{ color: T.t }}>
+                {selected.size > 0
+                  ? `${selected.size} seleccionado${selected.size > 1 ? "s" : ""}`
+                  : `${list.length} alumno${list.length !== 1 ? "s" : ""}`}
+              </p>
+              {selected.size > 0 && (
+                <button onClick={() => setSelected(new Set())}
+                  className="text-[11px] cursor-pointer" style={{ color: T.info }}>
+                  Limpiar selección
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Bulk Action Bar (floating) ── */}
-      <BulkActionBar
-        selectedCount={selectedIds.size}
-        onClear={handleClearSelection}
-        onScheduleStageChange={handleScheduleStageChange}
-      />
-
-      {/* ── Add Student Modal ── */}
-      <AddStudentModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddStudent}
-      />
-
-      {/* ── Change Stage Modal ── */}
-      <ChangeStageModal
-        isOpen={isChangeStageModalOpen}
-        onClose={() => setIsChangeStageModalOpen(false)}
-        studentIds={Array.from(selectedIds)}
-        onSuccess={() => {
-          handleClearSelection();
-          fetchStudents();
-        }}
-      />
+      {wizardOpen && (
+        <WizardModal onClose={() => setWizardOpen(false)} onCreated={() => { setWizardOpen(false); load(); }} />
+      )}
     </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4-STEP WIZARD MODAL
+══════════════════════════════════════════════════════════════ */
+interface WizardForm {
+  name: string; email: string; stage: string; stageNumber: string;
+  startingWeight: string; height: string; bodyFat: string;
+  chest: string; waist: string; hips: string;
+  photo: File | null;
+}
+
+const STEP_LABELS = ["Registro", "Físico", "Medidas", "Fotos"];
+
+function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [step, setStep]     = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [form, setForm] = useState<WizardForm>({
+    name: "", email: "", stage: "Volumen", stageNumber: "1",
+    startingWeight: "", height: "", bodyFat: "",
+    chest: "", waist: "", hips: "",
+    photo: null,
+  });
+
+  const set = <K extends keyof WizardForm>(k: K, v: WizardForm[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const canAdvance = step === 1
+    ? form.name.trim() !== "" && form.email.trim() !== ""
+    : true;
+
+  const submit = async () => {
+    if (!form.name.trim() || !form.email.trim()) { alert("Nombre y correo son obligatorios."); return; }
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("name",           form.name.trim());
+      fd.append("email",          form.email.trim());
+      fd.append("stage",          form.stage);
+      fd.append("stageNumber",    form.stageNumber || "1");
+      fd.append("startingWeight", form.startingWeight || "0");
+      fd.append("height",         form.height || "0");
+      if (form.bodyFat)  fd.append("bodyFat",  form.bodyFat);
+      if (form.chest)    fd.append("chest",    form.chest);
+      if (form.waist)    fd.append("waist",    form.waist);
+      if (form.hips)     fd.append("hips",     form.hips);
+      if (form.photo)    fd.append("photo",    form.photo);
+      await fetch("/api/students", { method: "POST", body: fd });
+      onCreated();
+    } finally { setSaving(false); }
+  };
+
+  const iS = { background: T.raised, border: `1px solid ${T.border}`, color: T.p } as const;
+  const iC = "w-full px-3.5 py-2.5 rounded-xl text-[13px] outline-none";
+  const lC = "text-[10px] uppercase tracking-wider font-medium block mb-1.5";
+  const lS = { color: T.s } as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.78)" }} />
+      <div className="relative w-full max-w-md rounded-2xl z-10 overflow-hidden"
+        style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.85)" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Header with step progress ── */}
+        <div className="px-6 pt-5 pb-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-[16px] font-semibold" style={{ color: T.p }}>Nuevo alumno</h3>
+              <p className="text-[11px] mt-0.5" style={{ color: T.t }}>Paso {step} de 4 · {STEP_LABELS[step - 1]}</p>
+            </div>
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer"
+              style={{ background: T.raised }}>
+              <X size={14} style={{ color: T.s }} />
+            </button>
+          </div>
+          {/* Progress track */}
+          <div className="flex gap-1.5">
+            {STEP_LABELS.map((_, i) => {
+              const n = i + 1;
+              return (
+                <div key={n} className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: T.raised }}>
+                  <div className="h-full rounded-full transition-all duration-400"
+                    style={{
+                      width: n < step ? "100%" : n === step ? "60%" : "0%",
+                      background: n < step ? T.success : T.info,
+                    }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Step body ── */}
+        <div className="px-6 py-5 space-y-3.5 max-h-[58vh] overflow-y-auto">
+
+          {/* STEP 1 — Registro */}
+          {step === 1 && (
+            <>
+              <div>
+                <label className={lC} style={lS}>Nombre completo *</label>
+                <input value={form.name} onChange={(e) => set("name", e.target.value)}
+                  placeholder="Ej. Ana García" className={iC} style={iS} autoFocus />
+              </div>
+              <div>
+                <label className={lC} style={lS}>Correo electrónico *</label>
+                <input value={form.email} onChange={(e) => set("email", e.target.value)}
+                  type="email" placeholder="ana@correo.com" className={iC} style={iS} />
+              </div>
+              <div>
+                <label className={lC} style={lS}>Etapa de entrenamiento</label>
+                <div className="flex flex-wrap gap-2">
+                  {STAGES.map((st) => {
+                    const c = STAGE_COLORS[st];
+                    const a = form.stage === st;
+                    return (
+                      <button key={st}
+                        onClick={() => { set("stage", st); set("stageNumber", String(STAGES.indexOf(st) + 1)); }}
+                        className="flex-1 px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer transition-colors"
+                        style={{
+                          background: a ? c.bg : T.raised,
+                          border: `1px solid ${a ? c.text + "60" : T.border}`,
+                          color: a ? c.text : T.s,
+                        }}>
+                        {st}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className={lC} style={lS}>Semana de etapa (número)</label>
+                <input value={form.stageNumber} onChange={(e) => set("stageNumber", e.target.value)}
+                  type="number" min="1" max="52" placeholder="1" className={iC} style={iS} />
+              </div>
+            </>
+          )}
+
+          {/* STEP 2 — Físico */}
+          {step === 2 && (
+            <>
+              <div className="rounded-xl px-4 py-3" style={{ background: T.raised }}>
+                <p className="text-[12px]" style={{ color: T.s }}>Datos físicos iniciales. Formarán la línea base de progreso del alumno.</p>
+              </div>
+              <div>
+                <label className={lC} style={lS}>Peso inicial (kg)</label>
+                <input value={form.startingWeight} onChange={(e) => set("startingWeight", e.target.value)}
+                  type="number" step="0.1" placeholder="80.0" className={iC} style={iS} autoFocus />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lC} style={lS}>Altura (cm)</label>
+                  <input value={form.height} onChange={(e) => set("height", e.target.value)}
+                    type="number" step="0.5" placeholder="175" className={iC} style={iS} />
+                </div>
+                <div>
+                  <label className={lC} style={lS}>% Grasa corporal</label>
+                  <input value={form.bodyFat} onChange={(e) => set("bodyFat", e.target.value)}
+                    type="number" step="0.1" min="3" max="50" placeholder="18.0" className={iC} style={iS} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* STEP 3 — Medidas */}
+          {step === 3 && (
+            <>
+              <div className="rounded-xl px-4 py-3" style={{ background: T.raised }}>
+                <p className="text-[12px]" style={{ color: T.s }}>Medidas perimetrales iniciales en cm. Son opcionales pero mejoran el análisis de composición.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {([["chest", "Pecho"], ["waist", "Cintura"], ["hips", "Cadera"]] as [keyof WizardForm, string][]).map(([k, label]) => (
+                  <div key={k}>
+                    <label className={lC} style={lS}>{label} (cm)</label>
+                    <input value={form[k] as string} onChange={(e) => set(k, e.target.value)}
+                      type="number" step="0.5" placeholder="—" className={iC} style={iS} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* STEP 4 — Fotos */}
+          {step === 4 && (
+            <>
+              <div className="rounded-xl px-4 py-3" style={{ background: T.raised }}>
+                <p className="text-[12px]" style={{ color: T.s }}>Opcional: foto inicial (frontal) o informe InBody. Se usará como comparativa visual de progreso.</p>
+              </div>
+              <label className="block cursor-pointer"
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) set("photo", f); }}>
+                <div className="flex flex-col items-center gap-3 py-8 rounded-xl transition-all"
+                  style={{
+                    background: dragOver ? "rgba(96,165,250,0.08)" : T.raised,
+                    border: `1.5px dashed ${dragOver ? T.info : T.border}`,
+                  }}>
+                  {form.photo ? (
+                    <>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: "rgba(52,211,153,0.12)" }}>
+                        <Upload size={18} style={{ color: T.success }} />
+                      </div>
+                      <p className="text-[13px] font-medium" style={{ color: T.p }}>{form.photo.name}</p>
+                      <p className="text-[11px]" style={{ color: T.t }}>{(form.photo.size / 1024).toFixed(0)} KB</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+                        <Upload size={18} style={{ color: T.t }} />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[13px] font-medium" style={{ color: T.s }}>Arrastra o toca para subir</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: T.t }}>JPG, PNG o PDF · máx. 10 MB</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <input type="file" accept="image/*,.pdf" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) set("photo", f); }} />
+              </label>
+              {form.photo && (
+                <button onClick={() => set("photo", null)}
+                  className="text-[11px] cursor-pointer" style={{ color: T.t }}>
+                  Quitar archivo
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── Footer nav ── */}
+        <div className="px-6 pb-5 pt-4 flex items-center justify-between gap-3"
+          style={{ borderTop: `1px solid ${T.border}` }}>
+          {step > 1 ? (
+            <button onClick={() => setStep((s) => s - 1)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer"
+              style={{ background: T.raised, border: `1px solid ${T.border}`, color: T.s }}>
+              <ChevronLeft size={14} /> Atrás
+            </button>
+          ) : <div />}
+
+          {step < 4 ? (
+            <button onClick={() => { if (canAdvance) setStep((s) => s + 1); }}
+              disabled={!canAdvance}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-40 transition-opacity"
+              style={{ background: T.info, color: "#000" }}>
+              Siguiente <ChevronRight size={14} />
+            </button>
+          ) : (
+            <button onClick={submit} disabled={saving}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
+              style={{ background: T.success, color: "#000" }}>
+              {saving ? <Loader2 size={15} className="animate-spin" /> : "Crear alumno"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

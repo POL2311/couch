@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { Flame, Zap, Clock, Search, X, SearchX, Trash2, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Flame, Zap, Clock, Search, X, SearchX, Trash2, Loader2, ListChecks } from "lucide-react";
 import { type DietTemplate, type RoutineTemplate } from "@/lib/templates";
 import { DetailOverlay } from "@/components/detail-overlay";
 import { EmptyState } from "@/components/empty-state";
@@ -255,7 +256,14 @@ export default function TemplatesPage() {
       <PageHeader
         title="Plantillas"
         hint="Crea y edita los planes globales de nutrición y entrenamiento para tus alumnos."
-        cta={<AddButton label="Nueva plantilla" onClick={() => setEditor({ type: activeTab === "diets" ? "diet" : "routine" })} />}
+        cta={
+          <div className="flex items-center gap-2">
+            <Link href="/coach/exercises" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium whitespace-nowrap" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+              <ListChecks size={15} /> Catálogo
+            </Link>
+            <AddButton label="Nueva plantilla" onClick={() => setEditor({ type: activeTab === "diets" ? "diet" : "routine" })} />
+          </div>
+        }
       />
 
       <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Users, UserCog, Wallet, Activity, LogOut, Plus, Loader2, X } from "lucide-react";
+import { Users, UserCog, Wallet, Activity, LogOut, Plus, Loader2, X, ChevronRight, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/skeleton";
 
 interface CoachRow {
@@ -54,6 +55,14 @@ export default function AdminPage() {
           >
             <Plus size={16} strokeWidth={2} /> <span className="hidden md:inline">Nuevo coach</span>
           </button>
+          <Link
+            href="/admin/profile"
+            aria-label="Perfil"
+            className="p-2.5 rounded-xl cursor-pointer inline-flex"
+            style={{ color: "var(--text-tertiary)", border: "1px solid var(--border-subtle)" }}
+          >
+            <ShieldCheck size={18} strokeWidth={1.75} />
+          </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             aria-label="Cerrar sesión"
@@ -83,7 +92,12 @@ export default function AdminPage() {
         ) : (
           <div>
             {data!.coaches.map((c) => (
-              <div key={c.id} className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+              <Link
+                key={c.id}
+                href={`/admin/coach/${c.id}`}
+                className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-[color:var(--bg-hover)]"
+                style={{ borderBottom: "1px solid var(--border-subtle)" }}
+              >
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{c.name}</p>
                   <p className="text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>{c.email}</p>
@@ -92,8 +106,9 @@ export default function AdminPage() {
                   <Stat label="Alumnos" value={String(c.studentCount)} />
                   <Stat label="Activos" value={String(c.activeCount)} />
                   <Stat label="MRR" value={fmtMXN(c.mrr)} />
+                  <ChevronRight size={16} style={{ color: "var(--text-tertiary)" }} />
                 </div>
-              </div>
+              </Link>
             ))}
             {data!.coaches.length === 0 && (
               <p className="text-[12px] py-8 text-center" style={{ color: "var(--text-tertiary)" }}>Aún no hay coaches registrados.</p>

@@ -1,0 +1,30 @@
+# Dependencias de la app móvil (aisladas de la web)
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Builds nativos
+/ios
+/android
+*.apk
+*.aab
+*.ipa
+
+# Entorno
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# Metro
+.metro-health-check*
+
+# Depuración
+npm-debug.*
+yarn-debug.*
+yarn-error.*
