@@ -14,9 +14,17 @@ import {
 import * as I from "@/lib/insights";
 
 const C = {
-  surface: "var(--bg-surface)", raised: "var(--bg-surface-raised)", border: "var(--border-subtle)",
-  primary: "var(--text-primary)", secondary: "var(--text-secondary)", tertiary: "var(--text-tertiary)",
-  success: "var(--color-success)", warning: "var(--color-warning)", danger: "var(--color-danger)", info: "var(--color-info)",
+  bg:        "#000000",
+  surface:   "#121212",
+  raised:    "#1c1c1e",
+  border:    "rgba(255,255,255,0.09)",
+  primary:   "#f4f4f5",
+  secondary: "#a1a1aa",
+  tertiary:  "#52525b",
+  success:   "#34d399",
+  warning:   "#fb923c",
+  danger:    "#f87171",
+  info:      "#60a5fa",
 };
 type TabId = "resumen" | "entrenamiento" | "nutricion" | "progreso";
 const TABS: { id: TabId; label: string; icon: any }[] = [
@@ -62,24 +70,34 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-8 pb-16">
       {/* Header fijo */}
-      <div className="sticky top-0 z-20 pt-4 pb-3" style={{ background: "var(--bg-root)" }}>
+      <div className="sticky top-0 z-20 pt-4 pb-3" style={{ background: C.bg }}>
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.back()} className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.surface, border: `1px solid ${C.border}` }}><ChevronLeft size={18} style={{ color: C.secondary }} /></button>
+          <button onClick={() => router.back()} className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: C.surface, border: `1px solid ${C.border}` }}><ChevronLeft size={18} style={{ color: C.secondary }} /></button>
           <div className="flex-1 min-w-0">
             <p className="text-[18px] font-semibold truncate" style={{ color: C.primary }}>{student.name}</p>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(255,255,255,0.06)", color: C.secondary }}>{student.stage}</span>
-              <span className="text-[13px]" style={{ color: C.tertiary }}>{student.currentWeight} kg{wp.delta !== 0 ? ` · ${wp.delta > 0 ? "+" : ""}${wp.delta}` : ""}</span>
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(255,255,255,0.07)", color: C.secondary }}>{student.stage}</span>
+              <span className="text-[13px]" style={{ color: C.secondary }}>{student.currentWeight} kg{wp.delta !== 0 ? ` · ${wp.delta > 0 ? "+" : ""}${wp.delta}` : ""}</span>
             </div>
           </div>
-          <button onClick={() => setManageOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}><Settings2 size={14} /> Gestionar</button>
+          {/* Compact on mobile: icon only; full label on md+ */}
+          <button onClick={() => setManageOpen(true)}
+            className="flex items-center gap-1.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer shrink-0 px-2 md:px-3"
+            style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}>
+            <Settings2 size={14} />
+            <span className="hidden md:inline">Gestionar</span>
+          </button>
         </div>
-        <div className="flex p-1 rounded-xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+        {/* Tab bar — flex row, no-wrap, safe gap */}
+        <div className="flex flex-row items-center gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
-              <button key={t.id} onClick={() => setTab(t.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-medium cursor-pointer transition-colors" style={{ background: active ? "rgba(255,255,255,0.08)" : "transparent", color: active ? C.primary : C.tertiary }}>
-                <t.icon size={13} /> {t.label}
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium cursor-pointer transition-colors whitespace-nowrap min-w-0"
+                style={{ background: active ? "rgba(255,255,255,0.09)" : "transparent", color: active ? C.primary : C.tertiary }}>
+                <t.icon size={13} className="shrink-0" />
+                <span className="truncate">{t.label}</span>
               </button>
             );
           })}
@@ -88,8 +106,8 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
       <div className="pt-4">
         {tab === "resumen" && <SummaryTab student={student} detail={detail} logs={logs} carreras={carreras} checks={checks} onGoTo={setTab} />}
-        {tab === "entrenamiento" && <TrainingTab detail={detail} logs={logs} />}
-        {tab === "nutricion" && <NutritionTab detail={detail} checks={checks} />}
+        {tab === "entrenamiento" && <TrainingTab detail={detail} logs={logs} onManage={() => setManageOpen(true)} />}
+        {tab === "nutricion" && <NutritionTab detail={detail} checks={checks} onManage={() => setManageOpen(true)} />}
         {tab === "progreso" && <ProgressTab detail={detail} carreras={carreras} />}
       </div>
 
@@ -100,8 +118,8 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
 function Card({ title, right, children }: { title?: string; right?: any; children: any }) {
   return (
-    <div className="rounded-2xl overflow-hidden mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-      {title && <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-[14px] font-medium" style={{ color: C.primary }}>{title}</span>{right}</div>}
+    <div className="rounded-xl overflow-hidden mb-4" style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 1px 8px rgba(0,0,0,0.5)" }}>
+      {title && <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-[13px] font-semibold tracking-wide" style={{ color: C.primary }}>{title}</span>{right}</div>}
       {children}
     </div>
   );
@@ -199,10 +217,15 @@ function SummaryTab({ student, detail, logs, carreras, checks, onGoTo }: any) {
 }
 function Kpi({ label, value, unit, sub, accent = C.primary }: any) {
   return (
-    <div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-      <p className="text-[10px] uppercase font-medium tracking-wider" style={{ color: C.tertiary }}>{label}</p>
-      <p className="text-[22px] font-semibold mt-1.5" style={{ color: accent }}>{value}{unit && <span className="text-[12px] ml-1" style={{ color: C.tertiary }}>{unit}</span>}</p>
-      {sub && <p className="text-[11px] mt-0.5" style={{ color: C.tertiary }}>{sub}</p>}
+    <div className="rounded-xl p-4 flex flex-col justify-between"
+      style={{ background: C.surface, border: `1px solid ${C.border}`, minHeight: 110, boxShadow: "0 1px 8px rgba(0,0,0,0.5)" }}>
+      <p className="text-[10px] uppercase font-medium tracking-widest" style={{ color: C.tertiary }}>{label}</p>
+      <div>
+        <p className="text-[24px] font-semibold leading-none mt-2" style={{ color: accent }}>
+          {value}{unit && <span className="text-[12px] font-normal ml-1" style={{ color: C.secondary }}>{unit}</span>}
+        </p>
+        {sub && <p className="text-[11px] mt-1.5 font-medium" style={{ color: C.secondary }}>{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -211,7 +234,7 @@ function DaySummary({ date, logs, checks, detail, onClose }: any) {
   const planMeals = detail.diet?.meals ?? [];
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" onClick={onClose}>
-      <div className="fixed inset-0" style={{ background: "var(--scrim)" }} />
+      <div className="fixed inset-0" style={{ background: "rgba(0,0,0,0.72)" }} />
       <div className="relative w-full max-w-lg rounded-t-3xl md:rounded-3xl p-6 z-10 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4"><div><p className="text-[18px] font-semibold" style={{ color: C.primary }}>{I.prettyDate(date)}</p><p className="text-[12px]" style={{ color: C.tertiary }}>Resumen del día</p></div><button onClick={onClose} className="cursor-pointer"><X size={18} style={{ color: C.tertiary }} /></button></div>
         <p className="text-[13px] font-medium mb-2 flex items-center gap-2" style={{ color: C.secondary }}><Dumbbell size={15} style={{ color: C.info }} /> Entrenamiento</p>
@@ -233,7 +256,7 @@ function DaySummary({ date, logs, checks, detail, onClose }: any) {
   );
 }
 
-function TrainingTab({ detail, logs }: any) {
+function TrainingTab({ detail, logs, onManage }: any) {
   const lastAct = logs.length ? logs.map((l: any) => l.date).sort().slice(-1)[0] : I.todayStr();
   const [weekStart, setWeekStart] = useState(() => I.weekStartOf(lastAct));
   const week = I.weekTraining(logs, detail.routine, weekStart);
@@ -245,9 +268,26 @@ function TrainingTab({ detail, logs }: any) {
   const toggle = (n: string) => setExpanded((p) => { const s = new Set(p); s.has(n) ? s.delete(n) : s.add(n); return s; });
   const STC: any = { done: C.success, missed: C.danger, rest: "#3a3a3c" };
   const STB: any = { done: "rgba(52,211,153,0.12)", missed: "rgba(248,113,113,0.12)", rest: "rgba(255,255,255,0.04)" };
+  const hasRoutine = (detail.routine?.days?.length ?? 0) > 0;
 
   return (
     <div>
+      {/* Routine empty state — shown above all cards when no template is assigned */}
+      {!hasRoutine && (
+        <div className="rounded-xl p-6 mb-4 flex flex-col items-center gap-3"
+          style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 1px 8px rgba(0,0,0,0.5)" }}>
+          <Dumbbell size={26} strokeWidth={1.25} style={{ color: C.tertiary }} />
+          <div className="text-center">
+            <p className="text-[14px] font-semibold" style={{ color: C.secondary }}>Sin rutina asignada</p>
+            <p className="text-[12px] mt-1" style={{ color: C.tertiary }}>El alumno no verá ningún entrenamiento hasta que asignes una plantilla.</p>
+          </div>
+          <button onClick={onManage}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+            style={{ background: `${C.info}18`, border: `1px solid ${C.info}40`, color: C.info }}>
+            <Dumbbell size={13} /> Asignar rutina
+          </button>
+        </div>
+      )}
       <Card title="Cumplimiento semanal" right={<span className="text-[13px] font-semibold" style={{ color: week.done >= week.planned ? C.success : week.done === 0 ? C.danger : C.warning }}>{week.done}/{week.planned}</span>}>
         <div className="flex items-center justify-between px-4 py-2.5">
           <button onClick={() => setWeekStart(I.addDays(weekStart, -7))} className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer" style={{ background: C.raised }}><ChevronLeft size={16} style={{ color: C.secondary }} /></button>
@@ -304,7 +344,7 @@ function TrainingTab({ detail, logs }: any) {
   );
 }
 
-function NutritionTab({ detail, checks }: any) {
+function NutritionTab({ detail, checks, onManage }: any) {
   const [date, setDate] = useState(() => I.lastDietDate(checks));
   const meals = detail.diet?.meals ?? [];
   const macros = detail.diet?.macros ?? { protein: 0, carbs: 0, fat: 0 };
@@ -326,14 +366,39 @@ function NutritionTab({ detail, checks }: any) {
         <div className="flex items-center justify-between mb-3"><span className="text-[11px] uppercase font-medium tracking-wider" style={{ color: C.tertiary }}>Cumplimiento del día</span><span className="text-[14px] font-semibold" style={{ color: !hasRec ? C.tertiary : pct >= 80 ? C.success : C.warning }}>{hasRec ? `${done}/${total} · ${pct}%` : "sin registro"}</span></div>
         <div className="h-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}><div className="h-full rounded-full" style={{ width: `${hasRec ? pct : 0}%`, background: pct >= 80 ? C.success : C.warning }} /></div>
       </div>
-      <Card title={detail.diet?.name || "Dieta no asignada"} right={detail.diet?.totalCalories ? <span className="text-[12px]" style={{ color: C.tertiary }}>{detail.diet.totalCalories} kcal</span> : null}>
-        {total === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin dieta asignada.</p> : (<>
-          <div className="flex gap-2 p-4">{[["Proteína", macros.protein], ["Carbos", macros.carbs], ["Grasa", macros.fat]].map(([l, v]) => <div key={l as string} className="flex-1 rounded-xl py-3 text-center" style={{ background: C.raised }}><p className="text-[16px] font-semibold" style={{ color: C.primary }}>{v as any}g</p><p className="text-[11px]" style={{ color: C.tertiary }}>{l}</p></div>)}</div>
+      <Card title={detail.diet?.name || "Dieta no asignada"} right={detail.diet?.totalCalories ? <span className="text-[12px] font-semibold" style={{ color: C.secondary }}>{detail.diet.totalCalories} kcal</span> : null}>
+        {total === 0 ? (
+          <div className="flex flex-col items-center py-10 gap-3">
+            <Utensils size={26} strokeWidth={1.25} style={{ color: C.tertiary }} />
+            <div className="text-center">
+              <p className="text-[14px] font-semibold" style={{ color: C.secondary }}>Sin dieta asignada</p>
+              <p className="text-[12px] mt-1" style={{ color: C.tertiary }}>El alumno no verá ningún plan hasta que asignes uno.</p>
+            </div>
+            <button onClick={onManage}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+              style={{ background: `${C.info}18`, border: `1px solid ${C.info}40`, color: C.info }}>
+              <Utensils size={13} /> Asignar dieta
+            </button>
+          </div>
+        ) : (<>
+          <div className="grid grid-cols-3 gap-2 p-4">
+            {[["Proteína", macros.protein, C.info], ["Carbos", macros.carbs, C.warning], ["Grasa", macros.fat, "#f472b6"]].map(([l, v, col]) => (
+              <div key={l as string} className="rounded-xl py-3 text-center" style={{ background: C.raised }}>
+                <p className="text-[18px] font-bold" style={{ color: col as string }}>{v as any}<span className="text-[10px] font-normal ml-0.5" style={{ color: C.tertiary }}>g</span></p>
+                <p className="text-[10px] mt-0.5 uppercase tracking-wide font-medium" style={{ color: C.secondary }}>{l}</p>
+              </div>
+            ))}
+          </div>
           {meals.map((m: any, i: number) => { const marked = doneNames.includes(m.name); return (
             <div key={i} className="flex items-center px-5 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
-              <span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: marked ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${marked ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.1)"}` }}>{marked && <CheckCircle2 size={12} style={{ color: C.success }} />}</span>
-              <div className="flex-1 ml-3 min-w-0"><p className="text-[13px] font-medium" style={{ color: C.secondary }}>{m.time} · {m.name}</p><p className="text-[11px] truncate" style={{ color: C.tertiary }}>{m.items.join(" · ")}</p></div>
-              <span className="text-[11px]" style={{ color: C.tertiary }}>{m.calories} kcal</span>
+              <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: marked ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", border: `1.5px solid ${marked ? "rgba(52,211,153,0.5)" : "rgba(255,255,255,0.12)"}` }}>
+                {marked && <CheckCircle2 size={12} style={{ color: C.success }} />}
+              </span>
+              <div className="flex-1 ml-3 min-w-0">
+                <p className="text-[13px] font-medium" style={{ color: marked ? C.primary : C.secondary }}>{m.time} · {m.name}</p>
+                <p className="text-[11px] truncate mt-0.5" style={{ color: C.tertiary }}>{m.items.join(" · ")}</p>
+              </div>
+              <span className="text-[12px] font-medium tabular-nums shrink-0 ml-3" style={{ color: C.secondary }}>{m.calories} kcal</span>
             </div>); })}
         </>)}
       </Card>
@@ -362,8 +427,27 @@ function ProgressTab({ detail, carreras }: any) {
         <div className="p-5">{wh.length < 2 ? <p className="text-[13px]" style={{ color: C.tertiary }}>Pocos datos en este rango.</p> : <Sparkline data={wh.map((w) => w.weight)} suffix=" kg" height={90} />}</div>
       </Card>
       {last && <Card title="Medidas (cm)">
-        <div className="grid grid-cols-3 p-3">{([["Pecho", "chest"], ["Cintura", "waist"], ["Cadera", "hips"], ["Brazo I", "armL"], ["Brazo D", "armR"], ["Muslo I", "thighL"], ["Muslo D", "thighR"]] as const).map(([l, k]) => { const v = (last as any)[k]; const d = first ? Math.round((v - (first as any)[k]) * 10) / 10 : 0; return (
-          <div key={k} className="p-2"><div className="rounded-xl py-3 text-center" style={{ background: C.raised }}><p className="text-[16px] font-semibold" style={{ color: C.primary }}>{v}</p><p className="text-[10px]" style={{ color: C.tertiary }}>{l}</p>{first && d !== 0 && <p className="text-[10px]" style={{ color: d > 0 ? C.success : C.warning }}>{d > 0 ? "+" : ""}{d}</p>}</div></div>); })}</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3">
+          {([["Pecho", "chest"], ["Cintura", "waist"], ["Cadera", "hips"], ["Brazo I", "armL"], ["Brazo D", "armR"], ["Muslo I", "thighL"], ["Muslo D", "thighR"]] as const).map(([l, k]) => {
+            const v = (last as any)[k];
+            const d = first ? Math.round((v - (first as any)[k]) * 10) / 10 : 0;
+            return (
+              <div key={k} className="rounded-xl p-2.5 flex flex-col justify-between" style={{ background: C.raised, minHeight: 62 }}>
+                <p className="text-[20px] font-bold leading-none" style={{ color: C.primary }}>
+                  {v}<span className="text-[10px] font-normal ml-0.5" style={{ color: C.tertiary }}>cm</span>
+                </p>
+                <div className="flex items-end justify-between mt-1.5">
+                  <p className="text-[10px] font-medium" style={{ color: C.secondary }}>{l}</p>
+                  {first && d !== 0 && (
+                    <p className="text-[9px] font-bold tabular-nums" style={{ color: d < 0 ? C.success : C.warning }}>
+                      {d > 0 ? "+" : ""}{d}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Card>}
       {photos.length > 0 && <Card title={`Fotos de progreso (${photos.length})`}>
         <div className="grid grid-cols-3 p-3 gap-2">{photos.map((p: any) => <div key={p.id}><img src={p.url} alt={p.label} className="w-full rounded-xl object-cover" style={{ aspectRatio: "3/4", background: C.raised }} /><p className="text-[10px] mt-1 text-center truncate" style={{ color: C.tertiary }}>{p.label}{p.weight ? ` · ${p.weight}kg` : ""}</p></div>)}</div>
@@ -397,13 +481,13 @@ function ManageModal({ studentId, currentStage, onClose, onApplied }: any) {
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "var(--scrim)" }} />
-      <div className="relative w-full max-w-md rounded-2xl p-6 z-10 space-y-4 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: "1px solid var(--border-strong)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.72)" }} />
+      <div className="relative w-full max-w-md rounded-2xl p-6 z-10 space-y-4 max-h-[85vh] overflow-y-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between"><h3 className="text-[16px] font-medium" style={{ color: C.primary }}>Gestionar alumno</h3><button onClick={onClose} className="cursor-pointer"><X size={18} style={{ color: C.tertiary }} /></button></div>
-        <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Etapa</p><div className="flex flex-wrap gap-2">{STAGES.map((s) => <button key={s} onClick={() => setStage(s)} className="px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: stage === s ? "rgba(255,255,255,0.08)" : C.raised, border: `1px solid ${stage === s ? "var(--border-strong)" : C.border}`, color: stage === s ? C.primary : C.secondary }}>{s}</button>)}</div></div>
+        <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>Etapa</p><div className="flex flex-wrap gap-2">{STAGES.map((s) => <button key={s} onClick={() => setStage(s)} className="px-3 py-2 rounded-xl text-[12px] font-medium cursor-pointer" style={{ background: stage === s ? "rgba(255,255,255,0.08)" : C.raised, border: `1px solid ${stage === s ? "rgba(255,255,255,0.2)" : C.border}`, color: stage === s ? C.primary : C.secondary }}>{s}</button>)}</div></div>
         <SelectList label="Asignar dieta" items={diets} selected={dietId} onSelect={setDietId} />
         <SelectList label="Asignar rutina" items={routines} selected={routineId} onSelect={setRoutineId} />
-        <button onClick={apply} disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: "var(--accent-primary)", color: "var(--text-inverse)" }}>{saving ? <Loader2 size={16} className="animate-spin" /> : "Aplicar cambios"}</button>
+        <button onClick={apply} disabled={saving} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-medium cursor-pointer disabled:opacity-50" style={{ background: C.info, color: "#000" }}>{saving ? <Loader2 size={16} className="animate-spin" /> : "Aplicar cambios"}</button>
       </div>
     </div>
   );
@@ -412,7 +496,7 @@ function SelectList({ label, items, selected, onSelect }: any) {
   return (
     <div><p className="text-[10px] uppercase tracking-wider font-medium mb-2" style={{ color: C.secondary }}>{label}</p>
       {items.length === 0 ? <p className="text-[12px]" style={{ color: C.tertiary }}>No hay plantillas.</p> : (
-        <div className="space-y-2">{items.map((t: any) => <button key={t.id} onClick={() => onSelect(selected === t.id ? "" : t.id)} className="w-full text-left px-4 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: selected === t.id ? "rgba(255,255,255,0.06)" : C.raised, border: `1px solid ${selected === t.id ? "var(--border-strong)" : C.border}`, color: selected === t.id ? C.primary : C.secondary }}>{t.name}</button>)}</div>
+        <div className="space-y-2">{items.map((t: any) => <button key={t.id} onClick={() => onSelect(selected === t.id ? "" : t.id)} className="w-full text-left px-4 py-3 rounded-xl text-[13px] font-medium cursor-pointer" style={{ background: selected === t.id ? "rgba(255,255,255,0.07)" : C.raised, border: `1px solid ${selected === t.id ? "rgba(255,255,255,0.2)" : C.border}`, color: selected === t.id ? C.primary : C.secondary }}>{t.name}</button>)}</div>
       )}
     </div>
   );
