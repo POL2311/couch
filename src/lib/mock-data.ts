@@ -16,6 +16,7 @@ export interface Student {
   lastWeighIn: string;
   stage: Stage;
   stageNumber: number;
+  isActive?: boolean;
   paymentStatus: PaymentStatus;
   joinedDate: string;
   streak: number;

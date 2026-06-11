@@ -6,9 +6,10 @@ import {
   LogOut, Camera, Loader2, CheckCircle2, Download, TrendingDown,
   Dumbbell, ChevronRight, ChevronLeft, X, ArrowLeftRight, RefreshCw,
   LayoutGrid, TrendingUp, Users, User, Sparkles, CreditCard,
-  Calendar, AlertTriangle, Flame, Ruler, Droplet, Weight,
+  Calendar, AlertTriangle, Flame, Ruler, Droplet, Droplets, Plus, Weight,
   BarChart3, Info, Utensils, Activity, UserCircle2,
 } from "lucide-react";
+import confetti from "canvas-confetti";
 import { Skeleton } from "@/components/skeleton";
 import { downloadBadge } from "@/lib/badge";
 import type { Student, StudentDetail, RoutineDay } from "@/lib/mock-data";
@@ -29,6 +30,32 @@ interface Meal {
 interface Exercise {
   name: string; sets: number; reps: string | number;
   muscleGroup?: string; tips?: string[];
+  imageUrl?: string; videoUrl?: string;
+}
+
+interface WorkoutSet {
+  setNumber:  number;
+  targetReps: number;
+  actualReps: number;
+  weight:     number;
+  completed:  boolean;
+}
+interface WorkoutLogEntry {
+  id: string;
+  date: string;
+  exerciseName: string;
+  muscleGroup: string | null;
+  prescribedSets: number;
+  prescribedReps: string;
+  sets: WorkoutSet[];
+  completed: boolean;
+}
+interface WorkoutSessionEntry {
+  id: string;
+  date: string;
+  name: string;
+  completed: boolean;
+  exerciseLogs: { exerciseName: string; sets: WorkoutSet[]; completed: boolean }[];
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -259,6 +286,29 @@ interface Equivalent {
   name: string; gramsPerCarb?: number; gramsPerProtein?: number;
   icon?: string; note?: string; macroType?: "carb" | "protein";
 }
+
+interface FoodSubstituteDTO {
+  id: string; category: string; originalFood: string; substituteFood: string; ratio: number;
+}
+
+const ICON_HINTS: [string, string][] = [
+  ["Pechuga", "chicken"], ["Pollo", "chicken"], ["pollo", "chicken"],
+  ["Carne", "beef"], ["Atún", "tuna"], ["Salmón", "fish"],
+  ["Huevo", "egg"], ["Leche", "milk"],
+  ["Arroz", "rice"], ["Avena", "oats"], ["Camote", "sweet-potato"],
+  ["Papa", "potato"], ["Tortilla", "tortilla"], ["Pan", "bread"], ["Plátano", "banana"],
+];
+const guessIcon = (name: string): string => {
+  for (const [key, icon] of ICON_HINTS) if (name.includes(key)) return icon;
+  return "salad";
+};
+const toEquivalent = (s: FoodSubstituteDTO): Equivalent => ({
+  name: s.substituteFood,
+  icon: guessIcon(s.substituteFood),
+  macroType: s.category === "Proteínas" ? "protein" : "carb",
+  gramsPerProtein: s.category === "Proteínas" ? s.ratio : undefined,
+  gramsPerCarb:    s.category === "Carbohidratos" ? s.ratio : undefined,
+});
 const EQUIV_CARBS: Equivalent[] = [
   { name: "Arroz blanco",     gramsPerCarb: 3.3,  icon: "rice",         macroType: "carb" },
   { name: "Avena",            gramsPerCarb: 5.3,  icon: "oats",         macroType: "carb" },
@@ -324,14 +374,16 @@ function BottomSheet({ open, onClose, children }: {
 /* ══════════════════════════════════════════════════════════════
    MEAL SHEET (light)
 ══════════════════════════════════════════════════════════════ */
-function EquivCatalog({ ingredient, selected, onSelect }: {
+function EquivCatalog({ ingredient, selected, onSelect, catalog }: {
   ingredient: Ingredient; selected: Equivalent | null;
   onSelect: (eq: Equivalent | null) => void;
+  catalog?: Equivalent[];
 }) {
   const baseCarbs   = ingredient.macros?.carbs    ?? Math.round(ingredient.calories * 0.45 / 4);
   const baseProtein = ingredient.macros?.protein  ?? Math.round(ingredient.calories * 0.25 / 4);
   const [activeTab, setActiveTabLocal] = useState<"protein"|"carb">("protein");
-  const list = EQUIV_CATALOG.filter(e => e.macroType === activeTab);
+  const source = catalog ?? EQUIV_CATALOG;
+  const list = source.filter(e => e.macroType === activeTab);
   const calcGrams = (eq: Equivalent) =>
     eq.macroType === "protein"
       ? Math.round(baseProtein * (eq.gramsPerProtein ?? 5))
@@ -383,7 +435,10 @@ function EquivCatalog({ ingredient, selected, onSelect }: {
   );
 }
 
-function MealSheet({ meal }: { meal: Meal }) {
+function MealSheet({ meal, substitutes }: { meal: Meal; substitutes?: FoodSubstituteDTO[] }) {
+  const catalog: Equivalent[] = substitutes && substitutes.length > 0
+    ? substitutes.map(toEquivalent)
+    : EQUIV_CATALOG;
   const macros = meal.macros ?? { protein: 32, carbs: 48, fat: 14 };
   const ingredients: Ingredient[] = meal.ingredients?.length ? meal.ingredients
     : meal.items.map((name, i) => ({
@@ -478,6 +533,7 @@ function MealSheet({ meal }: { meal: Meal }) {
               {swapOpen === i && showEquiv && (
                 <div className="px-4 pb-5 pt-3" style={{ borderTop: `1px solid ${F.border}`, background: F.bg }}>
                   <EquivCatalog ingredient={ing} selected={swaps[i] ?? null}
+                    catalog={catalog}
                     onSelect={eq => { setSwaps(p => ({ ...p, [i]: eq })); if (!eq) setSwapOpen(null); }} />
                 </div>
               )}
@@ -486,6 +542,80 @@ function MealSheet({ meal }: { meal: Meal }) {
         })}
       </div>
     </>
+  );
+}
+
+/* ── YouTube / Vimeo ID extractors ── */
+function ytId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+function vimeoId(url: string): string | null {
+  const m = url.match(/vimeo\.com\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+/* ── Smart media block ── */
+function ExerciseMedia({ videoUrl, imageUrl, muscleGroup }: {
+  videoUrl?: string; imageUrl?: string; muscleGroup?: string;
+}) {
+  if (videoUrl) {
+    const yt = ytId(videoUrl);
+    if (yt) return (
+      <div className="w-full rounded-2xl overflow-hidden mb-5" style={{ aspectRatio: "16/9", background: "#000" }}>
+        <iframe
+          src={`https://www.youtube.com/embed/${yt}?modestbranding=1&rel=0`}
+          className="w-full h-full"
+          style={{ border: "none", display: "block" }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+    const vm = vimeoId(videoUrl);
+    if (vm) return (
+      <div className="w-full rounded-2xl overflow-hidden mb-5" style={{ aspectRatio: "16/9", background: "#000" }}>
+        <iframe
+          src={`https://player.vimeo.com/video/${vm}?badge=0&byline=0&portrait=0&title=0`}
+          className="w-full h-full"
+          style={{ border: "none", display: "block" }}
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+    if (videoUrl.match(/\.mp4(\?|$)/i)) return (
+      <video src={videoUrl} controls playsInline
+        className="w-full rounded-2xl mb-5 object-cover"
+        style={{ maxHeight: 220, background: "#000" }} />
+    );
+  }
+
+  if (imageUrl) return (
+    <div className="w-full rounded-2xl overflow-hidden mb-5" style={{ maxHeight: 220 }}>
+      <img src={imageUrl} alt="Guía visual" className="w-full object-cover" style={{ maxHeight: 220 }} />
+    </div>
+  );
+
+  /* Fallback — animated placeholder */
+  return (
+    <div className="w-full rounded-2xl mb-5 flex flex-col items-center justify-center gap-3"
+      style={{ height: 148, background: F.bg, border: `1px solid ${F.border}` }}>
+      <div className="relative w-14 h-14 flex items-center justify-center">
+        <span className="absolute inline-flex w-full h-full rounded-full opacity-40 animate-ping"
+          style={{ background: "rgba(96,165,250,0.25)" }} />
+        <div className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
+          <Dumbbell size={18} strokeWidth={1.5} style={{ color: F.blue }} />
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="text-[12px] font-medium" style={{ color: F.ts }}>
+          {muscleGroup ?? "Ejercicio"}
+        </p>
+        <p className="text-[10px] mt-0.5" style={{ color: F.tt }}>Guía visual en preparación</p>
+      </div>
+    </div>
   );
 }
 
@@ -512,13 +642,9 @@ function ExerciseSheet({ exercise }: { exercise: Exercise }) {
           {exercise.sets} series · {exercise.reps} reps{exercise.muscleGroup ? ` · ${exercise.muscleGroup}` : ""}
         </p>
       </div>
-      <div className="w-full rounded-2xl mb-5 flex items-center justify-center"
-        style={{ height: 120, background: F.bg, border: `1px solid ${F.border}` }}>
-        <div className="flex flex-col items-center gap-1.5">
-          <Dumbbell size={22} style={{ color: F.tt }} strokeWidth={1.5} />
-          <span className="text-[10px]" style={{ color: F.tt }}>Guía visual próximamente</span>
-        </div>
-      </div>
+
+      <ExerciseMedia videoUrl={exercise.videoUrl} imageUrl={exercise.imageUrl} muscleGroup={exercise.muscleGroup} />
+
       <div className="mb-5">
         <p className="text-[10px] uppercase tracking-widest font-medium mb-2" style={{ color: F.tt }}>
           Instrucciones del Coach
@@ -689,9 +815,10 @@ const MEAL_ICONS: Record<string, { icon: string; color: string }> = {
   merienda:  { icon: "🫐", color: "#8B5CF6" },
 };
 
-function FitiaMealCard({ meal, onOpen, checked, onToggleCheck }: {
+function FitiaMealCard({ meal, onOpen, checked, onToggleCheck, substitutes }: {
   meal: Meal; onOpen: () => void;
   checked: boolean; onToggleCheck: () => void;
+  substitutes?: FoodSubstituteDTO[];
 }) {
   const mealKey = meal.name.toLowerCase();
   const mealMeta = Object.entries(MEAL_ICONS).find(([k]) => mealKey.includes(k))?.[1]
@@ -708,6 +835,19 @@ function FitiaMealCard({ meal, onOpen, checked, onToggleCheck }: {
           fat:     Math.round((meal.macros?.fat     ?? 10) / Math.max(meal.items.length, 1)),
         },
       }));
+
+  const [swapOpen, setSwapOpen] = useState<number | null>(null);
+  const [swaps, setSwaps] = useState<Record<number, FoodSubstituteDTO | null>>({});
+
+  const ingCategory = (ing: Ingredient) =>
+    (ing.macros?.protein ?? 0) > (ing.macros?.carbs ?? 0) ? "Proteínas" : "Carbohidratos";
+
+  const calcSubGrams = (ing: Ingredient, sub: FoodSubstituteDTO) => {
+    const macro = ingCategory(ing) === "Proteínas"
+      ? (ing.macros?.protein ?? 0)
+      : (ing.macros?.carbs ?? 0);
+    return Math.round(macro * sub.ratio);
+  };
 
   return (
     <div className="mx-4 mb-3 rounded-2xl overflow-hidden"
@@ -750,103 +890,240 @@ function FitiaMealCard({ meal, onOpen, checked, onToggleCheck }: {
         </button>
       </div>
 
-      {/* ── Ingredient rows — read-only, cascade from header ── */}
-      {ingredients.map((ing, i) => (
-        <div key={i}
-          className="flex items-center gap-3 px-4 py-3"
-          style={{
-            borderBottom: i < ingredients.length - 1 ? `1px solid ${F.border}` : "none",
-            background: checked ? "rgba(52,211,153,0.05)" : "transparent",
-            transition: "background 0.3s ease",
-          }}>
-          {/* Read-only indicator mirrors header */}
-          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-            style={{
-              background: checked ? F.green : "transparent",
-              border: `1.5px solid ${checked ? F.green : F.tt}`,
-              transition: "background 0.25s ease, border-color 0.25s ease",
-            }}>
-            {checked && <CheckCircle2 size={8} strokeWidth={3} style={{ color: "#fff" }} />}
-          </div>
-          <FoodIllu iconKey={ing.icon} size={40} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium truncate"
+      {/* ── Ingredient rows with inline swap ── */}
+      {ingredients.map((ing, i) => {
+        const applied = swaps[i] ?? null;
+        const displayName  = applied ? applied.substituteFood : ing.name;
+        const displayGrams = applied ? calcSubGrams(ing, applied) : ing.grams;
+        const subOptions   = substitutes?.filter(s => s.category === ingCategory(ing)) ?? [];
+        const swapping     = swapOpen === i;
+
+        return (
+          <div key={i}
+            style={{ borderBottom: i < ingredients.length - 1 ? `1px solid ${F.border}` : "none" }}>
+            {/* Main row */}
+            <div className="flex items-center gap-3 px-4 py-3"
               style={{
-                color: checked ? F.ts : F.tp,
-                textDecoration: checked ? "line-through" : "none",
-                transition: "color 0.25s ease, text-decoration 0.1s",
+                background: applied ? F.blueBg : checked ? "rgba(52,211,153,0.05)" : "transparent",
+                transition: "background 0.3s ease",
               }}>
-              {ing.name}
-              <span style={{ color: F.tt, fontWeight: 400 }}> – {ing.grams}g</span>
-            </p>
-            {ing.macros && (
-              <p className="text-[11px] mt-0.5" style={{ color: F.tt }}>
-                <span style={{ color: F.protein }}>P: {ing.macros.protein}g</span>
-                {" · "}
-                <span style={{ color: F.carbs }}>C: {ing.macros.carbs}g</span>
-                {" · "}
-                <span style={{ color: F.fat }}>G: {ing.macros.fat}g</span>
-              </p>
+              <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: checked ? F.green : "transparent",
+                  border: `1.5px solid ${checked ? F.green : F.tt}`,
+                  transition: "background 0.25s ease, border-color 0.25s ease",
+                }}>
+                {checked && <CheckCircle2 size={8} strokeWidth={3} style={{ color: "#fff" }} />}
+              </div>
+              <FoodIllu iconKey={applied ? guessIcon(applied.substituteFood) : ing.icon} size={40} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium truncate"
+                  style={{
+                    color: applied ? F.blue : checked ? F.ts : F.tp,
+                    textDecoration: checked && !applied ? "line-through" : "none",
+                    transition: "color 0.25s ease",
+                  }}>
+                  {displayName}
+                  <span style={{ color: applied ? F.blue + "bb" : F.tt, fontWeight: 400 }}> – {displayGrams}g</span>
+                </p>
+                {ing.macros && !applied && (
+                  <p className="text-[11px] mt-0.5" style={{ color: F.tt }}>
+                    <span style={{ color: F.protein }}>P: {ing.macros.protein}g</span>
+                    {" · "}
+                    <span style={{ color: F.carbs }}>C: {ing.macros.carbs}g</span>
+                    {" · "}
+                    <span style={{ color: F.fat }}>G: {ing.macros.fat}g</span>
+                  </p>
+                )}
+                {applied && (
+                  <span className="text-[10px]" style={{ color: F.blue }}>↔ sustituido · macros iguales</span>
+                )}
+              </div>
+              <span className="text-[12px] tabular-nums shrink-0"
+                style={{ color: F.ts, opacity: checked ? 0.38 : 1, transition: "opacity 0.25s ease" }}>
+                {ing.calories} kcal
+              </span>
+              {subOptions.length > 0 && (
+                <button
+                  onClick={() => setSwapOpen(p => p === i ? null : i)}
+                  className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-all active:scale-90"
+                  style={{
+                    background: applied || swapping ? F.blueBg : F.bg,
+                    border: `1px solid ${applied || swapping ? F.blue : F.border}`,
+                  }}>
+                  <ArrowLeftRight size={10} style={{ color: applied || swapping ? F.blue : F.tt }} />
+                </button>
+              )}
+            </div>
+
+            {/* Inline substitute picker */}
+            {swapping && subOptions.length > 0 && (
+              <div className="px-3 pt-2 pb-3"
+                style={{ borderTop: `1px solid ${F.border}`, background: F.bg, animation: "fadeSlideIn 0.18s ease" }}>
+                <p className="text-[10px] mb-2" style={{ color: F.tt }}>
+                  Sustituir por ({ingCategory(ing).toLowerCase()}):
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+                  {subOptions.map(sub => {
+                    const grams  = calcSubGrams(ing, sub);
+                    const active = applied?.id === sub.id;
+                    return (
+                      <button key={sub.id}
+                        onClick={() => {
+                          setSwaps(p => ({ ...p, [i]: active ? null : sub }));
+                          setSwapOpen(null);
+                        }}
+                        className="flex flex-col items-center shrink-0 px-3 py-2 rounded-xl text-center cursor-pointer transition-all active:scale-95"
+                        style={{
+                          minWidth: 76,
+                          background: active ? F.blueBg : F.card,
+                          border: `1.5px solid ${active ? F.blue : F.border}`,
+                        }}>
+                        <p className="text-[11px] font-medium leading-tight" style={{ color: active ? F.blue : F.tp }}>
+                          {sub.substituteFood}
+                        </p>
+                        <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: active ? F.blue : F.tt }}>
+                          {grams}g
+                        </p>
+                      </button>
+                    );
+                  })}
+                  {applied && (
+                    <button
+                      onClick={() => { setSwaps(p => ({ ...p, [i]: null })); setSwapOpen(null); }}
+                      className="flex flex-col items-center justify-center shrink-0 px-3 py-2 rounded-xl cursor-pointer transition-all active:scale-95"
+                      style={{ minWidth: 56, background: F.bg, border: `1px solid ${F.border}` }}>
+                      <X size={12} style={{ color: F.tt }} />
+                      <p className="text-[10px] mt-0.5" style={{ color: F.tt }}>Original</p>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-          <span className="text-[12px] tabular-nums shrink-0"
-            style={{ color: F.ts, opacity: checked ? 0.38 : 1, transition: "opacity 0.25s ease" }}>
-            {ing.calories} kcal
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EXERCISE ROW — ACCORDION
+   EXERCISE ROW — ACCORDION (with DB persistence + history)
 ══════════════════════════════════════════════════════════════ */
-function AccordionExerciseRow({ exercise, onDetails }: {
+function AccordionExerciseRow({ exercise, onDetails, todayLog, prevLog, todayStr }: {
   exercise: Exercise & { muscleGroup?: string };
   onDetails: () => void;
+  todayLog:  WorkoutLogEntry | null;
+  prevLog:   WorkoutLogEntry | null;
+  todayStr:  string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [done, setDone] = useState(false);
-  const [sets, setSets] = useState(() =>
-    Array.from({ length: exercise.sets }, () => ({ kg: "", reps: "", done: false }))
-  );
-  const doneCount = sets.filter(s => s.done).length;
+  const targetReps = parseInt(String(exercise.reps)) || 10;
+  const lastWeight = prevLog?.sets[0]?.weight ?? 0;
 
-  const updSet = (i: number, field: "kg" | "reps", val: string) =>
-    setSets(p => p.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
-  const toggleSetDone = (i: number) =>
-    setSets(p => p.map((s, idx) => idx === i ? { ...s, done: !s.done } : s));
+  const [sets, setSets] = useState<WorkoutSet[]>(() => {
+    if (todayLog?.sets.length) {
+      return todayLog.sets.map((s, i) => ({
+        setNumber:  s.setNumber  ?? i + 1,
+        targetReps: s.targetReps || targetReps,
+        actualReps: s.actualReps ?? 0,
+        weight:     s.weight     ?? 0,
+        completed:  s.completed  ?? false,
+      }));
+    }
+    return Array.from({ length: exercise.sets }, (_, i) => ({
+      setNumber: i + 1, targetReps, actualReps: 0,
+      weight: lastWeight, completed: false,
+    }));
+  });
+
+  const [expanded, setExpanded] = useState(false);
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persist = useCallback((next: WorkoutSet[], immediate = false) => {
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    const save = () =>
+      fetch("/api/me/logs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date:           todayStr,
+          exerciseName:   exercise.name,
+          muscleGroup:    exercise.muscleGroup ?? null,
+          prescribedSets: exercise.sets,
+          prescribedReps: String(exercise.reps),
+          sets:           next,
+          completed:      next.every(s => s.completed),
+        }),
+      }).catch(() => {});
+    if (immediate) save();
+    else persistTimer.current = setTimeout(save, 700);
+  }, [exercise, todayStr]);
+
+  const updSet = (i: number, field: "weight" | "actualReps", raw: string) => {
+    const val = field === "weight" ? (parseFloat(raw) || 0) : (parseInt(raw) || 0);
+    setSets(p => { const next = p.map((s, idx) => idx === i ? { ...s, [field]: val } : s); persist(next); return next; });
+  };
+
+  const toggleSetDone = (i: number) => {
+    setSets(p => {
+      const next = p.map((s, idx) => idx === i ? { ...s, completed: !s.completed } : s);
+      persist(next, true);
+      return next;
+    });
+  };
+
+  const toggleAllDone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSets(p => {
+      const nowAll = p.every(s => s.completed);
+      const next   = p.map(s => ({ ...s, completed: !nowAll }));
+      persist(next, true);
+      return next;
+    });
+  };
+
+  const allDone   = sets.every(s => s.completed);
+  const doneCount = sets.filter(s => s.completed).length;
+
+  const prevSummary = useMemo(() => {
+    if (!prevLog?.sets.length) return null;
+    const withData = prevLog.sets.filter(s => s.weight > 0);
+    if (!withData.length) return null;
+    const best = withData.reduce((m, s) => s.weight > m.weight ? s : m, withData[0]);
+    const vol  = withData.reduce((sum, s) => sum + s.weight * (s.actualReps || s.targetReps || 0), 0);
+    return { weight: best.weight, reps: best.actualReps || best.targetReps, volume: Math.round(vol) };
+  }, [prevLog]);
 
   return (
-    <div className="rounded-2xl overflow-hidden transition-all duration-200"
+    <div className="rounded-2xl overflow-hidden"
       style={{
-        background: done ? "rgba(52,211,153,0.07)" : F.card,
-        border: `1px solid ${done ? F.green + "40" : F.border}`,
+        background: allDone ? "rgba(52,211,153,0.07)" : F.card,
+        border: `1px solid ${allDone ? F.green + "40" : F.border}`,
         transition: "border-color 0.3s ease, background 0.3s ease",
       }}>
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
         onClick={() => setExpanded(p => !p)}>
-        {/* Done checkbox */}
-        <button
-          onClick={e => { e.stopPropagation(); setDone(p => !p); }}
+        <button onClick={toggleAllDone}
           className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer"
-          style={{
-            background: done ? F.green : "transparent",
-            border: `2px solid ${done ? F.green : F.tt}`,
-          }}>
-          {done && <CheckCircle2 size={10} strokeWidth={3} style={{ color: "#fff" }} />}
+          style={{ background: allDone ? F.green : "transparent", border: `2px solid ${allDone ? F.green : F.tt}` }}>
+          {allDone && <CheckCircle2 size={10} strokeWidth={3} style={{ color: "#fff" }} />}
         </button>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: F.blueBg }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: F.blueBg }}>
           <Dumbbell size={14} strokeWidth={1.75} style={{ color: F.blue }} />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[13px] font-medium block truncate"
-            style={{ color: done ? F.ts : F.tp, transition: "color 0.2s" }}>{exercise.name}</span>
-          {doneCount > 0 && !done && (
+            style={{ color: allDone ? F.ts : F.tp, transition: "color 0.2s" }}>
+            {exercise.name}
+          </span>
+          {doneCount > 0 && !allDone && (
             <span className="text-[10px]" style={{ color: F.green }}>{doneCount}/{exercise.sets} series</span>
+          )}
+          {prevSummary && !allDone && doneCount === 0 && (
+            <span className="text-[10px]" style={{ color: F.tt }}>
+              Ant: {prevSummary.weight}kg × {prevSummary.reps}
+            </span>
           )}
         </div>
         <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full shrink-0"
@@ -857,47 +1134,68 @@ function AccordionExerciseRow({ exercise, onDetails }: {
         </div>
       </div>
 
-      {/* Accordion body */}
-      <div style={{
-        maxHeight: expanded ? "420px" : "0px",
-        overflow: "hidden",
-        transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)",
-      }}>
+      {/* ── Accordion body ── */}
+      <div style={{ maxHeight: expanded ? "560px" : "0px", overflow: "hidden", transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)" }}>
         <div className="px-4 pb-4 pt-2" style={{ borderTop: `1px solid ${F.border}` }}>
-          {/* Set grid */}
-          <div className="grid grid-cols-4 px-1 mb-2">
-            {["Serie", "Peso (kg)", "Reps", ""].map((h, i) => (
-              <span key={i} className="text-[9px] uppercase tracking-wide text-center"
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[28px_1fr_1fr_28px] gap-2 px-1 mb-2">
+            {["#", "Peso (kg)", "Reps", "✓"].map((h, i) => (
+              <span key={i} className={`text-[9px] uppercase tracking-wide ${i > 0 ? "text-center" : ""}`}
                 style={{ color: F.tt }}>{h}</span>
             ))}
           </div>
+
+          {/* Set rows */}
           <div className="space-y-1.5">
             {sets.map((s, i) => (
-              <div key={i} className="grid grid-cols-4 items-center gap-2 px-1 py-1 rounded-xl transition-colors duration-150"
-                style={{ background: s.done ? "rgba(52,211,153,0.08)" : "transparent" }}>
-                <span className="text-[12px] font-medium text-center tabular-nums"
-                  style={{ color: s.done ? F.green : F.ts }}>S{i + 1}</span>
-                {(["kg", "reps"] as const).map(field => (
-                  <input key={field} type="number" inputMode={field === "kg" ? "decimal" : "numeric"}
-                    placeholder="—" value={s[field]} onChange={e => updSet(i, field, e.target.value)}
-                    className="text-center text-[12px] font-medium rounded-xl py-1.5 outline-none w-full"
-                    style={{
-                      background: F.bg, border: `1px solid ${F.border}`,
-                      color: s[field] ? F.tp : F.tt,
-                    }} />
-                ))}
+              <div key={i}
+                className="grid grid-cols-[28px_1fr_1fr_28px] items-center gap-2 px-1 py-1.5 rounded-xl transition-colors duration-150"
+                style={{ background: s.completed ? "rgba(52,211,153,0.08)" : "transparent" }}>
+
+                <span className="text-[11px] font-semibold text-center tabular-nums"
+                  style={{ color: s.completed ? F.green : F.ts }}>
+                  S{s.setNumber}
+                </span>
+
+                <input type="number" inputMode="decimal"
+                  placeholder={prevLog?.sets[i]?.weight ? String(prevLog.sets[i].weight) : "—"}
+                  value={s.weight || ""}
+                  onChange={e => updSet(i, "weight", e.target.value)}
+                  className="text-center text-[12px] font-medium rounded-xl py-1.5 outline-none w-full"
+                  style={{ background: "#000", border: "1px solid #27272a", color: s.weight ? F.tp : F.tt }} />
+
+                <input type="number" inputMode="numeric"
+                  placeholder={String(s.targetReps)}
+                  value={s.actualReps || ""}
+                  onChange={e => updSet(i, "actualReps", e.target.value)}
+                  className="text-center text-[12px] font-medium rounded-xl py-1.5 outline-none w-full"
+                  style={{ background: "#000", border: "1px solid #27272a", color: s.actualReps ? F.tp : F.tt }} />
+
                 <button onClick={() => toggleSetDone(i)}
                   className="mx-auto w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer"
-                  style={{
-                    background: s.done ? F.green : "transparent",
-                    border: `2px solid ${s.done ? F.green : F.tt}`,
-                  }}>
-                  {s.done && <CheckCircle2 size={9} strokeWidth={3} style={{ color: "#fff" }} />}
+                  style={{ background: s.completed ? F.green : "transparent", border: `2px solid ${s.completed ? F.green : F.tt}` }}>
+                  {s.completed && <CheckCircle2 size={9} strokeWidth={3} style={{ color: "#fff" }} />}
                 </button>
               </div>
             ))}
           </div>
-          {/* Open full sheet link */}
+
+          {/* Historical performance */}
+          {prevSummary && (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: F.bg, border: "1px solid #27272a" }}>
+              <span style={{ color: F.blue, fontSize: 11 }}>⚡</span>
+              <span className="text-[11px]" style={{ color: F.ts }}>
+                Última sesión:{" "}
+                <span style={{ color: F.tp, fontWeight: 600 }}>
+                  {prevSummary.weight}kg × {prevSummary.reps} reps
+                </span>
+                <span style={{ color: F.tt }}> · {prevSummary.volume.toLocaleString()}kg vol</span>
+              </span>
+            </div>
+          )}
+
           <button onClick={e => { e.stopPropagation(); onDetails(); }}
             className="mt-3 flex items-center gap-1.5 text-[11px] font-medium cursor-pointer"
             style={{ color: F.blue }}>
@@ -1026,13 +1324,21 @@ function GoldenAvatar({ url, name, sizeClass = "h-14 w-14", onClick, showCamera 
 /* ══════════════════════════════════════════════════════════════
    TAB: HOY
 ══════════════════════════════════════════════════════════════ */
-function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealOpen, onExerciseOpen, avatarUrl }: {
+function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealOpen, onExerciseOpen, avatarUrl, workoutLogs, todayStr, workoutSession, finalizingSession, onFinalizeSession, waterTotalMl, onAddWater, substitutes }: {
   student: Student; detail: Detail; meals: Meal[];
   day: RoutineDay | undefined;
   mealChecks: string[]; onMealToggle: (name: string) => void;
   onMealOpen: (m: Meal) => void;
   onExerciseOpen: (e: Exercise & { muscleGroup?: string }) => void;
   avatarUrl: string | null;
+  workoutLogs: WorkoutLogEntry[];
+  todayStr: string;
+  workoutSession: WorkoutSessionEntry | null;
+  finalizingSession: boolean;
+  onFinalizeSession: (name: string) => void;
+  waterTotalMl: number;
+  onAddWater: (amountMl: number) => void;
+  substitutes: FoodSubstituteDTO[];
 }) {
   const routineRef = useRef<HTMLDivElement>(null);
 
@@ -1112,7 +1418,8 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
           <FitiaMealCard key={i} meal={m}
             checked={mealChecks.includes(m.name)}
             onToggleCheck={() => onMealToggle(m.name)}
-            onOpen={() => onMealOpen(m)} />
+            onOpen={() => onMealOpen(m)}
+            substitutes={substitutes} />
         ))
       )}
 
@@ -1135,23 +1442,257 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
       ) : (
         <div className="mx-4 rounded-2xl overflow-hidden mb-4"
           style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-          {/* Dark header — pure black */}
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${F.border}`, background: F.bg }}>
-            <p className="text-[13px] font-semibold" style={{ color: F.tp }}>{day.label}</p>
-            <p className="text-[11px]" style={{ color: "#818cf8" }}>{day.muscleGroup}</p>
+          {/* Routine header */}
+          <div className="flex items-center justify-between px-4 py-3"
+            style={{ borderBottom: `1px solid ${F.border}`, background: F.bg }}>
+            <div>
+              <p className="text-[13px] font-semibold" style={{ color: F.tp }}>{day.label}</p>
+              <p className="text-[11px]" style={{ color: "#818cf8" }}>{day.muscleGroup}</p>
+            </div>
+            {/* Session status pill */}
+            {workoutSession?.completed ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+                style={{ background: "rgba(52,211,153,0.12)", border: `1px solid ${F.green}30` }}>
+                <CheckCircle2 size={10} strokeWidth={2.5} style={{ color: F.green }} />
+                <span className="text-[10px] font-semibold" style={{ color: F.green }}>Completada</span>
+              </div>
+            ) : workoutSession ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+                style={{ background: F.blueBg, border: `1px solid ${F.blue}30` }}>
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: F.blue }} />
+                <span className="text-[10px] font-semibold" style={{ color: F.blue }}>En curso</span>
+              </div>
+            ) : null}
           </div>
+
+          {/* Exercise list */}
           <div className="p-3 space-y-2">
-            {day.exercises.map((ex, i) => (
-              <AccordionExerciseRow key={i}
-                exercise={{ ...ex, muscleGroup: day.muscleGroup }}
-                onDetails={() => onExerciseOpen({ ...ex, muscleGroup: day.muscleGroup })} />
-            ))}
+            {day.exercises.map((ex, i) => {
+              const exLogs = workoutLogs
+                .filter(l => l.exerciseName === ex.name)
+                .sort((a, b) => b.date.localeCompare(a.date));
+              const todayLog = exLogs.find(l => l.date === todayStr) ?? null;
+              const prevLog  = exLogs.find(l => l.date !== todayStr) ?? null;
+              return (
+                <AccordionExerciseRow key={i}
+                  exercise={{ ...ex, muscleGroup: day.muscleGroup }}
+                  onDetails={() => onExerciseOpen({ ...ex, muscleGroup: day.muscleGroup })}
+                  todayLog={todayLog}
+                  prevLog={prevLog}
+                  todayStr={todayStr} />
+              );
+            })}
           </div>
+
+          {/* Finalizar sesión */}
+          {!workoutSession?.completed && (
+            <div className="px-3 pb-3">
+              <button
+                onClick={() => onFinalizeSession(`${day.label} · ${day.muscleGroup ?? ""}`)}
+                disabled={finalizingSession}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-semibold cursor-pointer transition-opacity disabled:opacity-50"
+                style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8" }}>
+                {finalizingSession
+                  ? <><Loader2 size={14} className="animate-spin" /> Guardando…</>
+                  : <><CheckCircle2 size={14} /> Finalizar Sesión</>}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Hydration card */}
+      <WaterTrackerCard totalMl={waterTotalMl} onAdd={onAddWater} />
+
       <div style={{ height: 8 }} />
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   WATER TRACKER CARD
+══════════════════════════════════════════════════════════════ */
+const WATER_TARGET_ML = 3000;
+const GLASS_ML = 250;
+const TOTAL_GLASSES = WATER_TARGET_ML / GLASS_ML; // 12
+
+function WaterTrackerCard({ totalMl, onAdd }: { totalMl: number; onAdd: (ml: number) => void }) {
+  const filledGlasses = Math.min(Math.floor(totalMl / GLASS_ML), TOTAL_GLASSES);
+  const pct = Math.min((totalMl / WATER_TARGET_ML) * 100, 100);
+
+  return (
+    <div className="mx-4 mt-4 rounded-2xl overflow-hidden"
+      style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3"
+        style={{ borderBottom: `1px solid ${F.border}`, background: F.bg }}>
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md flex items-center justify-center"
+            style={{ background: "rgba(56,189,248,0.15)" }}>
+            <Droplets size={11} strokeWidth={2} style={{ color: "#38bdf8" }} />
+          </div>
+          <p className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: F.ts }}>Hidratación del Día</p>
+        </div>
+        <p className="text-[11px] font-semibold tabular-nums" style={{ color: "#38bdf8" }}>
+          {(totalMl / 1000).toFixed(2).replace(".", ",")} L
+        </p>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Progress bar */}
+        <div>
+          <div className="flex justify-between mb-1.5">
+            <span className="text-[11px]" style={{ color: F.tt }}>Consumido</span>
+            <span className="text-[11px] tabular-nums" style={{ color: F.ts }}>
+              {totalMl} ml / {WATER_TARGET_ML} ml
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: F.border }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #0ea5e9, #38bdf8)" }} />
+          </div>
+        </div>
+
+        {/* Glass grid */}
+        <div className="grid grid-cols-6 gap-1.5">
+          {Array.from({ length: TOTAL_GLASSES }).map((_, i) => (
+            <div key={i}
+              className="aspect-square rounded-xl flex items-center justify-center transition-all duration-300"
+              style={{
+                background: i < filledGlasses ? "rgba(56,189,248,0.18)" : F.bg,
+                border: `1px solid ${i < filledGlasses ? "#38bdf830" : F.border}`,
+              }}>
+              <Droplets
+                size={16} strokeWidth={i < filledGlasses ? 2 : 1.5}
+                style={{ color: i < filledGlasses ? "#38bdf8" : F.border }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Quick-add buttons */}
+        <div className="flex gap-2 pt-1">
+          {[250, 500].map(ml => (
+            <button key={ml}
+              onClick={() => onAdd(ml)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-semibold cursor-pointer transition-all active:scale-95"
+              style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
+              <Plus size={12} strokeWidth={2.5} />
+              +{ml} ml
+            </button>
+          ))}
+        </div>
+
+        {/* Completion message */}
+        {totalMl >= WATER_TARGET_ML && (
+          <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl"
+            style={{ background: "rgba(52,211,153,0.1)", border: `1px solid ${F.green}30` }}>
+            <CheckCircle2 size={12} strokeWidth={2.5} style={{ color: F.green }} />
+            <span className="text-[11px] font-semibold" style={{ color: F.green }}>¡Meta de hidratación alcanzada!</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PHOTO LIGHTBOX
+══════════════════════════════════════════════════════════════ */
+function PhotoLightbox({ photos, initialIdx, onClose }: {
+  photos: any[]; initialIdx: number; onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(initialIdx);
+  const photo = photos[idx];
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft")  setIdx(i => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setIdx(i => Math.min(photos.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose, photos.length]);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.97)" }}
+      onClick={onClose}>
+      <button onClick={onClose}
+        className="absolute top-5 right-5 z-10 w-9 h-9 rounded-full flex items-center justify-center"
+        style={{ background: "rgba(255,255,255,0.1)" }}>
+        <X size={17} style={{ color: "#fff" }} />
+      </button>
+      <div className="relative w-full max-w-lg px-5" onClick={e => e.stopPropagation()}>
+        <img
+          src={photo.url} alt={photo.label}
+          className="w-full rounded-2xl object-cover object-top"
+          style={{ maxHeight: "72vh" }}
+        />
+        <div className="mt-3 text-center">
+          <p className="text-[13px] font-medium" style={{ color: "#fff" }}>{photo.label}</p>
+          {photo.weight && (
+            <p className="text-[11px] mt-0.5" style={{ color: F.ts }}>{photo.weight} kg</p>
+          )}
+        </div>
+        {photos.length > 1 && (
+          <div className="flex items-center justify-between mt-5 px-2">
+            <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0}
+              className="w-9 h-9 flex items-center justify-center rounded-full transition-opacity disabled:opacity-25"
+              style={{ background: "rgba(255,255,255,0.1)" }}>
+              <ChevronLeft size={16} style={{ color: "#fff" }} />
+            </button>
+            <div className="flex gap-2 items-center">
+              {photos.map((_: any, i: number) => (
+                <button key={i} onClick={() => setIdx(i)}
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: i === idx ? 18 : 6, height: 6,
+                    background: i === idx ? "#fff" : "rgba(255,255,255,0.3)",
+                  }} />
+              ))}
+            </div>
+            <button onClick={() => setIdx(i => Math.min(photos.length - 1, i + 1))}
+              disabled={idx === photos.length - 1}
+              className="w-9 h-9 flex items-center justify-center rounded-full transition-opacity disabled:opacity-25"
+              style={{ background: "rgba(255,255,255,0.1)" }}>
+              <ChevronRight size={16} style={{ color: "#fff" }} />
+            </button>
+          </div>
+        )}
+      </div>
+      <p className="absolute bottom-7 text-[11px]" style={{ color: F.ts }}>
+        {idx + 1} / {photos.length}
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MEASUREMENT SPARKLINE
+══════════════════════════════════════════════════════════════ */
+function MeasTrendLine({ months, metric, color }: { months: any[]; metric: string; color: string }) {
+  if (months.length < 2) return null;
+  const vals = months.map((m: any) => (m[metric] as number) ?? 0);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const W = 52, H = 18, pad = 3;
+  const pts = vals.map((v, i) => ({
+    x: pad + (i / (vals.length - 1)) * (W - pad * 2),
+    y: H - pad - ((v - mn) / range) * (H - pad * 2),
+  }));
+  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ overflow: "visible", flexShrink: 0 }}>
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5"
+        strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2" fill={color} opacity="0.85" />
+    </svg>
   );
 }
 
@@ -1188,6 +1729,18 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
     return allPhotos.filter((p: any) => re.test(p.label ?? ""));
   }, [allPhotos, activeMonthIdx]);
 
+  /* Lightbox */
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+
+  /* Weight closest to this measurement date */
+  const closestWeight = useMemo(() => {
+    if (!activeMeas || !(detail.weightHistory?.length)) return null;
+    return [...detail.weightHistory].sort((a, b) => {
+      const t = new Date(activeMeas.date).getTime();
+      return Math.abs(new Date(a.date).getTime() - t) - Math.abs(new Date(b.date).getTime() - t);
+    })[0];
+  }, [activeMeas, detail.weightHistory]);
+
   return (
     <div className="px-4 pt-4 space-y-3 pb-4">
       <div className="pb-1">
@@ -1196,88 +1749,155 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
       </div>
 
       {/* ── Monthly timeline ── */}
-      {sortedMonths.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-          {/* Month tabs */}
-          <div className="flex items-center gap-1.5 px-3 py-3 overflow-x-auto"
+      {sortedMonths.length > 0 ? (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
+
+          {/* Month navigation bar */}
+          <div className="flex items-center gap-2 px-3 py-3"
             style={{ borderBottom: `1px solid ${F.border}` }}>
-            {sortedMonths.map((_: any, i: number) => (
-              <button key={i} onClick={() => setActiveMonthIdx(i)}
-                className="flex-shrink-0 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer whitespace-nowrap transition-colors"
-                style={{
-                  background: i === activeMonthIdx ? F.blue : F.bg,
-                  color: i === activeMonthIdx ? "#fff" : F.ts,
-                  border: `1px solid ${i === activeMonthIdx ? F.blue : F.border}`,
-                }}>
-                Mes {i + 1}
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveMonthIdx(i => Math.max(0, i - 1))}
+              disabled={activeMonthIdx === 0}
+              className="w-8 h-8 flex items-center justify-center rounded-xl shrink-0 transition-opacity disabled:opacity-20 cursor-pointer"
+              style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+              <ChevronLeft size={14} style={{ color: F.ts }} />
+            </button>
+            <div className="flex-1 flex items-center gap-1.5 overflow-x-auto"
+              style={{ scrollbarWidth: "none" }}>
+              {sortedMonths.map((_: any, i: number) => (
+                <button key={i} onClick={() => setActiveMonthIdx(i)}
+                  className="flex-shrink-0 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-200"
+                  style={{
+                    background: i === activeMonthIdx ? F.blue : F.bg,
+                    color: i === activeMonthIdx ? "#fff" : F.ts,
+                    border: `1px solid ${i === activeMonthIdx ? F.blue : F.border}`,
+                  }}>
+                  Mes {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setActiveMonthIdx(i => Math.min(sortedMonths.length - 1, i + 1))}
+              disabled={activeMonthIdx === sortedMonths.length - 1}
+              className="w-8 h-8 flex items-center justify-center rounded-xl shrink-0 transition-opacity disabled:opacity-20 cursor-pointer"
+              style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+              <ChevronRight size={14} style={{ color: F.ts }} />
+            </button>
           </div>
 
-          {/* Historial de medidas — read-only */}
-          {activeMeas && (
-            <div className="p-4">
-              <p className="text-[10px] uppercase tracking-wider font-semibold mb-3" style={{ color: F.tt }}>
-                Historial de Medidas · Mes {activeMonthIdx + 1}
-                <span className="ml-2 normal-case font-normal" style={{ color: F.tt }}>
-                  {activeMeas.date}
-                </span>
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {MEAS_LABELS.map(([lbl, key]) => {
-                  const val = activeMeas[key];
-                  /* compare to first month */
-                  const firstMeas = sortedMonths[0];
-                  const delta = firstMeas && activeMonthIdx > 0
-                    ? Math.round((val - firstMeas[key]) * 10) / 10
-                    : null;
-                  return (
-                    <div key={key} className="rounded-xl px-3 py-2.5"
-                      style={{ background: F.bg, border: `1px solid ${F.border}` }}>
-                      <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: F.tt }}>{lbl}</p>
-                      <p className="text-[20px] font-light tabular-nums leading-none" style={{ color: val ? F.tp : F.tt }}>
-                        {val ?? "—"}
-                        {val ? <span className="text-[9px] font-normal ml-0.5" style={{ color: F.tt }}>cm</span> : null}
-                      </p>
-                      {delta !== null && delta !== 0 && (
-                        <p className="text-[9px] font-semibold mt-1 tabular-nums"
-                          style={{ color: delta < 0 ? F.green : F.red }}>
-                          {delta > 0 ? "+" : ""}{delta} desde inicio
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+          {activeMeas ? (
+            <>
+              {/* Month meta — date + closest weight */}
+              <div className="flex items-center justify-between px-4 py-3"
+                style={{ borderBottom: `1px solid ${F.border}` }}>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: F.tt }}>
+                    Mes {activeMonthIdx + 1}
+                  </p>
+                  <p className="text-[12px] mt-0.5 font-medium tabular-nums" style={{ color: F.ts }}>
+                    {activeMeas.date}
+                  </p>
+                </div>
+                {closestWeight && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                    style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+                    <Weight size={11} style={{ color: F.blue }} />
+                    <span className="text-[13px] font-semibold tabular-nums" style={{ color: F.tp }}>
+                      {closestWeight.weight} kg
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
+
+              {/* Historial de medidas — read-only */}
+              <div className="px-4 pt-3 pb-4">
+                <p className="text-[9px] uppercase tracking-widest font-semibold mb-3" style={{ color: F.tt }}>
+                  Historial de Medidas
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {MEAS_LABELS.map(([lbl, key]) => {
+                    const val = activeMeas[key];
+                    const firstMeas = sortedMonths[0];
+                    const prevMeas  = activeMonthIdx > 0 ? sortedMonths[activeMonthIdx - 1] : null;
+                    const delta     = firstMeas && activeMonthIdx > 0
+                      ? Math.round((val - firstMeas[key]) * 10) / 10
+                      : null;
+                    const prevDelta = prevMeas
+                      ? Math.round((val - prevMeas[key]) * 10) / 10
+                      : null;
+                    return (
+                      <div key={key} className="rounded-xl px-3 py-2.5"
+                        style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[9px] uppercase tracking-wider" style={{ color: F.tt }}>{lbl}</p>
+                          <MeasTrendLine months={sortedMonths} metric={key} color={F.blue} />
+                        </div>
+                        <p className="text-[20px] font-light tabular-nums leading-none"
+                          style={{ color: val ? F.tp : F.tt }}>
+                          {val ?? "—"}
+                          {val ? <span className="text-[9px] font-normal ml-0.5" style={{ color: F.tt }}>cm</span> : null}
+                        </p>
+                        {delta !== null && delta !== 0 && (
+                          <p className="text-[9px] font-semibold mt-1 tabular-nums"
+                            style={{ color: delta < 0 ? F.green : F.red }}>
+                            {delta > 0 ? "+" : ""}{delta} inicio
+                          </p>
+                        )}
+                        {prevDelta !== null && prevDelta !== 0 && (
+                          <p className="text-[9px] mt-0.5 tabular-nums"
+                            style={{ color: prevDelta < 0 ? F.green : F.red, opacity: 0.65 }}>
+                            {prevDelta > 0 ? "+" : ""}{prevDelta} vs ant.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-[12px] px-4 py-8 text-center" style={{ color: F.tt }}>
+              Tu coach aún no ha registrado medidas para este mes.
+            </p>
           )}
 
           {/* Galería de fotos del mes */}
           {monthPhotos.length > 0 && (
             <div className="px-4 pb-4" style={{ borderTop: `1px solid ${F.border}` }}>
-              <p className="text-[10px] uppercase tracking-wider font-semibold py-3" style={{ color: F.tt }}>
+              <p className="text-[9px] uppercase tracking-widest font-semibold py-3" style={{ color: F.tt }}>
                 Galería · Mes {activeMonthIdx + 1}
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {monthPhotos.map((p: any) => (
-                  <div key={p.id}>
+                {monthPhotos.map((p: any, i: number) => (
+                  <button key={p.id ?? i} onClick={() => setLightboxIdx(i)}
+                    className="rounded-xl overflow-hidden active:scale-95 transition-transform cursor-pointer"
+                    style={{ aspectRatio: "3/4", background: F.border }}>
                     <img src={p.url} alt={p.label}
-                      className="w-full rounded-xl object-cover object-top"
-                      style={{ aspectRatio: "3/4", background: F.border }} />
-                    <p className="text-[9px] mt-1 text-center truncate" style={{ color: F.tt }}>
-                      {p.label}{p.weight ? ` · ${p.weight}kg` : ""}
-                    </p>
-                  </div>
+                      className="w-full h-full object-cover object-top" />
+                  </button>
                 ))}
               </div>
+              {monthPhotos.length > 1 && (
+                <p className="text-[9px] text-center mt-2.5" style={{ color: F.tt }}>
+                  Toca una foto para ampliarla
+                </p>
+              )}
             </div>
           )}
-
-          {!activeMeas && (
-            <p className="text-[12px] px-4 py-6 text-center" style={{ color: F.tt }}>
-              Tu coach aún no ha registrado medidas para este mes.
-            </p>
-          )}
+        </div>
+      ) : (
+        /* Empty state — no measurements yet */
+        <div className="rounded-2xl p-8 flex flex-col items-center gap-3 text-center"
+          style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+            <BarChart3 size={22} strokeWidth={1.25} style={{ color: F.tt }} />
+          </div>
+          <p className="text-[14px] font-semibold" style={{ color: F.tp }}>Sin medidas todavía</p>
+          <p className="text-[12px] max-w-[220px] leading-relaxed" style={{ color: F.tt }}>
+            Tu coach registrará tus medidas mensualmente para ver tu evolución aquí.
+          </p>
         </div>
       )}
 
@@ -1362,6 +1982,15 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
         style={{ background: F.card, border: `1px solid ${F.border}`, color: F.ts, boxShadow: F.shadow }}>
         <Download size={14} strokeWidth={1.75} style={{ color: F.ts }} /> Descargar Insignia de Progreso
       </button>
+
+      {/* Photo lightbox */}
+      {lightboxIdx !== null && (
+        <PhotoLightbox
+          photos={monthPhotos}
+          initialIdx={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1755,6 +2384,12 @@ export default function PortalPage() {
   // Meal checks
   const [mealChecks, setMealChecks] = useState<string[]>([]);
   const [carreras, setCarreras]     = useState<any[]>([]);
+  const [workoutLogs, setWorkoutLogs]       = useState<WorkoutLogEntry[]>([]);
+  const [workoutSession, setWorkoutSession] = useState<WorkoutSessionEntry | null>(null);
+  const [finalizingSession, setFinalizingSession]   = useState(false);
+  const [celebratingSession, setCelebratingSession] = useState(false);
+  const [waterTotalMl, setWaterTotalMl]             = useState(0);
+  const [substitutes, setSubstitutes]           = useState<FoodSubstituteDTO[]>([]);
   const todayStr = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
@@ -1763,6 +2398,50 @@ export default function PortalPage() {
       .then(d => setMealChecks((d.checks || []).filter((c: string) => c.startsWith("meal:")).map((c: string) => c.slice(5))))
       .catch(() => {});
     fetch("/api/carreras").then(r => r.ok ? r.json() : []).then(d => setCarreras(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/me/logs").then(r => r.ok ? r.json() : []).then(d => setWorkoutLogs(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch(`/api/student/workout-session?date=${todayStr}`).then(r => r.ok ? r.json() : null).then(d => setWorkoutSession(d)).catch(() => {});
+    fetch(`/api/student/water?date=${todayStr}`).then(r => r.ok ? r.json() : { totalMl: 0 }).then(d => setWaterTotalMl(d.totalMl ?? 0)).catch(() => {});
+    fetch("/api/student/food-substitutes").then(r => r.ok ? r.json() : { substitutes: [] }).then(d => setSubstitutes(Array.isArray(d.substitutes) ? d.substitutes : [])).catch(() => {});
+  }, [todayStr]);
+
+  const finalizeSession = useCallback(async (sessionName: string) => {
+    setFinalizingSession(true);
+    try {
+      const res = await fetch("/api/student/workout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // completed: true forces the green "Completada" pill regardless of
+        // individual set completion state — the student explicitly chose to end the session.
+        body: JSON.stringify({ date: todayStr, name: sessionName, completed: true }),
+      });
+      if (res.ok) {
+        const session = await res.json();
+        setWorkoutSession({ ...session, completed: true });
+        // 🎉 Celebration burst
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+        setCelebratingSession(true);
+        setTimeout(() => setCelebratingSession(false), 3000);
+      }
+    } finally { setFinalizingSession(false); }
+  }, [todayStr]);
+
+  const addWater = useCallback(async (amountMl: number) => {
+    setWaterTotalMl(prev => prev + amountMl); // optimistic
+    try {
+      const res = await fetch("/api/student/water", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountMl, date: todayStr }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        // Math.max prevents a stale server response from rolling back a
+        // concurrent optimistic increment (rapid +250 / +500 taps).
+        setWaterTotalMl(prev => Math.max(prev, d.totalMl ?? 0));
+      } else {
+        setWaterTotalMl(prev => prev - amountMl); // targeted rollback
+      }
+    } catch { setWaterTotalMl(prev => prev - amountMl); }
   }, [todayStr]);
 
   const toggleMeal = useCallback(async (name: string) => {
@@ -1799,7 +2478,9 @@ export default function PortalPage() {
 
   const fetchMe = useCallback(async () => {
     try {
-      const res = await fetch("/api/me");
+      // cache: "no-store" forces the browser to skip any cached response and hit the
+      // server every time — critical so a coach's isActive toggle takes effect immediately.
+      const res = await fetch("/api/me", { cache: "no-store" });
       if (res.status === 403) {
         const body = await res.json().catch(() => ({}));
         if (body.error === "ACCOUNT_BLOCKED") { window.location.replace("/portal/blocked"); return; }
@@ -1885,7 +2566,15 @@ export default function PortalPage() {
             mealChecks={mealChecks} onMealToggle={toggleMeal}
             onMealOpen={setActiveMeal}
             onExerciseOpen={setActiveExercise}
-            avatarUrl={avatarUrl} />
+            avatarUrl={avatarUrl}
+            workoutLogs={workoutLogs}
+            todayStr={todayStr}
+            workoutSession={workoutSession}
+            finalizingSession={finalizingSession}
+            onFinalizeSession={finalizeSession}
+            waterTotalMl={waterTotalMl}
+            onAddWater={addWater}
+            substitutes={substitutes} />
         )}
         {activeTab === "progress" && (
           <TabProgreso student={student} detail={detail} startWeight={startWeight} carreras={carreras}
@@ -1911,7 +2600,7 @@ export default function PortalPage() {
 
       {/* Meal detail sheet */}
       <BottomSheet open={!!activeMeal} onClose={() => setActiveMeal(null)}>
-        {activeMeal && <MealSheet meal={activeMeal} />}
+        {activeMeal && <MealSheet meal={activeMeal} substitutes={substitutes} />}
       </BottomSheet>
 
       {/* Exercise detail sheet */}
@@ -1926,6 +2615,51 @@ export default function PortalPage() {
           onConfirm={handleCancelSubscription} status={cancelStatus}
           onClose={closeCancelSheet} />
       </BottomSheet>
+
+      {/* ── Session celebration overlay ── */}
+      {celebratingSession && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-6 pointer-events-none">
+          <style>{`
+            @keyframes celebrateIn {
+              from { opacity: 0; transform: scale(0.82) translateY(24px); }
+              to   { opacity: 1; transform: scale(1)    translateY(0);    }
+            }
+            @keyframes celebrateBar {
+              from { width: 100%; }
+              to   { width: 0%;   }
+            }
+          `}</style>
+          <div style={{
+            width: "100%", maxWidth: 360,
+            borderRadius: 28,
+            padding: "36px 32px",
+            textAlign: "center",
+            background: "rgba(12,12,12,0.94)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            backdropFilter: "blur(28px)",
+            WebkitBackdropFilter: "blur(28px)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.06)",
+            animation: "celebrateIn 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+          }}>
+            <p style={{ fontSize: 52, lineHeight: 1, marginBottom: 12 }}>🔥</p>
+            <p style={{ fontSize: 21, fontWeight: 700, letterSpacing: "-0.02em", color: "#f4f4f5", lineHeight: 1.25 }}>
+              ¡Felicidades,<br />entrenamiento completado!
+            </p>
+            <p style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: "rgba(244,244,245,0.42)" }}>
+              Sigue así — cada sesión cuenta
+            </p>
+            {/* Progress bar that drains over 3 s */}
+            <div style={{ marginTop: 20, height: 3, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%",
+                borderRadius: 999,
+                background: "linear-gradient(90deg, #fbbf24, #f97316, #ef4444)",
+                animation: "celebrateBar 3s linear forwards",
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

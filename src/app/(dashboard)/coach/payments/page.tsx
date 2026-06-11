@@ -5,11 +5,10 @@
    (Requieren acción / Al día / Suspendidos).
    ═══════════════════════════════════════════ */
 import { useEffect, useState, useMemo } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, DollarSign, Check } from "lucide-react";
 import { type Student } from "@/lib/mock-data";
 import { PageHeader } from "@/components/page-header";
 
-const FEE = 1200;
 const PAYMENT_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: "Al día", color: "#34d399" }, grace_period: { label: "Pago pendiente", color: "#fbbf24" },
   past_due: { label: "Pago vencido", color: "#fbbf24" }, inactive: { label: "Suspendido", color: "#f87171" },
@@ -20,17 +19,42 @@ export default function PaymentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ── Tarifa mensual dinámica ── */
+  const [fee, setFee]           = useState<number>(1200);
+  const [feeInput, setFeeInput] = useState<string>("");
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [feeSaved, setFeeSaved]   = useState(false);
+
   useEffect(() => {
     fetch("/api/students").then((r) => r.json()).then((d) => setStudents(Array.isArray(d) ? d : [])).catch(() => {}).finally(() => setLoading(false));
+    fetch("/api/coach/profile").then((r) => r.json()).then((d) => {
+      const p = d.monthlyPrice ?? 1200;
+      setFee(p);
+      setFeeInput(String(p));
+    }).catch(() => {});
   }, []);
+
+  const saveFee = async () => {
+    const p = parseFloat(feeInput);
+    if (isNaN(p) || p < 0) return;
+    setFeeSaving(true);
+    try {
+      const res = await fetch("/api/coach/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthlyPrice: p }),
+      });
+      if (res.ok) { setFee(p); setFeeSaved(true); setTimeout(() => setFeeSaved(false), 2000); }
+    } finally { setFeeSaving(false); }
+  };
 
   const groups = useMemo(() => {
     const action = students.filter((s) => s.paymentStatus === "grace_period" || s.paymentStatus === "past_due");
     const active = students.filter((s) => s.paymentStatus === "active");
     const disabled = students.filter((s) => s.paymentStatus === "inactive");
-    const mrr = active.length * FEE + action.length * (FEE / 2);
+    const mrr = active.length * fee + action.length * (fee / 2);
     return { action, active, disabled, mrr };
-  }, [students]);
+  }, [students, fee]);
 
   return (
     <>
@@ -38,6 +62,46 @@ export default function PaymentsPage() {
       <div className="flex-1 px-4 md:px-8 py-6 overflow-y-auto pb-24 md:pb-8">
         {loading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={{ color: "var(--text-primary)" }} /></div> : (
           <div className="max-w-3xl space-y-4">
+
+            {/* ── Tarifa mensual ── */}
+            <div className="rounded-2xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign size={14} style={{ color: "var(--text-tertiary)" }} />
+                <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>Tarifa Mensual</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 px-3.5 py-2.5 rounded-xl"
+                  style={{ background: "var(--bg-surface-raised)", border: "1px solid var(--border-subtle)" }}>
+                  <span className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={feeInput}
+                    onChange={(e) => { setFeeInput(e.target.value); setFeeSaved(false); }}
+                    onKeyDown={(e) => e.key === "Enter" && saveFee()}
+                    className="flex-1 bg-transparent outline-none text-[15px] font-semibold tabular-nums"
+                    style={{ color: "var(--text-primary)" }}
+                  />
+                  <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>MXN/mes</span>
+                </div>
+                <button
+                  onClick={saveFee}
+                  disabled={feeSaving || feeInput === String(fee)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[12px] font-semibold cursor-pointer disabled:opacity-40 transition-all shrink-0"
+                  style={{
+                    background: feeSaved ? "rgba(52,211,153,0.12)" : "var(--bg-surface-raised)",
+                    border: `1px solid ${feeSaved ? "rgba(52,211,153,0.3)" : "var(--border-subtle)"}`,
+                    color: feeSaved ? "#34d399" : "var(--text-secondary)",
+                  }}>
+                  {feeSaving ? <Loader2 size={13} className="animate-spin" /> : feeSaved ? <><Check size={13} /> Guardado</> : "Guardar"}
+                </button>
+              </div>
+              <p className="text-[11px] mt-2.5" style={{ color: "var(--text-tertiary)" }}>
+                Este precio se mostrará a tus alumnos en la pantalla de suscripción.
+              </p>
+            </div>
+
             {/* MRR */}
             <div className="rounded-2xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
               <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>Ingreso mensual recurrente</span>
@@ -47,7 +111,7 @@ export default function PaymentsPage() {
               </div>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="rounded-full" style={{ width: 6, height: 6, background: "#34d399" }} />
-                <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>AutoCobro activo · ${FEE.toLocaleString("es-MX")}/alumno</span>
+                <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>AutoCobro activo · ${fee.toLocaleString("es-MX")}/alumno</span>
               </div>
             </div>
 

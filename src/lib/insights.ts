@@ -6,7 +6,17 @@
 
 export type Check = { date: string; kind: string; itemKey: string };
 export interface WeightEntry { date: string; weight: number }
-export interface SetEntry { reps: string; weight: string; done: boolean }
+export interface SetEntry {
+  // Old wire format (string fields)
+  reps?: string | number;
+  weight?: string | number;
+  done?: boolean;
+  // New typed format
+  setNumber?: number;
+  targetReps?: number;
+  actualReps?: number;
+  completed?: boolean;
+}
 export interface ExerciseLog {
   id: string; date: string; ejercicioId?: string | null; exerciseName: string;
   muscleGroup?: string | null; bodyweight: boolean;
@@ -72,19 +82,29 @@ export function trainingLastDays(logs: ExerciseLog[], routine: Routine, ref: str
   const dates = new Set(logs.filter((l) => l.date >= start && l.date <= ref).map((l) => l.date));
   return { done: dates.size, planned: routine?.daysPerWeek || n };
 }
+function safeWeight(w: string | number | null | undefined): number {
+  if (typeof w === "number") return isNaN(w) ? 0 : w;
+  return parseFloat((String(w ?? "")).replace(/[^\d.]/g, "")) || 0;
+}
+function safeReps(s: SetEntry): number {
+  const r = s.actualReps ?? s.reps;
+  if (typeof r === "number") return isNaN(r) ? 0 : r;
+  return parseFloat(String(r ?? "0")) || 0;
+}
+
 export function maxWeight(log: ExerciseLog): number {
   let mx = 0;
-  for (const s of log.sets) { const w = parseFloat((s.weight || "").replace(/[^\d.]/g, "")); if (!isNaN(w)) mx = Math.max(mx, w); }
+  for (const s of log.sets) { const w = safeWeight(s.weight); if (w > 0) mx = Math.max(mx, w); }
   return mx;
 }
 export function records(logs: ExerciseLog[]): { name: string; weight: number }[] {
   const best: Record<string, number> = {};
-  for (const l of logs) for (const s of l.sets) { const w = parseFloat((s.weight || "").replace(/[^\d.]/g, "")); if (!isNaN(w) && w > 0) best[l.exerciseName] = Math.max(best[l.exerciseName] ?? 0, w); }
+  for (const l of logs) for (const s of l.sets) { const w = safeWeight(s.weight); if (w > 0) best[l.exerciseName] = Math.max(best[l.exerciseName] ?? 0, w); }
   return Object.entries(best).map(([name, weight]) => ({ name, weight })).sort((a, b) => b.weight - a.weight);
 }
 export function sessionVolume(logs: ExerciseLog[]): number {
   let v = 0;
-  for (const l of logs) for (const s of l.sets) { const reps = parseFloat(s.reps) || 0; const w = parseFloat((s.weight || "").replace(/[^\d.]/g, "")) || 0; v += reps * w; }
+  for (const l of logs) for (const s of l.sets) { v += safeReps(s) * safeWeight(s.weight); }
   return Math.round(v);
 }
 export function volumeByDate(logs: ExerciseLog[]): { date: string; volume: number }[] {
@@ -133,7 +153,7 @@ export function lastActivityDate(logs: ExerciseLog[], carreras: Carrera[], wh: W
   const all = [...logs.map((l) => l.date), ...carreras.map((c) => c.date), ...wh.map((w) => w.date)];
   return all.length ? all.sort().slice(-1)[0] : null;
 }
-export function redFlags(detail: StudentDetail, logs: ExerciseLog[], checks: Check[], paymentStatus: string): string[] {
+export function redFlags(detail: StudentDetail, logs: ExerciseLog[], checks: Check[], paymentStatus: string, isActive?: boolean): string[] {
   const flags: string[] = [];
   const today = todayStr();
   const lastTrain = logs.length ? logs.map((l) => l.date).sort().slice(-1)[0] : null;
@@ -141,8 +161,12 @@ export function redFlags(detail: StudentDetail, logs: ExerciseLog[], checks: Che
   else flags.push("Nunca ha registrado entrenamiento");
   const wh = detail.weightHistory ?? [];
   if (wh.length >= 3) { const last3 = wh.slice(-3).map((w) => w.weight); if (Math.max(...last3) - Math.min(...last3) < 0.3) flags.push("Peso estancado (últimas 3 mediciones)"); }
-  if (paymentStatus === "grace_period" || paymentStatus === "past_due") flags.push("Pago pendiente");
-  if (paymentStatus === "inactive") flags.push("Cuenta suspendida por pago");
+  // Only surface payment flags when the coach has NOT manually activated the student.
+  // isActive === true means the coach override is in effect; Stripe state is irrelevant.
+  if (isActive !== true) {
+    if (paymentStatus === "grace_period" || paymentStatus === "past_due") flags.push("Pago pendiente");
+    if (paymentStatus === "inactive") flags.push("Cuenta suspendida por pago");
+  }
   if (new Set(checks.filter((c) => c.kind === "meal").map((c) => c.date)).size === 0) flags.push("Sin registro de dieta");
   return flags;
 }

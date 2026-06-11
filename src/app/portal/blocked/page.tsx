@@ -1,12 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { CreditCard, AlertCircle, Loader2, ArrowRight, LogOut } from "lucide-react";
+import { CreditCard, AlertCircle, Loader2, ArrowRight, LogOut, RefreshCw } from "lucide-react";
 
 export default function BlockedPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [loading, setLoading]           = useState(false);
+  const [retrying, setRetrying]         = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+  const [monthlyPrice, setMonthlyPrice] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me/coach-price", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setMonthlyPrice(d.monthlyPrice ?? null))
+      .catch(() => {});
+  }, []);
+
+  // Check whether the coach has since re-activated the account.
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/me", { cache: "no-store" });
+      if (res.ok) {
+        // Account is now active — navigate to the portal without a full reload
+        // so the portal's own fetchMe fires fresh and skips the blocked redirect.
+        router.replace("/portal");
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      if (body.error === "ACCOUNT_BLOCKED") {
+        setError("Tu cuenta sigue suspendida. Contacta a tu coach.");
+      } else {
+        setError("Error al verificar el estado. Intenta de nuevo.");
+      }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setRetrying(false);
+    }
+  }, [router]);
 
   const handleReactivate = async () => {
     setLoading(true);
@@ -87,8 +123,12 @@ export default function BlockedPage() {
             </div>
           </div>
           <p className="text-[15px] font-semibold tabular-nums" style={{ color: "#ffffff" }}>
-            $1,200
-            <span className="text-[10px] font-normal ml-0.5" style={{ color: "#8E8E93" }}>MXN/mes</span>
+            {monthlyPrice !== null
+              ? `$${monthlyPrice.toLocaleString("es-MX")}`
+              : "—"}
+            {monthlyPrice !== null && (
+              <span className="text-[10px] font-normal ml-0.5" style={{ color: "#8E8E93" }}>MXN/mes</span>
+            )}
           </p>
         </div>
 
@@ -105,7 +145,7 @@ export default function BlockedPage() {
         {/* CTA principal */}
         <button
           onClick={handleReactivate}
-          disabled={loading}
+          disabled={loading || retrying}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-[15px] font-semibold transition-opacity active:scale-[0.98] disabled:opacity-50"
           style={{
             background: "#ffffff",
@@ -119,6 +159,27 @@ export default function BlockedPage() {
             <>
               Reactivar suscripción
               <ArrowRight size={15} strokeWidth={2.5} />
+            </>
+          )}
+        </button>
+
+        {/* Secondary: check if coach re-activated */}
+        <button
+          onClick={handleRetry}
+          disabled={loading || retrying}
+          className="mt-3 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[13px] font-medium transition-opacity active:scale-[0.98] disabled:opacity-50"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "#8E8E93",
+          }}
+        >
+          {retrying ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <>
+              <RefreshCw size={14} strokeWidth={1.75} />
+              Mi coach me activó — reintentar acceso
             </>
           )}
         </button>

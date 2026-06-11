@@ -94,11 +94,13 @@ export async function POST() {
     );
 
     try {
+      // Set isActive = true so the /api/me gate grants access immediately,
+      // independent of whether Stripe ever confirms the payment.
       await prisma.student.update({
         where: { id: student.id },
-        data: { paymentStatus: "active" },
+        data: { paymentStatus: "active", isActive: true },
       });
-      console.log(`[Dev Fallback] Alumno ${student.id} activado directamente en Prisma`);
+      console.log(`[Dev Fallback] Alumno ${student.id} activado directamente en Prisma (isActive=true, paymentStatus=active)`);
     } catch (prismaErr: any) {
       console.error("[Dev Fallback] Error activando alumno en Prisma:", prismaErr.message);
       return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStudents, addStudent } from "@/lib/db";
+import { getStudents, addStudent, provisionUserForStudent } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 import { type Student, type Stage } from "@/lib/mock-data";
 import { stripe, stripeEnabled, SUBSCRIPTION_PRICE_MXN, SUBSCRIPTION_CURRENCY } from "@/lib/stripe";
@@ -159,6 +159,13 @@ export async function POST(request: NextRequest) {
 
     const coachId = user.role === "COACH" ? user.coachId ?? undefined : undefined;
     const created = await addStudent(newStudent, detail, coachId);
+
+    // ── Auto-provisión de cuenta de usuario CLIENT ──
+    try {
+      await provisionUserForStudent(created.id, data.name, data.email);
+    } catch (e: any) {
+      console.error("[provision] No se pudo crear User para el alumno:", e.message);
+    }
 
     // ── Stripe: registrar cliente y generar checkout de suscripción ──
     let checkoutUrl: string | null = null;
