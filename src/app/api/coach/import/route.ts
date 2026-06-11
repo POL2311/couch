@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
+import { provisionUserForStudent } from "@/lib/db";
 
 /* ─── Types ─────────────────────────────── */
 export interface ImportWarning {
@@ -299,6 +300,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
 
       result.created++;
+
+      // Auto-provisión de cuenta CLIENT (fuera de la tx para no bloquearla)
+      const studentRow = await prisma.student.findFirst({ where: { email }, select: { id: true } });
+      if (studentRow) {
+        try {
+          await provisionUserForStudent(studentRow.id, name, email);
+        } catch (e: any) {
+          warn(rowNum, name, "warning", `Alumno creado pero no se pudo crear su cuenta de usuario: ${e.message}`);
+        }
+      }
     } catch (err: any) {
       warn(rowNum, name, "error", `Error al guardar: ${err?.message ?? "desconocido"}`);
       result.skipped++;

@@ -53,9 +53,10 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 function matchesFilter(s: Student, f: Filter) {
   if (f === "all")       return true;
-  if (f === "active")    return s.paymentStatus === "active";
-  if (f === "attention") return s.paymentStatus === "grace_period" || s.paymentStatus === "past_due";
-  if (f === "inactive")  return s.paymentStatus === "inactive";
+  // isActive drives the badge, so the filter must match what the badge shows.
+  if (f === "inactive")  return s.isActive === false;
+  if (f === "active")    return s.isActive !== false && s.paymentStatus === "active";
+  if (f === "attention") return s.isActive !== false && (s.paymentStatus === "grace_period" || s.paymentStatus === "past_due");
   return true;
 }
 
@@ -241,7 +242,10 @@ export default function StudentsPage() {
                 {/* TBODY */}
                 <tbody>
                   {list.map((s, idx) => {
-                    const pay        = PAYMENT[s.paymentStatus] ?? PAYMENT.inactive;
+                    // isActive is the authoritative access flag; paymentStatus is billing-only.
+                    const pay        = s.isActive === false
+                      ? { label: "Suspendido", color: "#f87171" }
+                      : { label: "Activo",     color: "#34d399" };
                     const stageStyle = STAGE_COLORS[s.stage] ?? { text: T.t, bg: "rgba(255,255,255,0.06)" };
                     const delta      = Math.round((s.currentWeight - s.previousWeight) * 10) / 10;
                     const deltaColor = delta < 0 ? T.success : delta > 0 ? T.danger : T.t;
@@ -438,8 +442,8 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.78)" }} />
-      <div className="relative w-full max-w-md rounded-2xl z-10 overflow-hidden"
-        style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.85)" }}
+      <div className="relative w-full max-w-md rounded-2xl z-10 flex flex-col"
+        style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.85)", maxHeight: "90vh" }}
         onClick={(e) => e.stopPropagation()}>
 
         {/* ── Header with step progress ── */}
@@ -472,7 +476,7 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         </div>
 
         {/* ── Step body ── */}
-        <div className="px-6 py-5 space-y-3.5 max-h-[58vh] overflow-y-auto">
+        <div className="px-6 py-5 space-y-3.5 overflow-y-auto flex-1 min-h-0">
 
           {/* STEP 1 — Registro */}
           {step === 1 && (
@@ -602,7 +606,8 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </label>
               {form.photo && (
                 <button onClick={() => set("photo", null)}
-                  className="text-[11px] cursor-pointer" style={{ color: T.t }}>
+                  className="inline-flex items-center gap-1 text-[11px] font-medium cursor-pointer px-2.5 py-1 rounded-lg transition-opacity hover:opacity-70"
+                  style={{ color: T.danger, background: `${T.danger}12`, border: `1px solid ${T.danger}25` }}>
                   Quitar archivo
                 </button>
               )}
@@ -611,8 +616,8 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         </div>
 
         {/* ── Footer nav ── */}
-        <div className="px-6 pb-5 pt-4 flex items-center justify-between gap-3"
-          style={{ borderTop: `1px solid ${T.border}` }}>
+        <div className="px-6 pb-5 pt-4 flex items-center justify-between gap-3 shrink-0"
+          style={{ borderTop: "1px solid #27272a", background: "#18181b" }}>
           {step > 1 ? (
             <button onClick={() => setStep((s) => s - 1)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer"
@@ -624,15 +629,17 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           {step < 4 ? (
             <button onClick={() => { if (canAdvance) setStep((s) => s + 1); }}
               disabled={!canAdvance}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-40 transition-opacity"
-              style={{ background: T.info, color: "#000" }}>
+              className="flex items-center justify-center gap-1.5 px-5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-40 transition-opacity"
+              style={{ background: T.info, color: "#000", height: 42, minWidth: 110 }}>
               Siguiente <ChevronRight size={14} />
             </button>
           ) : (
             <button onClick={submit} disabled={saving}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
-              style={{ background: T.success, color: "#000" }}>
-              {saving ? <Loader2 size={15} className="animate-spin" /> : "Crear alumno"}
+              className="flex items-center justify-center gap-1.5 px-5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
+              style={{ background: T.info, color: "#000", height: 42, minWidth: 130 }}>
+              {saving
+                ? <Loader2 size={15} className="animate-spin" style={{ color: "#000" }} />
+                : "Crear alumno"}
             </button>
           )}
         </div>

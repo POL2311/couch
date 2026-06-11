@@ -3,31 +3,62 @@ import fs from "fs/promises";
 import path from "path";
 import { getSessionUser } from "@/lib/session";
 import { getStudentById, getStudentDetail, updateStudent, addProgressPhoto } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
+
+// Never let Next.js or a CDN cache this route — it must always hit the live DB.
+export const dynamic = "force-dynamic";
+
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
 /** Devuelve la ficha del alumno vinculado a la cuenta cliente. */
 export async function GET() {
   const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  if (user.role !== "CLIENT" || !user.studentId) {
-    return NextResponse.json({ error: "Sin ficha de alumno asociada" }, { status: 404 });
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401, headers: NO_STORE });
   }
+  if (user.role !== "CLIENT" || !user.studentId) {
+    return NextResponse.json({ error: "Sin ficha de alumno asociada" }, { status: 404, headers: NO_STORE });
+  }
+
+  // ── ACCESS GATE — isActive is the SOLE authority ──────────────────────────────
+  // Rule: Coach.isActive === true  →  full portal access, NO Stripe check.
+  //       Coach.isActive === false →  403 ACCOUNT_BLOCKED, regardless of paymentStatus.
+  //
+  // paymentStatus drives Stripe billing flows / MRR only. It NEVER blocks portal access.
+  // Stripe webhooks do NOT touch isActive; only a Coach PATCH to /api/students/[id] can
+  // change it. This guarantees the coach's manual override is always respected immediately.
+  const liveStatus = await prisma.student.findUnique({
+    where: { id: user.studentId },
+    select: { isActive: true },
+  });
+
+  if (!liveStatus) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404, headers: NO_STORE });
+  }
+
+  // isActive defaults to true — only an explicit false blocks access.
+  if (liveStatus.isActive === false) {
+    return NextResponse.json(
+      { error: "ACCOUNT_BLOCKED" },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  // isActive === true: grant access unconditionally. Load full student data.
   const student = await getStudentById(user.studentId);
   const detail = await getStudentDetail(user.studentId);
-  if (!student || !detail) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-
-  // Paywall: bloquear acceso si la suscripción está inactiva
-  if (student.paymentStatus === "inactive" || student.paymentStatus === "past_due") {
-    return NextResponse.json({ error: "ACCOUNT_BLOCKED" }, { status: 403 });
+  if (!student || !detail) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404, headers: NO_STORE });
   }
 
-  return NextResponse.json({ student, detail });
+  return NextResponse.json({ student, detail }, { headers: NO_STORE });
 }
 
 /** Registro de progreso diario del alumno: peso + foto opcional. */
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user || user.role !== "CLIENT" || !user.studentId) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    return NextResponse.json({ error: "No autorizado" }, { status: 403, headers: NO_STORE });
   }
   const id = user.studentId;
 
@@ -59,7 +90,9 @@ export async function POST(request: NextRequest) {
 
   const student = await getStudentById(id);
   const detail = await getStudentDetail(id);
-  if (!student || !detail) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!student || !detail) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404, headers: NO_STORE });
+  }
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -77,5 +110,5 @@ export async function POST(request: NextRequest) {
     await addProgressPhoto(id, { url: photoName, label: photoLabel, weight: weight ?? null });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, { headers: NO_STORE });
 }

@@ -45,6 +45,7 @@ model Coach {
   ejercicios               Ejercicio[]
   stripeConnectId          String?
   stripeOnboardingComplete Boolean    @default(false)
+  monthlyPrice             Float      @default(1200)
   createdAt                DateTime   @default(now())
 }
 
@@ -63,6 +64,7 @@ model Student {
   stage          String
   stageNumber    Int
 
+  isActive             Boolean @default(true)
   paymentStatus        String  @default("inactive")
   stripeCustomerId     String?
   stripeSubscriptionId String?
@@ -79,12 +81,14 @@ model Student {
   dietJson    String @default("")
   routineJson String @default("")
 
-  weightHistory   WeightEntry[]
-  measurements    Measurement[]
-  photos          ProgressPhoto[]
-  scheduledChange ScheduledChange?
-  dailyChecks     DailyCheck[]
-  exerciseLogs    ExerciseLog[]
+  weightHistory    WeightEntry[]
+  measurements     Measurement[]
+  photos           ProgressPhoto[]
+  scheduledChange  ScheduledChange?
+  dailyChecks      DailyCheck[]
+  exerciseLogs     ExerciseLog[]
+  workoutSessions  WorkoutSession[]
+  waterLogs        WaterLog[]
 
   coachId String?
   coach   Coach?  @relation(fields: [coachId], references: [id], onDelete: SetNull)
@@ -183,7 +187,11 @@ model Ejercicio {
   muscleGroup String   // Pecho, Espalda, Pierna, Hombro, Brazo, Core...
   equipment   String   // Barra, Mancuerna, Polea, Peso corporal, Máquina...
   bodyweight  Boolean  @default(false)
+  imageUrl    String?
+  videoUrl    String?
   createdAt   DateTime @default(now())
+
+  @@unique([coachId, name])
 }
 
 // ─────────────────────────────────────────────
@@ -199,6 +207,51 @@ model DailyCheck {
   createdAt DateTime @default(now())
 
   @@unique([studentId, date, kind, itemKey])
+}
+
+// ─────────────────────────────────────────────
+// Sesiones de entrenamiento realizadas
+// Agrupa el log de una rutina completa por fecha.
+// Las series exactas viven en exerciseLogs (JSON snapshot).
+// ─────────────────────────────────────────────
+model WorkoutSession {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  routineId    String?                   // referencia opcional a la plantilla de rutina
+  name         String                   // ej. "Push Day · Lunes"
+  date         String                   // YYYY-MM-DD
+  completed    Boolean  @default(false)
+  exerciseLogs String   @default("[]")  // JSON: SessionExercise[]
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Banco de alimentos sustitutos autorizado
+// Permite al alumno intercambiar un ingrediente del plan por un equivalente
+// manteniendo los macros objetivo. El ratio = g de sustituto por g del macro dominante.
+// ─────────────────────────────────────────────
+model FoodSubstitute {
+  id            String   @id @default(cuid())
+  category      String   // "Carbohidratos" | "Proteínas" | "Grasas"
+  originalFood  String   // alimento de referencia (etiqueta, no se usa como FK)
+  substituteFood String  // nombre del sustituto a mostrar
+  ratio         Float    // g de substituteFood por g del macro dominante (proteína o carbs)
+  createdAt     DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Hidratación diaria del alumno
+// ─────────────────────────────────────────────
+model WaterLog {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  amountMl  Int
+  createdAt DateTime @default(now())
 }
 
 // ─────────────────────────────────────────────

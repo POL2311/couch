@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import bcrypt from "bcryptjs";
 import {
   type Student,
   type StudentDetail,
@@ -99,6 +100,7 @@ function toStudent(s: any): Student & { scheduledChange?: ScheduledChange | null
     lastWeighIn: s.lastWeighIn,
     stage: s.stage,
     stageNumber: s.stageNumber,
+    isActive: s.isActive ?? true,
     paymentStatus: s.paymentStatus,
     joinedDate: s.joinedDate,
     streak: s.streak,
@@ -213,6 +215,8 @@ export function resolveDays(days: any[], catalog: any[]): any[] {
         reps: ex.reps ?? "10",
         weight: ex.weight ?? "",
         rest: ex.rest ?? "60s",
+        imageUrl: cat?.imageUrl ?? ex.imageUrl ?? undefined,
+        videoUrl: cat?.videoUrl ?? ex.videoUrl ?? undefined,
       };
     }),
   }));
@@ -571,7 +575,14 @@ export { getDefaultCoachId };
    Registro de ejecución del alumno (ExerciseLog)
    ═══════════════════════════════════════════ */
 
-export interface SetEntry { reps: string; weight: string; done: boolean }
+export interface SetEntry {
+  setNumber:  number;
+  targetReps: number;
+  actualReps: number;
+  weight:     number;
+  completed:  boolean;
+}
+
 export interface ExerciseLogDTO {
   id: string;
   date: string;
@@ -589,12 +600,26 @@ export interface ExerciseLogDTO {
 
 function toLog(l: any): ExerciseLogDTO {
   let sets: SetEntry[] = [];
-  try { sets = JSON.parse(l.setsJson); } catch { sets = []; }
+  try {
+    const raw = JSON.parse(l.setsJson);
+    if (Array.isArray(raw)) {
+      const prescribed = parseInt(l.prescribedReps ?? "0") || 0;
+      sets = raw.map((s: any, i: number) => ({
+        setNumber:  typeof s.setNumber  === "number" ? s.setNumber  : i + 1,
+        targetReps: typeof s.targetReps === "number" ? s.targetReps : prescribed,
+        actualReps: typeof s.actualReps === "number" ? s.actualReps
+                      : (s.done ? (parseInt(String(s.reps)) || 0) : 0),
+        weight:     typeof s.weight     === "number" ? s.weight
+                      : (parseFloat(String(s.weight)) || 0),
+        completed:  typeof s.completed  === "boolean" ? s.completed : (s.done ?? false),
+      }));
+    }
+  } catch { sets = []; }
   return {
     id: l.id, date: l.date, ejercicioId: l.ejercicioId, exerciseName: l.exerciseName,
     muscleGroup: l.muscleGroup, bodyweight: l.bodyweight,
-    prescribedSets: l.prescribedSets, prescribedReps: l.prescribedReps, prescribedWeight: l.prescribedWeight,
-    sets, completed: l.completed,
+    prescribedSets: l.prescribedSets, prescribedReps: l.prescribedReps,
+    prescribedWeight: l.prescribedWeight, sets, completed: l.completed,
     createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : String(l.createdAt),
   };
 }
@@ -606,14 +631,41 @@ export async function addExerciseLog(studentId: string, data: {
 }): Promise<ExerciseLogDTO> {
   const created = await prisma.exerciseLog.create({
     data: {
-      studentId, date: data.date, ejercicioId: data.ejercicioId ?? null, exerciseName: data.exerciseName,
-      muscleGroup: data.muscleGroup ?? null, bodyweight: !!data.bodyweight,
-      prescribedSets: data.prescribedSets ?? 0, prescribedReps: data.prescribedReps ?? "",
-      prescribedWeight: data.prescribedWeight ?? null,
+      studentId, date: data.date, ejercicioId: data.ejercicioId ?? null,
+      exerciseName: data.exerciseName, muscleGroup: data.muscleGroup ?? null,
+      bodyweight: !!data.bodyweight, prescribedSets: data.prescribedSets ?? 0,
+      prescribedReps: data.prescribedReps ?? "", prescribedWeight: data.prescribedWeight ?? null,
       setsJson: JSON.stringify(data.sets ?? []), completed: !!data.completed,
     },
   });
   return toLog(created);
+}
+
+/** Upsert today's log for an exercise — creates on first call, updates on subsequent. */
+export async function upsertExerciseLog(studentId: string, data: {
+  date: string; exerciseName: string; muscleGroup?: string | null;
+  bodyweight?: boolean; prescribedSets?: number; prescribedReps?: string;
+  prescribedWeight?: string | null; sets: SetEntry[]; completed?: boolean;
+}): Promise<ExerciseLogDTO> {
+  const existing = await prisma.exerciseLog.findFirst({
+    where: { studentId, date: data.date, exerciseName: data.exerciseName },
+    orderBy: { createdAt: "desc" },
+  });
+  const payload = {
+    muscleGroup:      data.muscleGroup ?? null,
+    bodyweight:       !!data.bodyweight,
+    prescribedSets:   data.prescribedSets ?? data.sets.length,
+    prescribedReps:   data.prescribedReps ?? "",
+    prescribedWeight: data.prescribedWeight ?? null,
+    setsJson:         JSON.stringify(data.sets),
+    completed:        data.completed ?? data.sets.every(s => s.completed),
+  };
+  const row = existing
+    ? await prisma.exerciseLog.update({ where: { id: existing.id }, data: payload })
+    : await prisma.exerciseLog.create({
+        data: { studentId, date: data.date, exerciseName: data.exerciseName, ...payload },
+      });
+  return toLog(row);
 }
 
 export async function getExerciseLogs(studentId: string): Promise<ExerciseLogDTO[]> {
@@ -622,6 +674,128 @@ export async function getExerciseLogs(studentId: string): Promise<ExerciseLogDTO
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   return rows.map(toLog);
+}
+
+/* ═══════════════════════════════════════════
+   WorkoutSession — sesión de entrenamiento ejecutada
+   ═══════════════════════════════════════════ */
+
+export interface SessionExercise {
+  exerciseName: string;
+  muscleGroup:  string | null;
+  sets:         SetEntry[];
+  completed:    boolean;
+}
+
+export interface WorkoutSessionDTO {
+  id:           string;
+  studentId:    string;
+  routineId:    string | null;
+  name:         string;
+  date:         string;
+  completed:    boolean;
+  exerciseLogs: SessionExercise[];
+  notes:        string | null;
+  createdAt:    string;
+  updatedAt:    string;
+}
+
+function toSession(s: any): WorkoutSessionDTO {
+  let exerciseLogs: SessionExercise[] = [];
+  try {
+    const raw = JSON.parse(typeof s.exerciseLogs === "string" ? s.exerciseLogs : "[]");
+    if (Array.isArray(raw)) exerciseLogs = raw;
+  } catch { /* leave empty */ }
+  return {
+    id: s.id, studentId: s.studentId, routineId: s.routineId ?? null, name: s.name,
+    date: s.date, completed: s.completed, exerciseLogs, notes: s.notes ?? null,
+    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+    updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
+  };
+}
+
+/** Crea o actualiza la sesión del día para el alumno. */
+export async function upsertWorkoutSession(studentId: string, data: {
+  date:         string;
+  name:         string;
+  routineId?:   string | null;
+  exerciseLogs: SessionExercise[];
+  completed?:   boolean;
+  notes?:       string | null;
+}): Promise<WorkoutSessionDTO> {
+  const existing = await prisma.workoutSession.findFirst({
+    where: { studentId, date: data.date },
+    orderBy: { createdAt: "desc" },
+  });
+  const payload = {
+    name:         data.name,
+    routineId:    data.routineId ?? null,
+    exerciseLogs: JSON.stringify(data.exerciseLogs),
+    completed:    data.completed ?? data.exerciseLogs.every(e => e.completed),
+    notes:        data.notes ?? null,
+  };
+  const row = existing
+    ? await prisma.workoutSession.update({ where: { id: existing.id }, data: payload })
+    : await prisma.workoutSession.create({ data: { studentId, date: data.date, ...payload } });
+  return toSession(row);
+}
+
+/**
+ * Builds a WorkoutSession from existing ExerciseLog rows for that date,
+ * then upserts it. Call this from the "Finalizar Sesión" API handler.
+ */
+export async function finalizeWorkoutSession(studentId: string, data: {
+  date: string; name: string; routineId?: string | null; notes?: string | null; completed?: boolean;
+}): Promise<WorkoutSessionDTO> {
+  const logRows = await prisma.exerciseLog.findMany({
+    where: { studentId, date: data.date },
+    orderBy: { createdAt: "asc" },
+  });
+  const exerciseLogs: SessionExercise[] = logRows.map(l => {
+    let sets: SetEntry[] = [];
+    try {
+      const raw = JSON.parse(l.setsJson);
+      if (Array.isArray(raw)) {
+        const prescribed = parseInt(l.prescribedReps ?? "0") || 0;
+        sets = raw.map((s: any, i: number) => ({
+          setNumber:  typeof s.setNumber  === "number" ? s.setNumber  : i + 1,
+          targetReps: typeof s.targetReps === "number" ? s.targetReps : prescribed,
+          actualReps: typeof s.actualReps === "number" ? s.actualReps : (s.done ? parseInt(String(s.reps)) || 0 : 0),
+          weight:     typeof s.weight     === "number" ? s.weight     : parseFloat(String(s.weight)) || 0,
+          completed:  typeof s.completed  === "boolean" ? s.completed : (s.done ?? false),
+        }));
+      }
+    } catch { /* leave empty */ }
+    return {
+      exerciseName: l.exerciseName,
+      muscleGroup:  l.muscleGroup,
+      sets,
+      completed: l.completed || sets.every(s => s.completed),
+    };
+  });
+  return upsertWorkoutSession(studentId, {
+    ...data,
+    exerciseLogs,
+    // Explicit completed flag wins; otherwise derive from individual exercise completion.
+    completed: data.completed ?? exerciseLogs.every(e => e.completed),
+  });
+}
+
+export async function getWorkoutSession(studentId: string, date: string): Promise<WorkoutSessionDTO | null> {
+  const row = await prisma.workoutSession.findFirst({
+    where: { studentId, date },
+    orderBy: { createdAt: "desc" },
+  });
+  return row ? toSession(row) : null;
+}
+
+export async function getWorkoutSessions(studentId: string, limit = 20): Promise<WorkoutSessionDTO[]> {
+  const rows = await prisma.workoutSession.findMany({
+    where: { studentId },
+    orderBy: { date: "desc" },
+    take: limit,
+  });
+  return rows.map(toSession);
 }
 
 /* ═══════════════════════════════════════════
@@ -634,10 +808,12 @@ export interface EjercicioDTO {
   muscleGroup: string;
   equipment: string;
   bodyweight: boolean;
+  imageUrl?: string;
+  videoUrl?: string;
 }
 
 function toEjercicio(e: any): EjercicioDTO {
-  return { id: e.id, name: e.name, muscleGroup: e.muscleGroup, equipment: e.equipment, bodyweight: e.bodyweight };
+  return { id: e.id, name: e.name, muscleGroup: e.muscleGroup, equipment: e.equipment, bodyweight: e.bodyweight, imageUrl: e.imageUrl ?? undefined, videoUrl: e.videoUrl ?? undefined };
 }
 
 /** Lista de ejercicios: COACH ve los suyos; ADMIN ve todos. */
@@ -656,7 +832,7 @@ export async function getEjercicioById(id: string): Promise<(EjercicioDTO & { co
 
 export async function addEjercicio(
   coachId: string,
-  data: { name: string; muscleGroup: string; equipment: string; bodyweight: boolean }
+  data: { name: string; muscleGroup: string; equipment: string; bodyweight: boolean; imageUrl?: string; videoUrl?: string }
 ): Promise<EjercicioDTO> {
   const created = await prisma.ejercicio.create({ data: { coachId, ...data } });
   return toEjercicio(created);
@@ -664,7 +840,7 @@ export async function addEjercicio(
 
 export async function updateEjercicio(
   id: string,
-  data: { name: string; muscleGroup: string; equipment: string; bodyweight: boolean }
+  data: { name: string; muscleGroup: string; equipment: string; bodyweight: boolean; imageUrl?: string; videoUrl?: string }
 ): Promise<EjercicioDTO> {
   const updated = await prisma.ejercicio.update({ where: { id }, data });
   return toEjercicio(updated);
@@ -672,6 +848,66 @@ export async function updateEjercicio(
 
 export async function deleteEjercicio(id: string): Promise<void> {
   await prisma.ejercicio.delete({ where: { id } });
+}
+
+/* ── Default exercise catalog seed ── */
+const DEFAULT_EJERCICIOS: Omit<Parameters<typeof addEjercicio>[1], never>[] = [
+  // Pecho
+  { name: "Press de Banca Plano",           muscleGroup: "Pecho",   equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=rT7DgCr-3pg" },
+  { name: "Press Inclinado con Mancuernas", muscleGroup: "Pecho",   equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=8iPEnn-ltC8" },
+  { name: "Cruce de Poleas",                muscleGroup: "Pecho",   equipment: "Polea",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=taI4XduLpTk" },
+  { name: "Fondos en Paralelas (Pecho)",    muscleGroup: "Pecho",   equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=2z8JmcrW-As" },
+  // Espalda
+  { name: "Remo con Barra",                 muscleGroup: "Espalda", equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=FWJR5Ve8bnQ" },
+  { name: "Jalón al Pecho en Polea",        muscleGroup: "Espalda", equipment: "Polea",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=CAwf7n6Luuc" },
+  { name: "Dominadas",                      muscleGroup: "Espalda", equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=eGo4IYlbE5g" },
+  { name: "Remo con Mancuerna",             muscleGroup: "Espalda", equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=pYcpY20QaE8" },
+  // Hombro
+  { name: "Press Militar con Barra",        muscleGroup: "Hombro",  equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=2yjwXTZQDDI" },
+  { name: "Elevaciones Laterales",          muscleGroup: "Hombro",  equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=3VcKaXpzqRo" },
+  { name: "Press Arnold",                   muscleGroup: "Hombro",  equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=6Z15_WdXmVw" },
+  { name: "Elevaciones Frontales",          muscleGroup: "Hombro",  equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=sOoBaT8lAmc" },
+  // Pierna
+  { name: "Sentadilla Libre (Back Squat)",  muscleGroup: "Pierna",  equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=ultWZbUMPL8" },
+  { name: "Prensa de Piernas 45°",          muscleGroup: "Pierna",  equipment: "Máquina",      bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=IZxyjW7MPJQ" },
+  { name: "Sillón de Extensiones",          muscleGroup: "Pierna",  equipment: "Máquina",      bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=YyvSfVjQeL0" },
+  { name: "Curl Femoral Tumbado",           muscleGroup: "Pierna",  equipment: "Máquina",      bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=ELOCsoDSmrg" },
+  // Glúteo
+  { name: "Peso Muerto Rumano",             muscleGroup: "Glúteo",  equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=7j-2w4z8_4U" },
+  { name: "Desplantes / Zancadas",          muscleGroup: "Glúteo",  equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=D7KaRcUTQeE" },
+  { name: "Hip Thrust",                     muscleGroup: "Glúteo",  equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=xDmFkJxPzeM" },
+  // Brazo
+  { name: "Curl de Bíceps con Barra",       muscleGroup: "Brazo",   equipment: "Barra",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=ykJmrZ5v0Oo" },
+  { name: "Curl Alternado con Mancuerna",   muscleGroup: "Brazo",   equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=sAq_ocpRh_I" },
+  { name: "Dips de Tríceps",                muscleGroup: "Brazo",   equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=wjUmnZH528Y" },
+  { name: "Extensiones de Tríceps Polea",   muscleGroup: "Brazo",   equipment: "Polea",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=2-LAMcpzODU" },
+  { name: "Martillo con Mancuernas",        muscleGroup: "Brazo",   equipment: "Mancuerna",    bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=zC3nLlEvin4" },
+  // Core
+  { name: "Plancha Abdominal",              muscleGroup: "Core",    equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=pSHjTRCQxIw" },
+  { name: "Crunches en Tapete",             muscleGroup: "Core",    equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=Xyd_fa5zoEU" },
+  { name: "Elevación de Piernas Colgado",   muscleGroup: "Core",    equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=JB2oyawG9KI" },
+  { name: "Rueda Abdominal",                muscleGroup: "Core",    equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=rYeVtNZ0MJQ" },
+  // Cardio
+  { name: "Burpees",                        muscleGroup: "Cardio",  equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=dZgVxmf6jkA" },
+  { name: "Saltos a la Comba",              muscleGroup: "Cardio",  equipment: "Banda",        bodyweight: false, videoUrl: "https://www.youtube.com/watch?v=FJmRQ5iTXKE" },
+  { name: "Mountain Climbers",              muscleGroup: "Cardio",  equipment: "Peso corporal",bodyweight: true,  videoUrl: "https://www.youtube.com/watch?v=nmwgirgXLYM" },
+];
+
+/**
+ * Seeds the coach's catalog with ~30 standard exercises.
+ * Uses upsert by (coachId, name) so re-running is safe — no duplicates.
+ */
+export async function seedDefaultEjercicios(coachId: string): Promise<number> {
+  let count = 0;
+  for (const ej of DEFAULT_EJERCICIOS) {
+    await prisma.ejercicio.upsert({
+      where: { coachId_name: { coachId, name: ej.name } },
+      update: { muscleGroup: ej.muscleGroup, equipment: ej.equipment, bodyweight: ej.bodyweight, videoUrl: ej.videoUrl },
+      create: { coachId, ...ej },
+    });
+    count++;
+  }
+  return count;
 }
 
 /* ═══════════════════════════════════════════
@@ -820,4 +1056,141 @@ export async function addCarrera(
 
 export async function deleteCarrera(id: string): Promise<void> {
   await prisma.carrera.delete({ where: { id } });
+}
+
+/* ═══════════════════════════════════════════
+   FoodSubstitute — banco de alimentos sustitutos
+   ═══════════════════════════════════════════ */
+
+export interface FoodSubstituteDTO {
+  id:            string;
+  category:      string;
+  originalFood:  string;
+  substituteFood: string;
+  ratio:         number;
+}
+
+const DEFAULT_SUBSTITUTES: Omit<FoodSubstituteDTO, "id">[] = [
+  // Carbohidratos — gramsPerCarb (g de sustituto por g de carbs del original)
+  { category: "Carbohidratos", originalFood: "Arroz blanco",     substituteFood: "Arroz blanco",     ratio: 3.30 },
+  { category: "Carbohidratos", originalFood: "Avena",            substituteFood: "Avena",            ratio: 5.30 },
+  { category: "Carbohidratos", originalFood: "Camote",           substituteFood: "Camote cocido",    ratio: 5.80 },
+  { category: "Carbohidratos", originalFood: "Papa cocida",      substituteFood: "Papa cocida",      ratio: 6.25 },
+  { category: "Carbohidratos", originalFood: "Tortilla de maíz", substituteFood: "Tortilla de maíz", ratio: 4.00 },
+  { category: "Carbohidratos", originalFood: "Pan integral",     substituteFood: "Pan integral",     ratio: 4.35 },
+  { category: "Carbohidratos", originalFood: "Plátano",          substituteFood: "Plátano maduro",   ratio: 4.35 },
+  // Proteínas — gramsPerProtein (g de sustituto por g de proteína del original)
+  { category: "Proteínas", originalFood: "Pollo",            substituteFood: "Pechuga de pollo",  ratio: 4.50 },
+  { category: "Proteínas", originalFood: "Carne magra",      substituteFood: "Carne magra",       ratio: 5.00 },
+  { category: "Proteínas", originalFood: "Atún",             substituteFood: "Atún en agua",      ratio: 4.00 },
+  { category: "Proteínas", originalFood: "Salmón",           substituteFood: "Salmón",            ratio: 5.30 },
+  { category: "Proteínas", originalFood: "Huevo",            substituteFood: "Huevo entero",      ratio: 8.00 },
+  { category: "Proteínas", originalFood: "Leche descremada", substituteFood: "Leche descremada",  ratio: 10.00 },
+];
+
+/** Devuelve todos los sustitutos. Se auto-siembra con los defaults en el primer llamado. */
+export async function getFoodSubstitutes(): Promise<FoodSubstituteDTO[]> {
+  let rows = await prisma.foodSubstitute.findMany({
+    orderBy: [{ category: "asc" }, { substituteFood: "asc" }],
+  });
+  if (rows.length === 0) {
+    await prisma.foodSubstitute.createMany({ data: DEFAULT_SUBSTITUTES });
+    rows = await prisma.foodSubstitute.findMany({
+      orderBy: [{ category: "asc" }, { substituteFood: "asc" }],
+    });
+  }
+  return rows.map(r => ({
+    id: r.id, category: r.category, originalFood: r.originalFood,
+    substituteFood: r.substituteFood, ratio: r.ratio,
+  }));
+}
+
+/* ═══════════════════════════════════════════
+   WaterLog — hidratación diaria del alumno
+   ═══════════════════════════════════════════ */
+
+export interface WaterLogDTO {
+  id:        string;
+  studentId: string;
+  date:      string;
+  amountMl:  number;
+  createdAt: string;
+}
+
+function toWaterLog(w: any): WaterLogDTO {
+  return {
+    id:        w.id,
+    studentId: w.studentId,
+    date:      w.date,
+    amountMl:  w.amountMl,
+    createdAt: w.createdAt instanceof Date ? w.createdAt.toISOString() : String(w.createdAt),
+  };
+}
+
+/** Añade una entrada de hidratación para el alumno. */
+export async function addWaterLog(studentId: string, amountMl: number, date: string): Promise<WaterLogDTO> {
+  const row = await prisma.waterLog.create({ data: { studentId, amountMl, date } });
+  return toWaterLog(row);
+}
+
+/** Suma total de ml consumidos en el día indicado. */
+export async function getTodayWaterTotal(studentId: string, date: string): Promise<number> {
+  const rows = await prisma.waterLog.findMany({ where: { studentId, date } });
+  return rows.reduce((sum, r) => sum + r.amountMl, 0);
+}
+
+/* ═══════════════════════════════════════════
+   Control de cuenta de alumno
+   ═══════════════════════════════════════════ */
+
+export async function setStudentActive(studentId: string, isActive: boolean): Promise<void> {
+  await prisma.student.update({ where: { id: studentId }, data: { isActive } });
+}
+
+/* ═══════════════════════════════════════════
+   Tarifa mensual del coach
+   ═══════════════════════════════════════════ */
+
+export async function updateCoachMonthlyPrice(coachId: string, price: number): Promise<void> {
+  await prisma.coach.update({ where: { id: coachId }, data: { monthlyPrice: price } });
+}
+
+export async function getCoachMonthlyPriceForStudent(studentId: string): Promise<number | null> {
+  const row = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { coach: { select: { monthlyPrice: true } } },
+  });
+  return row?.coach?.monthlyPrice ?? null;
+}
+
+/* ═══════════════════════════════════════════
+   Aprovisionamiento de cuentas de usuario
+   ═══════════════════════════════════════════ */
+
+const DEFAULT_CLIENT_PASSWORD = "mycouchpassword";
+
+/**
+ * Crea (o enlaza) un User de rol CLIENT para el alumno dado.
+ * Si ya existe un User con ese email, sólo actualiza el vínculo.
+ * Seguro para llamarse después de tx.student.create().
+ */
+export async function provisionUserForStudent(
+  studentId: string,
+  name: string,
+  email: string,
+): Promise<void> {
+  const existing = await prisma.user.findUnique({ where: { email } });
+
+  let userId: string;
+  if (existing) {
+    userId = existing.id;
+  } else {
+    const hash = bcrypt.hashSync(DEFAULT_CLIENT_PASSWORD, 10);
+    const newUser = await prisma.user.create({
+      data: { name, email, role: "CLIENT", passwordHash: hash },
+    });
+    userId = newUser.id;
+  }
+
+  await prisma.student.update({ where: { id: studentId }, data: { userId } });
 }

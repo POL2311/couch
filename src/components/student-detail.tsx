@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, Settings2, LayoutGrid, Dumbbell, Utensils, TrendingUp,
   AlertTriangle, CheckCircle2, ChevronDown, X, Loader2, CalendarDays,
-  Pencil, Plus, Upload, UserCircle2, Camera,
+  Pencil, Plus, Upload, UserCircle2, Camera, KeyRound, ShieldOff, ShieldCheck,
 } from "lucide-react";
 import * as I from "@/lib/insights";
 import type { BodyMeasurements } from "@/lib/mock-data";
@@ -48,7 +48,13 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
   const [checks, setChecks] = useState<I.Check[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("resumen");
-  const [manageOpen, setManageOpen] = useState(false);
+  const [manageOpen, setManageOpen]               = useState(false);
+  const [togglingActive, setTogglingActive]       = useState(false);
+  const [toggleError, setToggleError]             = useState(false);
+  const [resetPassOpen, setResetPassOpen]         = useState(false);
+  const [newPassword, setNewPassword]         = useState("");
+  const [resetPassStatus, setResetPassStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [resetPassError, setResetPassError]   = useState("");
 
   /* ── Inline profile edit ── */
   const [editProfile, setEditProfile]   = useState(false);
@@ -269,6 +275,68 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
                 <Pencil size={13} style={{ color: C.secondary }} />
               </button>
             )}
+            <button
+              onClick={() => { setResetPassOpen(true); setNewPassword(""); setResetPassStatus("idle"); setResetPassError(""); }}
+              title="Cambiar Contraseña"
+              className="w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer"
+              style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+              <KeyRound size={13} style={{ color: C.secondary }} />
+            </button>
+            <button
+              disabled={togglingActive}
+              title={student.isActive === false ? "Activar cuenta" : "Suspender cuenta"}
+              onClick={async () => {
+                // Derive desired next state from the current DB-confirmed value.
+                const next = student.isActive !== false ? false : true;
+                setTogglingActive(true);
+                setToggleError(false);
+                try {
+                  const res = await fetch(`/api/students/${studentId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isActive: next }),
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.student) {
+                    // Sync with the value the DB actually wrote — never trust the local `next`.
+                    setStudent((prev: any) =>
+                      prev ? { ...prev, isActive: data.student.isActive } : prev
+                    );
+                  } else {
+                    setToggleError(true);
+                    setTimeout(() => setToggleError(false), 3000);
+                  }
+                } catch {
+                  setToggleError(true);
+                  setTimeout(() => setToggleError(false), 3000);
+                } finally {
+                  setTogglingActive(false);
+                }
+              }}
+              className="flex items-center gap-1.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer shrink-0 px-2 md:px-3 disabled:opacity-50 transition-all duration-150"
+              style={{
+                background: toggleError
+                  ? "rgba(248,113,113,0.12)"
+                  : student.isActive === false
+                    ? "rgba(52,211,153,0.1)"
+                    : "rgba(248,113,113,0.08)",
+                border: `1px solid ${
+                  toggleError
+                    ? "rgba(248,113,113,0.35)"
+                    : student.isActive === false
+                      ? "rgba(52,211,153,0.25)"
+                      : "rgba(248,113,113,0.2)"
+                }`,
+                color: toggleError ? C.danger : student.isActive === false ? C.success : C.danger,
+              }}>
+              {togglingActive
+                ? <Loader2 size={13} className="animate-spin" />
+                : toggleError
+                  ? <><AlertTriangle size={13} /><span className="hidden md:inline">Error</span></>
+                  : student.isActive === false
+                    ? <><ShieldCheck size={13} /><span className="hidden md:inline">Activar</span></>
+                    : <><ShieldOff size={13} /><span className="hidden md:inline">Suspender</span></>}
+            </button>
             <button onClick={() => setManageOpen(true)}
               className="flex items-center gap-1.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer shrink-0 px-2 md:px-3"
               style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}>
@@ -302,6 +370,85 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       </div>
 
       {manageOpen && <ManageModal studentId={studentId} currentStage={student.stage} onClose={() => setManageOpen(false)} onApplied={() => { setManageOpen(false); load(); }} />}
+
+      {resetPassOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}>
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: C.raised, border: `1px solid ${C.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.7)" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <KeyRound size={16} style={{ color: C.info }} />
+                <span className="text-[14px] font-semibold" style={{ color: C.primary }}>Cambiar Contraseña</span>
+              </div>
+              <button onClick={() => setResetPassOpen(false)} className="w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <X size={14} style={{ color: C.tertiary }} />
+              </button>
+            </div>
+
+            <p className="text-[12px] mb-4" style={{ color: C.secondary }}>
+              Nueva contraseña para <span className="font-medium" style={{ color: C.primary }}>{student.name}</span>
+            </p>
+
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nueva contraseña (mín. 6 caracteres)"
+              className="w-full rounded-xl px-3.5 py-2.5 text-[13px] bg-transparent outline-none mb-1"
+              style={{ border: `1px solid ${resetPassStatus === "error" ? C.danger : C.border}`, color: C.primary }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const btn = (e.currentTarget.parentElement?.querySelector("button[data-submit]") as HTMLButtonElement | null);
+                  btn?.click();
+                }
+              }}
+            />
+            {resetPassStatus === "error" && (
+              <p className="text-[11px] mb-3" style={{ color: C.danger }}>{resetPassError}</p>
+            )}
+
+            {resetPassStatus === "saved" ? (
+              <div className="flex items-center gap-2 mt-4 justify-center py-2.5 rounded-xl" style={{ background: "rgba(52,211,153,0.1)", border: `1px solid rgba(52,211,153,0.25)` }}>
+                <CheckCircle2 size={15} style={{ color: C.success }} />
+                <span className="text-[12px] font-medium" style={{ color: C.success }}>Contraseña actualizada</span>
+              </div>
+            ) : (
+              <button
+                data-submit
+                disabled={resetPassStatus === "saving"}
+                onClick={async () => {
+                  if (newPassword.length < 6) {
+                    setResetPassStatus("error");
+                    setResetPassError("La contraseña debe tener al menos 6 caracteres.");
+                    return;
+                  }
+                  setResetPassStatus("saving");
+                  setResetPassError("");
+                  try {
+                    const res = await fetch(`/api/students/${studentId}/reset-password`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ password: newPassword }),
+                    });
+                    if (!res.ok) {
+                      const d = await res.json();
+                      throw new Error(d?.error ?? "Error desconocido");
+                    }
+                    setResetPassStatus("saved");
+                    setTimeout(() => setResetPassOpen(false), 1800);
+                  } catch (e: any) {
+                    setResetPassStatus("error");
+                    setResetPassError(e.message);
+                  }
+                }}
+                className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
+                style={{ background: C.info, color: "#000" }}>
+                {resetPassStatus === "saving" ? <Loader2 size={14} className="animate-spin" /> : "Guardar contraseña"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -352,7 +499,7 @@ function SummaryTab({ student, detail, logs, carreras, checks, onGoTo }: any) {
   const diet = I.dietComplianceRecent(checks, detail);
   const wp = I.weightProgress(detail.weightHistory);
   const daysAgo = lastAct ? I.daysBetween(lastAct, I.todayStr()) : null;
-  const flags = I.redFlags(detail, logs, checks, student.paymentStatus);
+  const flags = I.redFlags(detail, logs, checks, student.paymentStatus, student.isActive);
   const [weekStart, setWeekStart] = useState(() => I.weekStartOf(lastAct ?? I.todayStr()));
   const [selDate, setSelDate] = useState<string | null>(null);
   const days = I.weekDays(weekStart);
@@ -432,7 +579,7 @@ function DaySummary({ date, logs, checks, detail, onClose }: any) {
           <div className="rounded-xl overflow-hidden mb-4" style={{ background: C.raised }}>{s.exercises.map((ex: any, i: number) => (
             <div key={ex.id} className="px-4 py-3" style={{ borderBottom: i < s.exercises.length - 1 ? `1px solid ${C.border}` : "none" }}>
               <p className="text-[13px] font-medium" style={{ color: C.primary }}>{ex.exerciseName}</p>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">{ex.sets.map((st: any, j: number) => <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: st.done ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: st.done ? C.success : C.secondary }}>{st.reps || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>)}</div>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">{(ex.sets || []).map((st: any, j: number) => { const d = st.completed ?? st.done ?? false; const r = st.actualReps ?? st.reps; return <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: d ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: d ? C.success : C.secondary }}>{r || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>; })}</div>
             </div>))}</div>
         )}
         <p className="text-[13px] font-medium mb-2 flex items-center gap-2" style={{ color: C.secondary }}><Utensils size={15} style={{ color: C.success }} /> Comidas <span className="ml-auto text-[12px]" style={{ color: C.tertiary }}>{s.mealsDone.length}/{s.mealsTotal}</span></p>
@@ -520,7 +667,7 @@ function TrainingTab({ detail, logs, onManage }: any) {
                     {[...ex.sessions].reverse().map((s) => (
                       <div key={s.id} className="rounded-xl p-3" style={{ background: C.raised }}>
                         <div className="flex items-center justify-between"><span className="text-[12px] font-medium" style={{ color: C.secondary }}>{I.prettyDate(s.date)}</span><span className="text-[11px]" style={{ color: C.tertiary }}>prescrito {s.prescribedSets}×{s.prescribedReps}{s.prescribedWeight ? ` @ ${s.prescribedWeight}` : ""}</span></div>
-                        <div className="flex flex-wrap gap-1.5 mt-2">{s.sets.map((st, j) => <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: st.done ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: st.done ? C.success : C.secondary }}>{st.reps || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>)}</div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">{(s.sets || []).map((st: any, j: number) => { const d = st.completed ?? st.done ?? false; const r = st.actualReps ?? st.reps; return <span key={j} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: d ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.05)", color: d ? C.success : C.secondary }}>{r || "—"}{!ex.bodyweight && st.weight ? `×${st.weight}` : " reps"}</span>; })}</div>
                       </div>))}
                   </div>}
                 </div>
