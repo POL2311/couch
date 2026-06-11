@@ -5,13 +5,17 @@
    header fijo + 4 pestañas (Resumen, Entrenamiento,
    Nutrición, Progreso) con los mismos cálculos.
    ═══════════════════════════════════════════ */
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, Settings2, LayoutGrid, Dumbbell, Utensils, TrendingUp,
   AlertTriangle, CheckCircle2, ChevronDown, X, Loader2, CalendarDays,
+  Pencil, Plus, Upload, UserCircle2, Camera,
 } from "lucide-react";
 import * as I from "@/lib/insights";
+import type { BodyMeasurements } from "@/lib/mock-data";
+
+const STAGES = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
 
 const C = {
   bg:        "#000000",
@@ -46,6 +50,14 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
   const [tab, setTab] = useState<TabId>("resumen");
   const [manageOpen, setManageOpen] = useState(false);
 
+  /* ── Inline profile edit ── */
+  const [editProfile, setEditProfile]   = useState(false);
+  const [profileDraft, setProfileDraft] = useState({ name: "", stage: "", weight: "", height: "", bodyFat: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile]       = useState<File | null>(null);
+
   const load = useCallback(async () => {
     const [full, lg, rn, ck] = await Promise.all([
       fetch(`/api/students/${studentId}`).then((r) => r.json()),
@@ -67,28 +79,206 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
 
   const wp = I.weightProgress(detail.weightHistory);
 
+  /* Derive profile avatar: label="avatar" wins (most recent upload), then earliest Frente, then any */
+  const allPhotosDesc: any[] = (detail as any).photos ?? [];
+  const persistedAvatarUrl: string | null =
+    allPhotosDesc.find((p: any) => p.label === "avatar")?.url ??
+    [...allPhotosDesc].reverse().find((p: any) => /frente/i.test(p.label ?? ""))?.url ??
+    allPhotosDesc[allPhotosDesc.length - 1]?.url ??
+    null;
+  const displayAvatarUrl = avatarPreview ?? persistedAvatarUrl;
+
+  const openProfileEdit = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setProfileDraft({
+      name:    student.name,
+      stage:   student.stage,
+      weight:  String(student.currentWeight),
+      height:  String((detail as any).height ?? ""),
+      bodyFat: String((detail as any).bodyFat ?? ""),
+    });
+    setEditProfile(true);
+  };
+  const cancelProfileEdit = () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(null);
+    setAvatarFile(null);
+    setEditProfile(false);
+  };
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    if (avatarFile) {
+      const fd = new FormData();
+      fd.append("photo", avatarFile);
+      fd.append("label", "avatar");
+      await fetch(`/api/students/${studentId}/photos`, { method: "POST", body: fd });
+      URL.revokeObjectURL(avatarPreview!);
+      setAvatarPreview(null);
+      setAvatarFile(null);
+    }
+    await fetch(`/api/students/${studentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentUpdates: {
+          name:          profileDraft.name.trim() || student.name,
+          stage:         profileDraft.stage,
+          stageNumber:   STAGES.indexOf(profileDraft.stage) + 1 || student.stageNumber,
+          currentWeight: parseFloat(profileDraft.weight) || student.currentWeight,
+          previousWeight: student.currentWeight,
+        },
+        detailUpdates: {
+          ...(profileDraft.height  && { height:  parseFloat(profileDraft.height)  }),
+          ...(profileDraft.bodyFat && { bodyFat: parseFloat(profileDraft.bodyFat) }),
+        },
+      }),
+    });
+    setSavingProfile(false);
+    setEditProfile(false);
+    load();
+  };
+
+  const pd = (k: keyof typeof profileDraft, v: string) =>
+    setProfileDraft((d) => ({ ...d, [k]: v }));
+
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-8 pb-16">
-      {/* Header fijo */}
+      {/* ── Sticky header ── */}
       <div className="sticky top-0 z-20 pt-4 pb-3" style={{ background: C.bg }}>
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.back()} className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: C.surface, border: `1px solid ${C.border}` }}><ChevronLeft size={18} style={{ color: C.secondary }} /></button>
-          <div className="flex-1 min-w-0">
-            <p className="text-[18px] font-semibold truncate" style={{ color: C.primary }}>{student.name}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(255,255,255,0.07)", color: C.secondary }}>{student.stage}</span>
-              <span className="text-[13px]" style={{ color: C.secondary }}>{student.currentWeight} kg{wp.delta !== 0 ? ` · ${wp.delta > 0 ? "+" : ""}${wp.delta}` : ""}</span>
-            </div>
-          </div>
-          {/* Compact on mobile: icon only; full label on md+ */}
-          <button onClick={() => setManageOpen(true)}
-            className="flex items-center gap-1.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer shrink-0 px-2 md:px-3"
-            style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}>
-            <Settings2 size={14} />
-            <span className="hidden md:inline">Gestionar</span>
+        <div className="flex items-start gap-3 mb-3">
+          <button onClick={() => router.back()} className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            <ChevronLeft size={18} style={{ color: C.secondary }} />
           </button>
+
+          {/* ── Profile avatar ── */}
+          <div className="shrink-0 relative">
+            {/* Golden gradient ring */}
+            <div className="h-20 w-20 md:h-28 md:w-28 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 p-[3px] shadow-[0_0_18px_rgba(250,204,21,0.22)]">
+              <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center">
+                {displayAvatarUrl ? (
+                  <img
+                    src={displayAvatarUrl}
+                    alt={student.name}
+                    className="w-full h-full object-cover object-top"
+                  />
+                ) : (
+                  <UserCircle2
+                    className="w-9 h-9 md:w-12 md:h-12"
+                    strokeWidth={1.25}
+                    style={{ color: C.tertiary }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Camera overlay — visible only in edit mode */}
+            {editProfile && (
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute inset-0 rounded-full flex items-end justify-center pb-1.5 cursor-pointer"
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.62) 38%, transparent 100%)" }}
+              >
+                <Camera size={16} style={{ color: "#fff" }} />
+              </button>
+            )}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+                setAvatarFile(file);
+                setAvatarPreview(URL.createObjectURL(file));
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {editProfile ? (
+              /* Edit mode */
+              <>
+                <input value={profileDraft.name}
+                  onChange={(e) => pd("name", e.target.value)}
+                  placeholder="Nombre"
+                  className="w-full text-[17px] font-semibold bg-transparent outline-none border-b pb-0.5 mb-2"
+                  style={{ color: C.primary, borderColor: C.border }}
+                  autoFocus />
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {STAGES.map((s) => (
+                    <button key={s} onClick={() => pd("stage", s)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-semibold cursor-pointer"
+                      style={{
+                        background: profileDraft.stage === s ? "rgba(255,255,255,0.12)" : C.raised,
+                        border: `1px solid ${profileDraft.stage === s ? "rgba(255,255,255,0.25)" : C.border}`,
+                        color: profileDraft.stage === s ? C.primary : C.tertiary,
+                      }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {([["weight","Peso (kg)"],["height","Estatura (cm)"],["bodyFat","% Grasa"]] as const).map(([k, lbl]) => (
+                    <div key={k}>
+                      <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: C.tertiary }}>{lbl}</p>
+                      <input value={profileDraft[k]} onChange={(e) => pd(k, e.target.value)}
+                        type="number" step="0.1" placeholder="—"
+                        className="w-full bg-transparent outline-none text-[13px] font-medium border-b pb-0.5"
+                        style={{ color: C.primary, borderColor: C.border }} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Static display */
+              <>
+                <p className="text-[18px] font-semibold truncate" style={{ color: C.primary }}>{student.name}</p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(255,255,255,0.07)", color: C.secondary }}>{student.stage}</span>
+                  <span className="text-[13px]" style={{ color: C.secondary }}>
+                    {student.currentWeight} kg{wp.delta !== 0 ? ` · ${wp.delta > 0 ? "+" : ""}${wp.delta}` : ""}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            {editProfile ? (
+              <>
+                <button onClick={cancelProfileEdit}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer"
+                  style={{ color: C.tertiary }}>
+                  Cancelar
+                </button>
+                <button onClick={saveProfile} disabled={savingProfile}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold cursor-pointer disabled:opacity-50"
+                  style={{ background: C.info, color: "#000" }}>
+                  {savingProfile ? <Loader2 size={12} className="animate-spin" /> : "Guardar"}
+                </button>
+              </>
+            ) : (
+              <button onClick={openProfileEdit}
+                className="w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer"
+                style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+                <Pencil size={13} style={{ color: C.secondary }} />
+              </button>
+            )}
+            <button onClick={() => setManageOpen(true)}
+              className="flex items-center gap-1.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer shrink-0 px-2 md:px-3"
+              style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.secondary }}>
+              <Settings2 size={14} />
+              <span className="hidden md:inline">Gestionar</span>
+            </button>
+          </div>
         </div>
-        {/* Tab bar — flex row, no-wrap, safe gap */}
+
+        {/* Tab bar */}
         <div className="flex flex-row items-center gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
           {TABS.map((t) => {
             const active = tab === t.id;
@@ -105,10 +295,10 @@ export default function StudentDetailClient({ studentId }: { studentId: string }
       </div>
 
       <div className="pt-4">
-        {tab === "resumen" && <SummaryTab student={student} detail={detail} logs={logs} carreras={carreras} checks={checks} onGoTo={setTab} />}
+        {tab === "resumen"       && <SummaryTab student={student} detail={detail} logs={logs} carreras={carreras} checks={checks} onGoTo={setTab} />}
         {tab === "entrenamiento" && <TrainingTab detail={detail} logs={logs} onManage={() => setManageOpen(true)} />}
-        {tab === "nutricion" && <NutritionTab detail={detail} checks={checks} onManage={() => setManageOpen(true)} />}
-        {tab === "progreso" && <ProgressTab detail={detail} carreras={carreras} />}
+        {tab === "nutricion"     && <NutritionTab detail={detail} checks={checks} onManage={() => setManageOpen(true)} />}
+        {tab === "progreso"      && <ProgressTab detail={detail} carreras={carreras} studentId={studentId} onRefresh={load} />}
       </div>
 
       {manageOpen && <ManageModal studentId={studentId} currentStage={student.stage} onClose={() => setManageOpen(false)} onApplied={() => { setManageOpen(false); load(); }} />}
@@ -410,48 +600,237 @@ function NutritionTab({ detail, checks, onManage }: any) {
   );
 }
 
-function ProgressTab({ detail, carreras }: any) {
-  const [months, setMonths] = useState(6);
-  const wh = I.weightInRange(detail.weightHistory, months);
+const MEAS_FIELDS = [
+  ["Pecho",   "chest"]  as const,
+  ["Cintura", "waist"]  as const,
+  ["Cadera",  "hips"]   as const,
+  ["Brazo I", "armL"]   as const,
+  ["Brazo D", "armR"]   as const,
+  ["Muslo I", "thighL"] as const,
+  ["Muslo D", "thighR"] as const,
+];
+
+function PhotoUpload({ studentId, monthLabel, onDone }: { studentId: string; monthLabel: string; onDone: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver]   = useState(false);
+
+  const upload = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("photo", file);
+    fd.append("label", monthLabel);
+    await fetch(`/api/students/${studentId}/photos`, { method: "POST", body: fd });
+    setUploading(false);
+    onDone();
+  };
+
+  return (
+    <div
+      onClick={() => !uploading && inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
+      className="rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
+      style={{
+        aspectRatio: "3/4",
+        background: dragOver ? "rgba(96,165,250,0.1)" : C.raised,
+        border: `1.5px dashed ${dragOver ? C.info : C.border}`,
+      }}>
+      {uploading
+        ? <Loader2 size={18} className="animate-spin" style={{ color: C.tertiary }} />
+        : <>
+            <Plus size={18} style={{ color: C.tertiary }} />
+            <span className="text-[9px] text-center px-1" style={{ color: C.tertiary }}>Subir foto</span>
+          </>}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+    </div>
+  );
+}
+
+function ProgressTab({ detail, carreras, studentId, onRefresh }: any) {
+  const allMeasurements: BodyMeasurements[] = useMemo(
+    () => [...(detail.measurements ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
+    [detail.measurements],
+  );
+
+  const [activeMonthIdx, setActiveMonthIdx] = useState(() => Math.max(0, allMeasurements.length - 1));
+  const justAddedRef = useRef(false);
+
+  /* Keep active tab on last month whenever new month is added */
+  useEffect(() => {
+    if (justAddedRef.current) {
+      justAddedRef.current = false;
+      setActiveMonthIdx(allMeasurements.length - 1);
+    }
+  }, [allMeasurements.length]);
+
+  const activeMeas: BodyMeasurements | undefined = allMeasurements[activeMonthIdx];
+
+  /* Inline measurement editing */
+  const [editMeas, setEditMeas]   = useState(false);
+  const [measDraft, setMeasDraft] = useState<Record<string, string>>({});
+  const [savingMeas, setSavingMeas] = useState(false);
+  const [addingMonth, setAddingMonth] = useState(false);
+
+  const openMeasEdit = () => {
+    const d: Record<string, string> = {};
+    MEAS_FIELDS.forEach(([, k]) => { d[k] = activeMeas ? String((activeMeas as any)[k] ?? "") : ""; });
+    setMeasDraft(d);
+    setEditMeas(true);
+  };
+  const saveMeas = async () => {
+    if (!activeMeas?.id) return;
+    setSavingMeas(true);
+    const payload: Record<string, unknown> = { id: activeMeas.id };
+    MEAS_FIELDS.forEach(([, k]) => { if (measDraft[k] !== "") payload[k] = parseFloat(measDraft[k]); });
+    await fetch(`/api/students/${studentId}/measurements`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setSavingMeas(false);
+    setEditMeas(false);
+    onRefresh();
+  };
+
+  const addMonth = async () => {
+    setAddingMonth(true);
+    await fetch(`/api/students/${studentId}/measurements`, { method: "POST" });
+    justAddedRef.current = true;
+    setAddingMonth(false);
+    onRefresh();
+  };
+
+  /* Weight chart */
+  const [wRange, setWRange] = useState(6);
+  const wh = I.weightInRange(detail.weightHistory, wRange);
   const wp = I.weightProgress(wh);
-  const ms = detail.measurements ?? []; const first = ms[0], last = ms[ms.length - 1];
-  const photos = detail.photos ?? [];
   const RANGES = [{ label: "1m", m: 1 }, { label: "3m", m: 3 }, { label: "6m", m: 6 }, { label: "Todo", m: 0 }];
+
+  /* Photos grouped per month */
+  const allPhotos: any[] = detail.photos ?? [];
+  const monthPhotos = useMemo(() => {
+    if (!activeMeas) return allPhotos;
+    const monthNum = activeMonthIdx + 1;
+    const re = new RegExp(`^Mes\\s*${monthNum}\\b`, "i");
+    return allPhotos.filter((p: any) => re.test(p.label ?? ""));
+  }, [allPhotos, activeMeas, activeMonthIdx]);
+
   const fmtDistance = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
   const fmtDuration = (s: number) => { const mm = Math.floor(s / 60), ss = Math.floor(s % 60); return `${mm}:${String(ss).padStart(2, "0")}`; };
 
   return (
     <div>
+      {/* ── Weight chart ── */}
       <Card title="Peso" right={<span className="text-[13px] font-medium" style={{ color: wp.delta < 0 ? C.success : wp.delta > 0 ? C.warning : C.tertiary }}>{wp.delta !== 0 ? `${wp.delta > 0 ? "+" : ""}${wp.delta} kg` : "—"}</span>}>
-        <div className="flex gap-2 px-4 pt-3">{RANGES.map((r) => { const a = months === r.m; return <button key={r.label} onClick={() => setMonths(r.m)} className="flex-1 py-2 rounded-lg text-[12px] font-medium cursor-pointer" style={{ background: a ? "rgba(255,255,255,0.08)" : C.raised, color: a ? C.primary : C.tertiary }}>{r.label}</button>; })}</div>
+        <div className="flex gap-2 px-4 pt-3">{RANGES.map((r) => { const a = wRange === r.m; return <button key={r.label} onClick={() => setWRange(r.m)} className="flex-1 py-2 rounded-lg text-[12px] font-medium cursor-pointer" style={{ background: a ? "rgba(255,255,255,0.08)" : C.raised, color: a ? C.primary : C.tertiary }}>{r.label}</button>; })}</div>
         <div className="p-5">{wh.length < 2 ? <p className="text-[13px]" style={{ color: C.tertiary }}>Pocos datos en este rango.</p> : <Sparkline data={wh.map((w) => w.weight)} suffix=" kg" height={90} />}</div>
       </Card>
-      {last && <Card title="Medidas (cm)">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3">
-          {([["Pecho", "chest"], ["Cintura", "waist"], ["Cadera", "hips"], ["Brazo I", "armL"], ["Brazo D", "armR"], ["Muslo I", "thighL"], ["Muslo D", "thighR"]] as const).map(([l, k]) => {
-            const v = (last as any)[k];
-            const d = first ? Math.round((v - (first as any)[k]) * 10) / 10 : 0;
-            return (
-              <div key={k} className="rounded-xl p-2.5 flex flex-col justify-between" style={{ background: C.raised, minHeight: 62 }}>
-                <p className="text-[20px] font-bold leading-none" style={{ color: C.primary }}>
-                  {v}<span className="text-[10px] font-normal ml-0.5" style={{ color: C.tertiary }}>cm</span>
-                </p>
-                <div className="flex items-end justify-between mt-1.5">
-                  <p className="text-[10px] font-medium" style={{ color: C.secondary }}>{l}</p>
-                  {first && d !== 0 && (
-                    <p className="text-[9px] font-bold tabular-nums" style={{ color: d < 0 ? C.success : C.warning }}>
-                      {d > 0 ? "+" : ""}{d}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+
+      {/* ── Month timeline ── */}
+      <div className="mb-4 rounded-2xl overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${C.border}` }}>
+          <span className="text-[12px] font-semibold flex-1" style={{ color: C.primary }}>Registros por Mes</span>
+          <button onClick={addMonth} disabled={addingMonth}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer disabled:opacity-40"
+            style={{ background: `${C.info}18`, border: `1px solid ${C.info}30`, color: C.info }}>
+            {addingMonth ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />}
+            Añadir Mes
+          </button>
         </div>
-      </Card>}
-      {photos.length > 0 && <Card title={`Fotos de progreso (${photos.length})`}>
-        <div className="grid grid-cols-3 p-3 gap-2">{photos.map((p: any) => <div key={p.id}><img src={p.url} alt={p.label} className="w-full rounded-xl object-cover" style={{ aspectRatio: "3/4", background: C.raised }} /><p className="text-[10px] mt-1 text-center truncate" style={{ color: C.tertiary }}>{p.label}{p.weight ? ` · ${p.weight}kg` : ""}</p></div>)}</div>
-      </Card>}
+        {/* Scrollable month tabs */}
+        <div className="flex gap-2 px-3 py-3 overflow-x-auto">
+          {allMeasurements.length === 0 ? (
+            <p className="text-[12px] px-1 py-1" style={{ color: C.tertiary }}>Sin registros — añade el primer mes.</p>
+          ) : (
+            allMeasurements.map((m, i) => {
+              const active = i === activeMonthIdx;
+              return (
+                <button key={m.id ?? i} onClick={() => { setActiveMonthIdx(i); setEditMeas(false); }}
+                  className="flex-shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-semibold cursor-pointer whitespace-nowrap"
+                  style={{
+                    background: active ? "rgba(255,255,255,0.1)" : C.raised,
+                    border: `1px solid ${active ? "rgba(255,255,255,0.2)" : C.border}`,
+                    color: active ? C.primary : C.tertiary,
+                  }}>
+                  Mes {i + 1}
+                  <span className="ml-1.5 text-[10px] font-normal" style={{ color: active ? C.secondary : C.tertiary }}>
+                    {m.date}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Active month: measurements */}
+        {activeMeas && (
+          <div style={{ borderTop: `1px solid ${C.border}` }}>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: C.tertiary }}>Medidas · Mes {activeMonthIdx + 1}</span>
+              {!editMeas ? (
+                <button onClick={openMeasEdit}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer"
+                  style={{ background: C.raised, border: `1px solid ${C.border}` }}>
+                  <Pencil size={12} style={{ color: C.secondary }} />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditMeas(false)} className="text-[11px] cursor-pointer" style={{ color: C.tertiary }}>Cancelar</button>
+                  <button onClick={saveMeas} disabled={savingMeas}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                    style={{ background: C.info, color: "#000" }}>
+                    {savingMeas ? <Loader2 size={11} className="animate-spin" /> : "Guardar"}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-3 pb-3">
+              {MEAS_FIELDS.map(([lbl, k]) => {
+                const v = (activeMeas as any)[k];
+                return (
+                  <div key={k} className="rounded-xl p-2.5" style={{ background: C.raised }}>
+                    {editMeas ? (
+                      <>
+                        <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: C.tertiary }}>{lbl}</p>
+                        <input value={measDraft[k] ?? ""} onChange={(e) => setMeasDraft((d) => ({ ...d, [k]: e.target.value }))}
+                          type="number" step="0.1" placeholder="0"
+                          className="w-full bg-transparent text-[16px] font-bold outline-none"
+                          style={{ color: C.primary }} />
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[20px] font-bold leading-none" style={{ color: C.primary }}>
+                          {v ?? "—"}<span className="text-[10px] font-normal ml-0.5" style={{ color: C.tertiary }}>cm</span>
+                        </p>
+                        <p className="text-[10px] font-medium mt-1" style={{ color: C.secondary }}>{lbl}</p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Photos for active month ── */}
+      <Card title={`Fotos · Mes ${activeMonthIdx + 1}`}>
+        <div className="grid grid-cols-3 p-3 gap-2">
+          {monthPhotos.map((p: any) => (
+            <div key={p.id}>
+              <img src={p.url} alt={p.label} className="w-full rounded-xl object-cover" style={{ aspectRatio: "3/4", background: C.raised }} />
+              <p className="text-[10px] mt-1 text-center truncate" style={{ color: C.tertiary }}>{p.label}{p.weight ? ` · ${p.weight}kg` : ""}</p>
+            </div>
+          ))}
+          {/* Upload dropzone */}
+          <PhotoUpload studentId={studentId} monthLabel={`Mes ${activeMonthIdx + 1}`} onDone={onRefresh} />
+        </div>
+      </Card>
+
+      {/* ── MD-Route carreras ── */}
       <Card title={`MD-Route · Carreras (${carreras.length})`}>
         {carreras.length === 0 ? <p className="text-[13px] p-5" style={{ color: C.tertiary }}>Sin carreras.</p> : (
           <div className="p-3 space-y-3">{carreras.map((c: any) => (
@@ -466,7 +845,6 @@ function ProgressTab({ detail, carreras }: any) {
 }
 
 function ManageModal({ studentId, currentStage, onClose, onApplied }: any) {
-  const STAGES = ["Volumen", "Definición", "Mantenimiento", "Recomposición"];
   const [templates, setTemplates] = useState<any[]>([]);
   const [stage, setStage]         = useState(currentStage);
   const [dietId, setDietId]       = useState<string>("");

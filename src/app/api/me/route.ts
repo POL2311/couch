@@ -34,11 +34,13 @@ export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") || "";
   let weight: number | undefined;
   let photoName: string | undefined;
+  let photoLabel = "Progreso";
 
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
     const w = formData.get("weight") as string;
     weight = w ? parseFloat(w) : undefined;
+    photoLabel = (formData.get("label") as string) || "Progreso";
 
     const photoFile = formData.get("photo") as File | null;
     if (photoFile && photoFile.size > 0) {
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (photoName) {
-    await addProgressPhoto(id, { url: photoName, label: "Progreso", weight: weight ?? null });
+    await addProgressPhoto(id, { url: photoName, label: photoLabel, weight: weight ?? null });
   }
 
   return NextResponse.json({ success: true });
