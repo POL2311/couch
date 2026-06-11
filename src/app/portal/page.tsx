@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { signOut } from "next-auth/react";
 import {
   LogOut, Camera, Loader2, CheckCircle2, Download, TrendingDown,
   Dumbbell, ChevronRight, ChevronLeft, X, ArrowLeftRight, RefreshCw,
   LayoutGrid, TrendingUp, Users, User, Sparkles, CreditCard,
   Calendar, AlertTriangle, Flame, Ruler, Droplet, Weight,
-  BarChart3, Info, Utensils, Activity,
+  BarChart3, Info, Utensils, Activity, UserCircle2,
 } from "lucide-react";
 import { Skeleton } from "@/components/skeleton";
 import { downloadBadge } from "@/lib/badge";
@@ -996,14 +996,43 @@ function ProgressForm({ onSaved }: { onSaved: () => void }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   SHARED: GOLDEN AVATAR
+══════════════════════════════════════════════════════════════ */
+function GoldenAvatar({ url, name, sizeClass = "h-14 w-14", onClick, showCamera = false }: {
+  url: string | null; name: string;
+  sizeClass?: string; onClick?: () => void; showCamera?: boolean;
+}) {
+  return (
+    <div
+      className={`${sizeClass} rounded-full bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 p-[3px] shadow-[0_0_16px_rgba(250,204,21,0.2)] shrink-0 relative ${onClick ? "cursor-pointer" : ""}`}
+      onClick={onClick}>
+      <div className="w-full h-full rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center">
+        {url ? (
+          <img src={url} alt={name} className="w-full h-full object-cover object-top" />
+        ) : (
+          <UserCircle2 className="w-1/2 h-1/2" strokeWidth={1.25} style={{ color: F.tt }} />
+        )}
+      </div>
+      {showCamera && (
+        <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
+          style={{ background: F.blue, border: "2px solid #000" }}>
+          <Camera size={11} style={{ color: "#fff" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    TAB: HOY
 ══════════════════════════════════════════════════════════════ */
-function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealOpen, onExerciseOpen }: {
+function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealOpen, onExerciseOpen, avatarUrl }: {
   student: Student; detail: Detail; meals: Meal[];
   day: RoutineDay | undefined;
   mealChecks: string[]; onMealToggle: (name: string) => void;
   onMealOpen: (m: Meal) => void;
   onExerciseOpen: (e: Exercise & { muscleGroup?: string }) => void;
+  avatarUrl: string | null;
 }) {
   const routineRef = useRef<HTMLDivElement>(null);
 
@@ -1029,13 +1058,16 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
   return (
     <div>
       {/* Greeting */}
-      <div className="px-4 pt-4 pb-3">
-        <p className="text-[13px] font-medium" style={{ color: F.ts }}>
-          Hola, <span style={{ color: F.tp }}>{student.name.split(" ")[0]}</span> 👋
-        </p>
-        <p className="text-[11px] mt-0.5" style={{ color: F.tt }}>
-          {student.stage} · Etapa {student.stageNumber} · 🔥 {student.streak} días
-        </p>
+      <div className="px-4 pt-4 pb-3 flex items-center gap-4">
+        <GoldenAvatar url={avatarUrl} name={student.name} sizeClass="h-16 w-16" />
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold truncate" style={{ color: F.tp }}>
+            Hola, {student.name.split(" ")[0]} 👋
+          </p>
+          <p className="text-[11px] mt-0.5" style={{ color: F.tt }}>
+            {student.stage} · Etapa {student.stageNumber} · 🔥 {student.streak} días
+          </p>
+        </div>
       </div>
 
       {/* Macro summary — live values */}
@@ -1126,18 +1158,128 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
 /* ══════════════════════════════════════════════════════════════
    TAB: PROGRESO (light)
 ══════════════════════════════════════════════════════════════ */
+const MEAS_LABELS: [string, string][] = [
+  ["Pecho",   "chest"],
+  ["Cintura", "waist"],
+  ["Cadera",  "hips"],
+  ["Brazo I", "armL"],
+  ["Brazo D", "armR"],
+  ["Muslo I", "thighL"],
+  ["Muslo D", "thighR"],
+];
+
 function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
   student: Student; detail: Detail; startWeight: number;
   carreras: any[]; onBadge: () => void;
 }) {
   const diff = +(student.currentWeight - startWeight).toFixed(1);
 
+  /* ── Month timeline ── */
+  const sortedMonths = useMemo(
+    () => [...((detail.measurements as any[]) ?? [])].sort((a: any, b: any) => a.date.localeCompare(b.date)),
+    [detail.measurements],
+  );
+  const [activeMonthIdx, setActiveMonthIdx] = useState(() => Math.max(0, sortedMonths.length - 1));
+  const activeMeas: any = sortedMonths[activeMonthIdx];
+
+  const allPhotos: any[] = useMemo(() => (detail as any).photos ?? [], [detail]);
+  const monthPhotos = useMemo(() => {
+    const re = new RegExp(`^Mes\\s*${activeMonthIdx + 1}\\b`, "i");
+    return allPhotos.filter((p: any) => re.test(p.label ?? ""));
+  }, [allPhotos, activeMonthIdx]);
+
   return (
     <div className="px-4 pt-4 space-y-3 pb-4">
       <div className="pb-1">
-        <h1 className="text-[22px] font-bold" style={{ color: F.tp }}>Progreso</h1>
-        <p className="text-[12px]" style={{ color: F.tt }}>Tu evolución en el tiempo</p>
+        <h1 className="text-[22px] font-bold" style={{ color: F.tp }}>Mi Progreso</h1>
+        <p className="text-[12px]" style={{ color: F.tt }}>Tu evolución mes a mes</p>
       </div>
+
+      {/* ── Monthly timeline ── */}
+      {sortedMonths.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
+          {/* Month tabs */}
+          <div className="flex items-center gap-1.5 px-3 py-3 overflow-x-auto"
+            style={{ borderBottom: `1px solid ${F.border}` }}>
+            {sortedMonths.map((_: any, i: number) => (
+              <button key={i} onClick={() => setActiveMonthIdx(i)}
+                className="flex-shrink-0 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer whitespace-nowrap transition-colors"
+                style={{
+                  background: i === activeMonthIdx ? F.blue : F.bg,
+                  color: i === activeMonthIdx ? "#fff" : F.ts,
+                  border: `1px solid ${i === activeMonthIdx ? F.blue : F.border}`,
+                }}>
+                Mes {i + 1}
+              </button>
+            ))}
+          </div>
+
+          {/* Historial de medidas — read-only */}
+          {activeMeas && (
+            <div className="p-4">
+              <p className="text-[10px] uppercase tracking-wider font-semibold mb-3" style={{ color: F.tt }}>
+                Historial de Medidas · Mes {activeMonthIdx + 1}
+                <span className="ml-2 normal-case font-normal" style={{ color: F.tt }}>
+                  {activeMeas.date}
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {MEAS_LABELS.map(([lbl, key]) => {
+                  const val = activeMeas[key];
+                  /* compare to first month */
+                  const firstMeas = sortedMonths[0];
+                  const delta = firstMeas && activeMonthIdx > 0
+                    ? Math.round((val - firstMeas[key]) * 10) / 10
+                    : null;
+                  return (
+                    <div key={key} className="rounded-xl px-3 py-2.5"
+                      style={{ background: F.bg, border: `1px solid ${F.border}` }}>
+                      <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: F.tt }}>{lbl}</p>
+                      <p className="text-[20px] font-light tabular-nums leading-none" style={{ color: val ? F.tp : F.tt }}>
+                        {val ?? "—"}
+                        {val ? <span className="text-[9px] font-normal ml-0.5" style={{ color: F.tt }}>cm</span> : null}
+                      </p>
+                      {delta !== null && delta !== 0 && (
+                        <p className="text-[9px] font-semibold mt-1 tabular-nums"
+                          style={{ color: delta < 0 ? F.green : F.red }}>
+                          {delta > 0 ? "+" : ""}{delta} desde inicio
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Galería de fotos del mes */}
+          {monthPhotos.length > 0 && (
+            <div className="px-4 pb-4" style={{ borderTop: `1px solid ${F.border}` }}>
+              <p className="text-[10px] uppercase tracking-wider font-semibold py-3" style={{ color: F.tt }}>
+                Galería · Mes {activeMonthIdx + 1}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {monthPhotos.map((p: any) => (
+                  <div key={p.id}>
+                    <img src={p.url} alt={p.label}
+                      className="w-full rounded-xl object-cover object-top"
+                      style={{ aspectRatio: "3/4", background: F.border }} />
+                    <p className="text-[9px] mt-1 text-center truncate" style={{ color: F.tt }}>
+                      {p.label}{p.weight ? ` · ${p.weight}kg` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!activeMeas && (
+            <p className="text-[12px] px-4 py-6 text-center" style={{ color: F.tt }}>
+              Tu coach aún no ha registrado medidas para este mes.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
@@ -1362,10 +1504,31 @@ function CancelSubscriptionSheet({ reason, onReasonChange, onConfirm, status, on
 /* ══════════════════════════════════════════════════════════════
    TAB: PERFIL (light)
 ══════════════════════════════════════════════════════════════ */
-function TabPerfil({ student, detail, onCancelRequest }: {
-  student: Student; detail: Detail; onCancelRequest: () => void;
+function TabPerfil({ student, detail, avatarUrl, onAvatarUpdate, onCancelRequest }: {
+  student: Student; detail: Detail;
+  avatarUrl: string | null; onAvatarUpdate: () => void;
+  onCancelRequest: () => void;
 }) {
-  const initials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const displayUrl = avatarPreview ?? avatarUrl;
+
+  const handleAvatarFile = async (file: File) => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    const preview = URL.createObjectURL(file);
+    setAvatarPreview(preview);
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("photo", file);
+    fd.append("label", "avatar");
+    await fetch("/api/me", { method: "POST", body: fd });
+    setUploading(false);
+    URL.revokeObjectURL(preview);
+    setAvatarPreview(null);
+    onAvatarUpdate();
+  };
+
   return (
     <div className="px-4 pt-4 pb-4 space-y-3">
       <div>
@@ -1375,9 +1538,26 @@ function TabPerfil({ student, detail, onCancelRequest }: {
 
       {/* Avatar card */}
       <div className="rounded-2xl p-4" style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-[20px] font-bold"
-            style={{ background: F.blueBg, color: F.blue }}>{initials}</div>
+        <div className="flex items-center gap-5">
+          {/* Clickable golden avatar */}
+          <div className="relative shrink-0">
+            <GoldenAvatar
+              url={displayUrl}
+              name={student.name}
+              sizeClass="h-24 w-24 md:h-28 md:w-28"
+              onClick={() => !uploading && avatarInputRef.current?.click()}
+              showCamera={!uploading}
+            />
+            {uploading && (
+              <div className="absolute inset-0 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.5)" }}>
+                <Loader2 size={18} className="animate-spin" style={{ color: "#fff" }} />
+              </div>
+            )}
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarFile(f); e.target.value = ""; }} />
+          </div>
+
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-semibold truncate" style={{ color: F.tp }}>{student.name}</p>
             <p className="text-[11px] mt-0.5 truncate" style={{ color: F.tt }}>{student.email ?? ""}</p>
@@ -1385,6 +1565,7 @@ function TabPerfil({ student, detail, onCancelRequest }: {
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: F.green }} />
               <span className="text-[10px] font-medium" style={{ color: F.green }}>Suscripción activa</span>
             </div>
+            <p className="text-[9px] mt-2" style={{ color: F.tt }}>Toca la foto para cambiarla</p>
           </div>
         </div>
       </div>
@@ -1660,6 +1841,14 @@ export default function PortalPage() {
   const startWeight = detail.weightHistory[0]?.weight ?? student.currentWeight;
   const day: RoutineDay | undefined = detail.routine.days[activeDay] ?? detail.routine.days[0];
 
+  /* Derive avatar URL: label="avatar" first, then earliest "Frente" photo, then any */
+  const allPhotosDesc: any[] = (detail as any).photos ?? [];
+  const avatarUrl: string | null =
+    allPhotosDesc.find((p: any) => p.label === "avatar")?.url ??
+    [...allPhotosDesc].reverse().find((p: any) => /frente/i.test(p.label ?? ""))?.url ??
+    allPhotosDesc[allPhotosDesc.length - 1]?.url ??
+    null;
+
   const meals: Meal[] = detail.diet.meals.map((m: any) => ({
     ...m,
     macros: m.macros ?? { protein: 32, carbs: 48, fat: 14 },
@@ -1695,7 +1884,8 @@ export default function PortalPage() {
           <TabHoy student={student} detail={detail} meals={meals} day={day}
             mealChecks={mealChecks} onMealToggle={toggleMeal}
             onMealOpen={setActiveMeal}
-            onExerciseOpen={setActiveExercise} />
+            onExerciseOpen={setActiveExercise}
+            avatarUrl={avatarUrl} />
         )}
         {activeTab === "progress" && (
           <TabProgreso student={student} detail={detail} startWeight={startWeight} carreras={carreras}
@@ -1709,7 +1899,9 @@ export default function PortalPage() {
         )}
         {activeTab === "squads"  && <TabSalas />}
         {activeTab === "profile" && (
-          <TabPerfil student={student} detail={detail} onCancelRequest={openCancelSheet} />
+          <TabPerfil student={student} detail={detail}
+            avatarUrl={avatarUrl} onAvatarUpdate={fetchMe}
+            onCancelRequest={openCancelSheet} />
         )}
       </div>
 

@@ -252,6 +252,7 @@ export interface RoutineDay {
 }
 
 export interface BodyMeasurements {
+  id?: string;
   date: string;
   chest: number;
   waist: number;

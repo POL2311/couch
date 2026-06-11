@@ -121,6 +121,7 @@ function toDetail(s: any): FullStudentDetail {
     diet: parseDiet(s.dietJson),
     routine: parseRoutine(s.routineJson),
     measurements: (s.measurements || []).map((m: any) => ({
+      id: m.id,
       date: m.date,
       chest: m.chest,
       waist: m.waist,

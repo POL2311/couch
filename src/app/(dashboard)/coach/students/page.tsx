@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Search, Plus, X, Loader2, Flame, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import { Search, Plus, X, Loader2, Flame, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Upload, RefreshCw, FileSpreadsheet, FileArchive, CheckCircle2, AlertTriangle, Info, Download } from "lucide-react";
+import type { ImportResult, ImportWarning } from "@/app/api/coach/import/route";
 import { type Student } from "@/lib/mock-data";
 import { PageHeader } from "@/components/page-header";
 
@@ -67,6 +68,7 @@ export default function StudentsPage() {
   const [filter, setFilter]     = useState<Filter>("all");
   const [query, setQuery]       = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [syncOpen, setSyncOpen]     = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey]   = useState<SortKey>("name");
   const [sortDir, setSortDir]   = useState<SortDir>("asc");
@@ -120,11 +122,18 @@ export default function StudentsPage() {
         title="Alumnos"
         hint={`${students.length} en total`}
         cta={
-          <button onClick={() => setWizardOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
-            style={{ background: T.info, color: "#000" }}>
-            <Plus size={15} /> Nuevo
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSyncOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-medium cursor-pointer"
+              style={{ background: T.raised, border: `1px solid ${T.border}`, color: T.s }}>
+              <RefreshCw size={14} /> Sincronizar
+            </button>
+            <button onClick={() => setWizardOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium cursor-pointer"
+              style={{ background: T.info, color: "#000" }}>
+              <Plus size={15} /> Nuevo
+            </button>
+          </div>
         }
       />
 
@@ -362,6 +371,9 @@ export default function StudentsPage() {
 
       {wizardOpen && (
         <WizardModal onClose={() => setWizardOpen(false)} onCreated={() => { setWizardOpen(false); load(); }} />
+      )}
+      {syncOpen && (
+        <SyncModal onClose={() => setSyncOpen(false)} onImported={() => { setSyncOpen(false); load(); }} />
       )}
     </>
   );
@@ -621,6 +633,240 @@ function WizardModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-50 transition-opacity"
               style={{ background: T.success, color: "#000" }}>
               {saving ? <Loader2 size={15} className="animate-spin" /> : "Crear alumno"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SYNC MODAL — Dual-dropzone bulk import
+══════════════════════════════════════════════════════════════ */
+type SyncStatus = "idle" | "processing" | "done" | "error";
+
+function SyncModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [zipFile,   setZipFile]   = useState<File | null>(null);
+  const [status,    setStatus]    = useState<SyncStatus>("idle");
+  const [result,    setResult]    = useState<ImportResult | null>(null);
+  const [excelDrag, setExcelDrag] = useState(false);
+  const [zipDrag,   setZipDrag]   = useState(false);
+
+  const process = async () => {
+    if (!excelFile) return;
+    setStatus("processing");
+    setResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("excel", excelFile);
+      if (zipFile) fd.append("zip", zipFile);
+      const res  = await fetch("/api/coach/import", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setStatus("error"); setResult({ total: 0, created: 0, skipped: 0, warnings: [{ row: 0, name: "", type: "error", message: data.error ?? "Error desconocido" }] }); return; }
+      setResult(data as ImportResult);
+      setStatus("done");
+      if ((data as ImportResult).created > 0) setTimeout(onImported, 2000);
+    } catch (e: any) {
+      setStatus("error");
+      setResult({ total: 0, created: 0, skipped: 0, warnings: [{ row: 0, name: "", type: "error", message: e?.message ?? "Error de red" }] });
+    }
+  };
+
+  const DropZone = ({
+    label, accept, icon: Icon, color, file, setFile, dragging, setDragging,
+  }: {
+    label: string; accept: string; icon: any; color: string;
+    file: File | null; setFile: (f: File | null) => void;
+    dragging: boolean; setDragging: (v: boolean) => void;
+  }) => (
+    <label className="flex flex-col cursor-pointer"
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }}>
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl py-7 px-4 text-center transition-all"
+        style={{
+          background: dragging ? `${color}0d` : file ? `${color}0a` : T.raised,
+          border: `1.5px dashed ${dragging ? color : file ? `${color}60` : T.border}`,
+          minHeight: 160,
+        }}>
+        {file ? (
+          <>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}18` }}>
+              <Icon size={18} style={{ color }} />
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold" style={{ color: T.p }}>{file.name}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: T.t }}>{(file.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <button type="button" onClick={(e) => { e.preventDefault(); setFile(null); }}
+              className="text-[10px] cursor-pointer" style={{ color: T.t }}>
+              Quitar
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+              <Icon size={18} style={{ color: T.t }} />
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold" style={{ color: T.s }}>{label}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: T.t }}>{accept}</p>
+            </div>
+          </>
+        )}
+      </div>
+      <input type="file" accept={accept} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }} />
+    </label>
+  );
+
+  const warnIcons: Record<ImportWarning["type"], any> = {
+    info:    <Info size={12} style={{ color: T.info }} />,
+    warning: <AlertTriangle size={12} style={{ color: T.warning }} />,
+    error:   <AlertTriangle size={12} style={{ color: T.danger }} />,
+  };
+  const warnBg: Record<ImportWarning["type"], string> = {
+    info:    `${T.info}10`,
+    warning: `${T.warning}10`,
+    error:   `${T.danger}10`,
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 backdrop-blur-sm" style={{ background: "rgba(0,0,0,0.80)" }} />
+      <div className="relative w-full max-w-2xl rounded-2xl z-10 overflow-hidden"
+        style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 24px 72px rgba(0,0,0,0.85)" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <div>
+            <h3 className="text-[16px] font-semibold" style={{ color: T.p }}>Sincronizar registro de alumnos</h3>
+            <p className="text-[11px] mt-0.5" style={{ color: T.t }}>Importación masiva desde Excel + ZIP de fotos</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href="/api/coach/import" download="plantilla_registro_alumnos.xlsx"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer"
+              style={{ background: T.raised, border: `1px solid ${T.border}`, color: T.s }}>
+              <Download size={12} /> Plantilla Excel
+            </a>
+            <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg cursor-pointer"
+              style={{ background: T.raised }}>
+              <X size={14} style={{ color: T.s }} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+
+          {/* Column legend */}
+          <div className="rounded-xl px-4 py-3" style={{ background: T.raised, border: `1px solid ${T.border}` }}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: T.t }}>
+              Columnas requeridas en el Excel
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                "Nombre Completo","Correo Electrónico","Edad","Etapa Objetivo",
+                "Número de Mes/Etapa","Peso Actual (kg)","Estatura (cm)","% Grasa (Opcional)",
+                "Pecho (cm)","Cintura (cm)","Cadera (cm)",
+                "Foto Mes 1 - Frente","Foto Mes 1 - Perfil","Foto Mes 2 - Frente","Foto Mes 2 - Perfil",
+              ].map((col) => (
+                <span key={col} className="px-2 py-0.5 rounded-md text-[10px] font-medium"
+                  style={{
+                    background: col.startsWith("Foto") ? `${T.success}12` : "rgba(255,255,255,0.06)",
+                    color: col.startsWith("Foto") ? T.success : T.s,
+                  }}>
+                  {col}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] mt-2" style={{ color: T.t }}>
+              Los nombres de foto deben coincidir exactamente con los archivos dentro del ZIP.
+            </p>
+          </div>
+
+          {/* Dual dropzone */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <DropZone
+              label="Archivo Excel (.xlsx)" accept=".xlsx,.xls"
+              icon={FileSpreadsheet} color={T.success}
+              file={excelFile} setFile={setExcelFile}
+              dragging={excelDrag} setDragging={setExcelDrag} />
+            <DropZone
+              label="Carpeta de fotos (.zip)" accept=".zip"
+              icon={FileArchive} color={T.warning}
+              file={zipFile} setFile={setZipFile}
+              dragging={zipDrag} setDragging={setZipDrag} />
+          </div>
+
+          {/* Results */}
+          {result && status !== "processing" && (
+            <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
+              {/* Summary bar */}
+              <div className="flex items-center gap-4 px-4 py-3" style={{ background: T.raised }}>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 size={14} style={{ color: T.success }} />
+                  <span className="text-[13px] font-semibold" style={{ color: T.success }}>{result.created} creados</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle size={14} style={{ color: T.warning }} />
+                  <span className="text-[13px] font-semibold" style={{ color: T.warning }}>{result.skipped} omitidos</span>
+                </div>
+                <span className="text-[11px] ml-auto" style={{ color: T.t }}>{result.total} filas procesadas</span>
+              </div>
+
+              {/* Warning list */}
+              {result.warnings.length > 0 && (
+                <div className="divide-y" style={{ borderColor: T.border }}>
+                  {result.warnings.map((w, i) => (
+                    <div key={i} className="flex items-start gap-3 px-4 py-2.5"
+                      style={{ background: warnBg[w.type] }}>
+                      <span className="mt-0.5 shrink-0">{warnIcons[w.type]}</span>
+                      <div className="min-w-0">
+                        {w.row > 0 && (
+                          <span className="text-[10px] font-medium mr-2" style={{ color: T.t }}>Fila {w.row}</span>
+                        )}
+                        {w.name && (
+                          <span className="text-[11px] font-semibold mr-2" style={{ color: T.s }}>{w.name}</span>
+                        )}
+                        <span className="text-[11px]" style={{ color: T.s }}>{w.message}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* All-good state */}
+              {result.warnings.length === 0 && result.created > 0 && (
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <CheckCircle2 size={14} style={{ color: T.success }} />
+                  <span className="text-[12px]" style={{ color: T.success }}>Importación completada sin errores.</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-5 pt-4 flex items-center justify-end gap-3"
+          style={{ borderTop: `1px solid ${T.border}` }}>
+          {status === "done" ? (
+            <button onClick={onClose}
+              className="px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer"
+              style={{ background: T.success, color: "#000" }}>
+              Cerrar
+            </button>
+          ) : (
+            <button onClick={process}
+              disabled={!excelFile || status === "processing"}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer disabled:opacity-40 transition-opacity"
+              style={{ background: T.info, color: "#000" }}>
+              {status === "processing"
+                ? <><Loader2 size={15} className="animate-spin" /> Procesando…</>
+                : <><RefreshCw size={14} /> Importar alumnos</>}
             </button>
           )}
         </div>
