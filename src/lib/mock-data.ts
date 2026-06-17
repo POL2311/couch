@@ -4,6 +4,7 @@
 
 export type PaymentStatus = "active" | "inactive" | "grace_period" | "past_due";
 export type Stage = "Volumen" | "Definición" | "Mantenimiento" | "Recomposición";
+export type MembershipTier = "DIET_ONLY" | "ROUTINE_ONLY" | "FULL";
 
 export interface Student {
   id: string;
@@ -17,10 +18,12 @@ export interface Student {
   stage: Stage;
   stageNumber: number;
   isActive?: boolean;
+  membershipTier?: MembershipTier;
   paymentStatus: PaymentStatus;
   joinedDate: string;
   streak: number;
   completionRate: number;
+  coachId?: string;
 }
 
 export const MOCK_STUDENTS: Student[] = [

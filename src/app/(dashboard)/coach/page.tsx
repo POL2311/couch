@@ -50,13 +50,13 @@ export default function CoachDashboard() {
 
         {/* Curva de adherencia */}
         <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}><h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Curva de adherencia</h3></div>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}><h3 className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Curva de adherencia</h3></div>
           <div className="p-5">{loading ? <ChartSkeleton /> : <AdherenceChart students={students} />}</div>
         </div>
 
         {/* Lista de alumnos */}
         <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}><h3 className="text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Alumnos ({students.length})</h3></div>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-subtle)" }}><h3 className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Alumnos · <span style={{ color: "var(--text-primary)", fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)", fontWeight: 900, fontSize: "14px", letterSpacing: "-0.02em" }}>{students.length}</span></h3></div>
           {loading ? <div className="p-5"><RowSkeleton count={4} /></div> : students.map((s, i) => <StudentRow key={s.id} student={s} last={i === students.length - 1} />)}
         </div>
       </div>
@@ -67,10 +67,10 @@ export default function CoachDashboard() {
 function Kpi({ label, value, suffix, accent = "var(--text-primary)", loading }: { label: string; value: string; suffix?: string; accent?: string; loading?: boolean }) {
   return (
     <div className="rounded-2xl p-5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-      <span className="text-[11px] uppercase font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em" }}>{label}</span>
-      <div className="flex items-baseline mt-2">
-        <span className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: loading ? "var(--text-tertiary)" : accent }}>{loading ? "—" : value}</span>
-        {suffix && <span className="text-[13px] font-medium ml-1" style={{ color: "var(--text-secondary)" }}>{suffix}</span>}
+      <span className="text-[9px] font-black uppercase" style={{ color: "var(--text-tertiary)", letterSpacing: "0.16em" }}>{label}</span>
+      <div className="flex items-baseline mt-2 gap-1">
+        <span className="tabular-nums leading-none font-black" style={{ color: loading ? "var(--text-tertiary)" : accent, fontSize: "clamp(30px, 7vw, 40px)", letterSpacing: "-0.04em" }}>{loading ? "—" : value}</span>
+        {suffix && <span className="text-[11px] font-bold ml-1 uppercase" style={{ color: "var(--text-tertiary)", letterSpacing: "0.08em", alignSelf: "flex-end", paddingBottom: "2px" }}>{suffix}</span>}
       </div>
     </div>
   );
@@ -84,7 +84,7 @@ function AdherenceChart({ students }: { students: Student[] }) {
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-24 overflow-visible">
-        <polyline fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" points={points} />
+        <polyline fill="none" stroke="#D4FF00" strokeWidth="1.5" strokeOpacity="0.85" points={points} />
         {sorted.map((s, i) => <circle key={s.id} cx={(i / (sorted.length - 1)) * W} cy={H - (s.completionRate / 100) * (H - 20)} r="3" fill={s.completionRate >= 80 ? "var(--color-success)" : "var(--color-warning)"} />)}
       </svg>
       <div className="flex justify-between mt-3 pt-2 text-[10px]" style={{ borderTop: "1px solid var(--border-subtle)", color: "var(--text-tertiary)" }}>

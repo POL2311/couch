@@ -7,7 +7,7 @@ import {
   Dumbbell, ChevronRight, ChevronLeft, X, ArrowLeftRight, RefreshCw,
   LayoutGrid, TrendingUp, Users, User, Sparkles, CreditCard,
   Calendar, AlertTriangle, Flame, Ruler, Droplet, Droplets, Plus, Weight,
-  BarChart3, Info, Utensils, Activity, UserCircle2,
+  BarChart3, Info, Utensils, Activity, UserCircle2, Printer, MessageCircle, Send, Lock,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Skeleton } from "@/components/skeleton";
@@ -15,7 +15,7 @@ import { downloadBadge } from "@/lib/badge";
 import type { Student, StudentDetail, RoutineDay } from "@/lib/mock-data";
 
 type Detail = StudentDetail & { height?: number; bodyFat?: number; photoName?: string };
-type TabId = "today" | "progress" | "squads" | "profile";
+type TabId = "today" | "progress" | "comunidad" | "profile";
 
 interface Ingredient {
   name: string; grams: number; calories: number;
@@ -59,29 +59,34 @@ interface WorkoutSessionEntry {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FITIA PALETTE
+   NIKE ATHLETIC DARK PALETTE — Carbon Black + Kinetic Volt
 ══════════════════════════════════════════════════════════════ */
+const VOLT = "#D4FF00";
 const F = {
-  bg:       "#000000",
-  card:     "#121212",
-  border:   "#27272a",
-  shadow:   "0 1px 12px rgba(0,0,0,0.6)",
+  bg:       "#070708",                          // Near-pure black
+  card:     "#0e0e10",                          // Bento card surface
+  cardGlass:"rgba(14,14,16,0.80)",              // Deep frosted glass
+  border:   "rgba(255,255,255,0.06)",           // Hairline white
+  shadow:   "0 25px 50px -12px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.04) inset",
   tp:       "#ffffff",
   ts:       "#a1a1aa",
-  tt:       "#52525b",
-  blue:     "#60a5fa",
-  blueHov:  "#3b82f6",
-  blueBg:   "rgba(96,165,250,0.12)",
-  track:    "#27272a",
+  tt:       "#3f3f46",
+  blue:     VOLT,
+  blueHov:  "#c4ef00",
+  blueBg:   "rgba(212,255,0,0.08)",
+  track:    "rgba(255,255,255,0.08)",
   protein:  "#60a5fa",
   carbs:    "#fb923c",
   fat:      "#f472b6",
   green:    "#34d399",
   red:      "#f87171",
-  navBg:    "#0a0a0a",
-  navBor:   "#27272a",
-  active:   "#60a5fa",
-  inactive: "#52525b",
+  volt:     VOLT,
+  voltBg:   "rgba(212,255,0,0.08)",
+  voltBor:  "rgba(212,255,0,0.22)",
+  navBg:    "#070708",
+  navBor:   "rgba(255,255,255,0.06)",
+  active:   VOLT,                               // Volt for active nav state
+  inactive: "#3f3f46",                          // Muted zinc
 } as const;
 
 /* ══════════════════════════════════════════════════════════════
@@ -400,7 +405,7 @@ function EquivCatalog({ ingredient, selected, onSelect, catalog }: {
             className="flex-1 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200"
             style={{
               background: activeTab === t ? F.blue : "transparent",
-              color: activeTab === t ? "#fff" : F.ts,
+              color: activeTab === t ? "#000" : F.ts,
             }}>
             {t === "protein" ? "🥩 Proteína" : "🌾 Carbohidratos"}
           </button>
@@ -690,22 +695,27 @@ function DateHeader({ date, onPrev, onNext }: { date: Date; onPrev: () => void; 
   const label = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
   const isToday = date.toDateString() === new Date().toDateString();
   return (
-    <div className="flex items-center justify-between px-4 py-3 sticky top-0 z-30"
-      style={{ background: F.card, borderBottom: `1px solid ${F.border}` }}>
+    <div className="flex items-center justify-between px-4 py-3 sticky top-0 z-30 no-print"
+      style={{
+        background: F.cardGlass,
+        borderBottom: `1px solid ${F.border}`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      }}>
       <button onClick={onPrev}
-        className="w-9 h-9 flex items-center justify-center rounded-full cursor-pointer"
+        className="w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition-opacity active:opacity-50"
         style={{ background: F.bg, border: `1px solid ${F.border}` }}>
         <ChevronLeft size={16} style={{ color: F.ts }} />
       </button>
       <div className="flex flex-col items-center">
-        <span className="text-[14px] font-semibold capitalize" style={{ color: F.tp }}>{label}</span>
+        <span className="text-[13px] font-semibold capitalize" style={{ color: F.tp }}>{label}</span>
         {isToday && (
-          <span className="text-[10px] font-medium mt-0.5 px-2 py-0.5 rounded-full"
-            style={{ background: F.blueBg, color: F.blue }}>Hoy</span>
+          <span className="text-[9px] font-black uppercase tracking-[0.12em] mt-0.5 px-2 py-0.5 rounded-full"
+            style={{ background: F.voltBg, color: F.volt, border: `1px solid ${F.voltBor}` }}>Hoy</span>
         )}
       </div>
       <button onClick={onNext}
-        className="w-9 h-9 flex items-center justify-center rounded-full cursor-pointer"
+        className="w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition-opacity active:opacity-50"
         style={{ background: F.bg, border: `1px solid ${F.border}` }}>
         <ChevronRight size={16} style={{ color: F.ts }} />
       </button>
@@ -748,33 +758,46 @@ function MacroSummaryCard({ totalTarget, totalConsumed, targetMacros, consumedMa
       {/* Calories row */}
       <div className="flex items-center gap-4 mb-4">
         {/* Ring */}
-        <div className="relative shrink-0" style={{ width: 86, height: 86 }}>
-          <svg viewBox="0 0 88 88" width={86} height={86} style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="44" cy="44" r="38" fill="none" stroke={F.track} strokeWidth="6" />
-            <circle cx="44" cy="44" r="38" fill="none" stroke={F.blue} strokeWidth="6"
+        <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
+          <svg viewBox="0 0 100 100" width={100} height={100} style={{ transform: "rotate(-90deg)" }}>
+            <defs>
+              <filter id="ring-glow">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+            <circle cx="50" cy="50" r="42" fill="none" stroke={F.track} strokeWidth="7" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke={F.volt} strokeWidth="7"
               strokeLinecap="round"
-              strokeDasharray={`${pct * circumference} ${circumference - pct * circumference}`}
+              strokeDasharray={`${pct * (2 * Math.PI * 42)} ${(1 - pct) * (2 * Math.PI * 42)}`}
+              filter="url(#ring-glow)"
               style={{ transition: "stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1)" }} />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[18px] font-bold tabular-nums leading-none" style={{ color: F.tp }}>{totalConsumed}</span>
-            <span className="text-[8px] uppercase tracking-wide mt-0.5" style={{ color: F.tt }}>kcal</span>
+            <span style={{
+              fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+              fontWeight: 900, fontStyle: "italic",
+              fontSize: "clamp(22px, 7vw, 28px)",
+              lineHeight: 1, color: F.volt, letterSpacing: "-0.03em",
+              filter: "drop-shadow(0 0 6px rgba(212,255,0,0.4))",
+            }}>{Math.round(pct * 100)}%</span>
+            <span className="text-[7px] font-black uppercase tracking-widest mt-0.5" style={{ color: F.tt }}>meta kcal</span>
           </div>
         </div>
         {/* Stats */}
         <div className="flex-1">
           <div className="flex gap-4 mb-3">
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: F.tt }}>Consumido</p>
-              <p className="text-[20px] font-bold tabular-nums leading-tight" style={{ color: F.tp }}>{totalConsumed}</p>
-              <p className="text-[10px]" style={{ color: F.tt }}>kcal</p>
+              <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: F.tt }}>Consumido</p>
+              <p className="tabular-nums leading-none font-black" style={{ color: F.tp, fontSize: "clamp(26px,8vw,34px)", letterSpacing: "-0.03em" }}>{totalConsumed}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: F.tt }}>kcal</p>
             </div>
             <div className="w-px self-stretch mx-1" style={{ background: F.border }} />
             <div>
-              <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: F.tt }}>Restante</p>
-              <p className="text-[20px] font-bold tabular-nums leading-tight"
-                style={{ color: remaining > 0 ? F.green : F.red }}>{remaining}</p>
-              <p className="text-[10px]" style={{ color: F.tt }}>kcal</p>
+              <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: F.tt }}>Restante</p>
+              <p className="tabular-nums leading-none font-black"
+                style={{ color: remaining > 0 ? F.green : F.red, fontSize: "clamp(26px,8vw,34px)", letterSpacing: "-0.03em" }}>{remaining}</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: F.tt }}>kcal</p>
             </div>
           </div>
           {/* Macro mini pills */}
@@ -1236,9 +1259,15 @@ function WeightChart({ history }: { history: { date: string; weight: number }[] 
         </linearGradient>
       </defs>
       <path d={areaD} fill="url(#wGrad)" />
-      <path d={pathD} fill="none" stroke={F.blue} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <filter id="weight-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <path d={pathD} fill="none" stroke={F.blue} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter="url(#weight-glow)" />
       {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="3" fill={F.blue} stroke={F.card} strokeWidth="2" />
+        <circle key={i} cx={p.x} cy={p.y} r="4.5" fill={F.blue} stroke={F.card} strokeWidth="2.5" />
       ))}
       {[pts[0], pts[pts.length - 1]].map((p, i) => (
         <text key={i} x={p.x} y={H} textAnchor="middle" fontSize="8" fill={F.tt}>{p.date.slice(5)}</text>
@@ -1284,7 +1313,7 @@ function ProgressForm({ onSaved }: { onSaved: () => void }) {
       </label>
       <button type="submit" disabled={status === "saving" || (!weight && !photo)}
         className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-2xl text-[13px] font-semibold cursor-pointer transition-opacity disabled:opacity-40"
-        style={{ background: F.blue, color: "#fff" }}>
+        style={{ background: F.blue, color: "#000" }}>
         {status === "saving" ? <Loader2 size={15} className="animate-spin" />
           : status === "saved" ? <><CheckCircle2 size={15} /> Guardado</>
           : "Guardar progreso"}
@@ -1314,7 +1343,7 @@ function GoldenAvatar({ url, name, sizeClass = "h-14 w-14", onClick, showCamera 
       {showCamera && (
         <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
           style={{ background: F.blue, border: "2px solid #000" }}>
-          <Camera size={11} style={{ color: "#fff" }} />
+          <Camera size={11} style={{ color: "#000" }} />
         </div>
       )}
     </div>
@@ -1361,20 +1390,103 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
     { consumedCals: 0, consumedMacros: { protein: 0, carbs: 0, fat: 0 } }
   );
 
+  const rank = getRank(student.streak);
+  const heroCirc = 2 * Math.PI * 52;
+  const heroFill = (student.completionRate / 100) * heroCirc;
+
   return (
     <div>
-      {/* Greeting */}
-      <div className="px-4 pt-4 pb-3 flex items-center gap-4">
-        <GoldenAvatar url={avatarUrl} name={student.name} sizeClass="h-16 w-16" />
-        <div className="min-w-0">
-          <p className="text-[15px] font-semibold truncate" style={{ color: F.tp }}>
-            Hola, {student.name.split(" ")[0]} 👋
-          </p>
-          <p className="text-[11px] mt-0.5" style={{ color: F.tt }}>
-            {student.stage} · Etapa {student.stageNumber} · 🔥 {student.streak} días
-          </p>
+      {/* ── Hero Performance Card ── */}
+      <div className="mx-4 mt-4 mb-1 rounded-2xl overflow-hidden"
+        style={{
+          background: F.cardGlass,
+          border: `1px solid ${F.border}`,
+          boxShadow: F.shadow,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}>
+        <div className="px-5 pt-5 pb-4 flex items-center gap-5">
+          {/* Big volt completion ring */}
+          <div className="relative shrink-0" style={{ width: 126, height: 126 }}>
+            <svg viewBox="0 0 126 126" width={126} height={126} style={{ transform: "rotate(-90deg)" }}>
+              <defs>
+                <filter id="hero-ring-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <circle cx="63" cy="63" r="52" fill="none" stroke={F.track} strokeWidth="9" />
+              <circle cx="63" cy="63" r="52" fill="none" stroke={F.volt} strokeWidth="9"
+                strokeLinecap="round"
+                strokeDasharray={`${heroFill} ${heroCirc - heroFill}`}
+                filter="url(#hero-ring-glow)"
+                style={{ transition: "stroke-dasharray 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span style={{
+                fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                fontWeight: 900, fontStyle: "italic",
+                fontSize: "clamp(30px, 10vw, 38px)",
+                lineHeight: 1, color: F.tp, letterSpacing: "-0.03em",
+              }}>{student.completionRate}%</span>
+              <span className="text-[8px] font-black uppercase tracking-widest mt-0.5" style={{ color: F.tt }}>adherencia</span>
+            </div>
+          </div>
+
+          {/* Right stats column */}
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Name + stage */}
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: F.ts }}>
+                {student.stage} · E{student.stageNumber}
+              </p>
+              <p style={{
+                fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                fontStyle: "italic", fontWeight: 900,
+                fontSize: "clamp(20px, 6vw, 26px)",
+                textTransform: "uppercase", color: F.tp,
+                lineHeight: 1, letterSpacing: "0.02em",
+              }}>{student.name.split(" ")[0]}</p>
+              {day && (
+                <p style={{
+                  fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                  fontStyle: "italic", fontWeight: 700,
+                  fontSize: "clamp(12px, 3.5vw, 15px)",
+                  textTransform: "uppercase", color: F.volt,
+                  letterSpacing: "0.04em", lineHeight: 1.2,
+                  filter: "drop-shadow(0 0 4px rgba(212,255,0,0.35))",
+                }}>{(day.muscleGroup || day.label).toUpperCase()}</p>
+              )}
+            </div>
+
+            {/* Streak + rank */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-end gap-1">
+                <span style={{
+                  fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                  fontWeight: 900, fontSize: "clamp(24px,8vw,30px)",
+                  lineHeight: 1, color: F.volt, letterSpacing: "-0.03em",
+                }}>{student.streak}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: F.tt }}>días</span>
+              </div>
+              <div className="w-px h-6" style={{ background: F.border }} />
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg"
+                style={{ background: `${rank.color}15`, border: `1px solid ${rank.color}35`, boxShadow: rank.glow }}>
+                <span className="text-[13px]">{rank.emoji}</span>
+                <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: rank.color }}>{rank.label}</span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Volt accent bottom strip */}
+        <div className="h-[2px] w-full" style={{
+          background: `linear-gradient(90deg, transparent, ${F.volt}60, transparent)`,
+        }} />
       </div>
+
+      {/* Motivational banner */}
+      <MotivationalBanner sessionCompleted={!!workoutSession?.completed} streak={student.streak} />
 
       {/* Macro summary — live values */}
       <MacroSummaryCard
@@ -1389,50 +1501,95 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
         <div className="flex items-center gap-2">
           {meals.length > 0 && (
             <>
-              <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: F.blueBg }}>
+              <div className="w-5 h-5 rounded-md flex items-center justify-center"
+                style={{ background: F.blueBg, border: `1px solid rgba(96,165,250,0.18)` }}>
                 <Utensils size={11} strokeWidth={2} style={{ color: F.blue }} />
               </div>
-              <p className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: F.ts }}>Plan de Dieta</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: F.ts }}>Plan de Dieta</p>
             </>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          {day && (
+            <button
+              onClick={() => routineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-80 active:scale-95"
+              style={{ background: F.blueBg, border: `1px solid ${F.blue}30`, color: F.blue }}>
+              🏋️ Ver Rutina
+            </button>
+          )}
+          {meals.length > 0 && (
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-80 active:scale-95 no-print"
+              style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${F.border}`, color: F.ts }}>
+              <Printer size={11} strokeWidth={1.75} />
+              Imprimir
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Meal cards — locked if ROUTINE_ONLY */}
+      <div className="relative">
+        {student.membershipTier === "ROUTINE_ONLY" && (
+          <div className="absolute inset-0 z-10 rounded-2xl mx-4 flex flex-col items-center justify-center gap-3"
+            style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", borderRadius: 16 }}>
+            <Lock size={24} strokeWidth={1.5} style={{ color: "#a1a1aa" }} />
+            <p className="text-[13px] font-semibold text-center px-6" style={{ color: "#f4f4f5" }}>
+              Esta sección no está incluida en tu plan básico.{"\n"}Contáctanos para desbloquearla ⚡
+            </p>
+          </div>
+        )}
+        {meals.length === 0 ? (
+          <div className="mx-4 rounded-2xl flex flex-col items-center py-10 gap-2"
+            style={{ background: F.card, border: `1px solid ${F.border}` }}>
+            <Utensils size={28} strokeWidth={1.25} style={{ color: F.tt }} />
+            <p className="text-[13px]" style={{ color: F.tt }}>Tu coach aún no asigna tu dieta.</p>
+          </div>
+        ) : (
+          meals.map((m, i) => (
+            <FitiaMealCard key={i} meal={m}
+              checked={mealChecks.includes(m.name)}
+              onToggleCheck={() => onMealToggle(m.name)}
+              onOpen={() => onMealOpen(m)}
+              substitutes={substitutes} />
+          ))
+        )}
+      </div>
+
+      {/* Routine section header */}
+      <div ref={routineRef} className="flex items-center justify-between px-5 mt-5 mb-2"
+        style={{ scrollMarginTop: 16 }}>
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md flex items-center justify-center"
+            style={{ background: F.voltBg, border: `1px solid ${F.voltBor}` }}>
+            <Dumbbell size={11} strokeWidth={2} style={{ color: F.volt }} />
+          </div>
+          <p className="text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: F.ts }}>Rutina de Hoy</p>
+        </div>
         {day && (
           <button
-            onClick={() => routineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-80 active:scale-95"
-            style={{ background: F.blueBg, border: `1px solid ${F.blue}30`, color: F.blue }}>
-            🏋️ Ver Rutina
+            onClick={() => window.print()}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold cursor-pointer transition-opacity hover:opacity-80 active:scale-95 no-print"
+            style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${F.border}`, color: F.ts }}>
+            <Printer size={11} strokeWidth={1.75} />
+            Imprimir
           </button>
         )}
       </div>
 
-      {/* Meal cards */}
-      {meals.length === 0 ? (
-        <div className="mx-4 rounded-2xl flex flex-col items-center py-10 gap-2"
-          style={{ background: F.card, border: `1px solid ${F.border}` }}>
-          <Utensils size={28} strokeWidth={1.25} style={{ color: F.tt }} />
-          <p className="text-[13px]" style={{ color: F.tt }}>Tu coach aún no asigna tu dieta.</p>
-        </div>
-      ) : (
-        meals.map((m, i) => (
-          <FitiaMealCard key={i} meal={m}
-            checked={mealChecks.includes(m.name)}
-            onToggleCheck={() => onMealToggle(m.name)}
-            onOpen={() => onMealOpen(m)}
-            substitutes={substitutes} />
-        ))
-      )}
-
-      {/* Routine section */}
-      <div ref={routineRef} className="flex items-center gap-2 px-5 mt-5 mb-2"
-        style={{ scrollMarginTop: 16 }}>
-        <div className="w-5 h-5 rounded-md flex items-center justify-center"
-          style={{ background: "rgba(99,102,241,0.15)" }}>
-          <Dumbbell size={11} strokeWidth={2} style={{ color: "#818cf8" }} />
-        </div>
-        <p className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: F.ts }}>Rutina de Hoy</p>
-      </div>
-
+      {/* Routine body — locked if DIET_ONLY */}
+      <div className="relative">
+        {student.membershipTier === "DIET_ONLY" && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 mx-4 rounded-2xl"
+            style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+            <Lock size={24} strokeWidth={1.5} style={{ color: "#a1a1aa" }} />
+            <p className="text-[13px] font-semibold text-center px-6" style={{ color: "#f4f4f5" }}>
+              Esta sección no está incluida en tu plan básico. Contáctanos para desbloquearla ⚡
+            </p>
+          </div>
+        )}
       {!day ? (
         <div className="mx-4 rounded-2xl flex flex-col items-center py-10 gap-2"
           style={{ background: F.card, border: `1px solid ${F.border}` }}>
@@ -1441,28 +1598,53 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
         </div>
       ) : (
         <div className="mx-4 rounded-2xl overflow-hidden mb-4"
-          style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-          {/* Routine header */}
-          <div className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: `1px solid ${F.border}`, background: F.bg }}>
-            <div>
-              <p className="text-[13px] font-semibold" style={{ color: F.tp }}>{day.label}</p>
-              <p className="text-[11px]" style={{ color: "#818cf8" }}>{day.muscleGroup}</p>
+          style={{
+            background: F.cardGlass,
+            border: `1px solid ${F.border}`,
+            boxShadow: F.shadow,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+          }}>
+          {/* Routine hero header — "LEG DESTRUCTION" style */}
+          <div className="px-4 pt-4 pb-3"
+            style={{ borderBottom: `1px solid ${F.border}` }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                {/* Tiny day label */}
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-0.5" style={{ color: F.ts }}>
+                  Sesión de hoy
+                </p>
+                {/* MASSIVE condensed italic title */}
+                <p style={{
+                  fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                  fontStyle: "italic",
+                  fontWeight: 900,
+                  fontSize: "clamp(30px, 10vw, 48px)",
+                  letterSpacing: "0.02em",
+                  textTransform: "uppercase",
+                  color: F.volt,
+                  lineHeight: 0.95,
+                  filter: "drop-shadow(0 0 12px rgba(212,255,0,0.45))",
+                }}>
+                  {(day.muscleGroup || day.label).toUpperCase()}
+                </p>
+                <p className="text-[11px] mt-1" style={{ color: F.ts }}>{day.label}</p>
+              </div>
+              {/* Session status pill */}
+              {workoutSession?.completed ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0"
+                  style={{ background: "rgba(52,211,153,0.1)", border: `1px solid rgba(52,211,153,0.25)` }}>
+                  <CheckCircle2 size={10} strokeWidth={2.5} style={{ color: F.green }} />
+                  <span className="text-[10px] font-bold tracking-wide uppercase" style={{ color: F.green }}>Done</span>
+                </div>
+              ) : workoutSession ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0 animate-volt-pulse"
+                  style={{ background: F.voltBg, border: `1px solid ${F.voltBor}` }}>
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: F.volt }} />
+                  <span className="text-[10px] font-bold tracking-wide uppercase" style={{ color: F.volt }}>Live</span>
+                </div>
+              ) : null}
             </div>
-            {/* Session status pill */}
-            {workoutSession?.completed ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
-                style={{ background: "rgba(52,211,153,0.12)", border: `1px solid ${F.green}30` }}>
-                <CheckCircle2 size={10} strokeWidth={2.5} style={{ color: F.green }} />
-                <span className="text-[10px] font-semibold" style={{ color: F.green }}>Completada</span>
-              </div>
-            ) : workoutSession ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
-                style={{ background: F.blueBg, border: `1px solid ${F.blue}30` }}>
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: F.blue }} />
-                <span className="text-[10px] font-semibold" style={{ color: F.blue }}>En curso</span>
-              </div>
-            ) : null}
           </div>
 
           {/* Exercise list */}
@@ -1484,22 +1666,36 @@ function TabHoy({ student, detail, meals, day, mealChecks, onMealToggle, onMealO
             })}
           </div>
 
-          {/* Finalizar sesión */}
+          {/* Strength Telemetry sparkline */}
+          <StrengthTelemetry logs={workoutLogs} />
+
+          {/* END SESSION — full-width Volt block */}
           {!workoutSession?.completed && (
-            <div className="px-3 pb-3">
+            <div className="px-3 pb-3 pt-2">
               <button
                 onClick={() => onFinalizeSession(`${day.label} · ${day.muscleGroup ?? ""}`)}
                 disabled={finalizingSession}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-semibold cursor-pointer transition-opacity disabled:opacity-50"
-                style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8" }}>
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-xl cursor-pointer transition-transform active:scale-95 disabled:opacity-50"
+                style={{
+                  background: finalizingSession ? "rgba(212,255,0,0.5)" : F.volt,
+                  color: "#000",
+                  fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+                  fontStyle: "italic",
+                  fontWeight: 900,
+                  fontSize: "15px",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  boxShadow: finalizingSession ? "none" : "0 4px 20px rgba(212,255,0,0.35)",
+                }}>
                 {finalizingSession
-                  ? <><Loader2 size={14} className="animate-spin" /> Guardando…</>
-                  : <><CheckCircle2 size={14} /> Finalizar Sesión</>}
+                  ? <><Loader2 size={16} className="animate-spin" /> Guardando…</>
+                  : <><CheckCircle2 size={16} /> End Session</>}
               </button>
             </div>
           )}
         </div>
       )}
+      </div>{/* end routine relative wrapper */}
 
       {/* Hydration card */}
       <WaterTrackerCard totalMl={waterTotalMl} onAdd={onAddWater} />
@@ -1517,80 +1713,88 @@ const GLASS_ML = 250;
 const TOTAL_GLASSES = WATER_TARGET_ML / GLASS_ML; // 12
 
 function WaterTrackerCard({ totalMl, onAdd }: { totalMl: number; onAdd: (ml: number) => void }) {
-  const filledGlasses = Math.min(Math.floor(totalMl / GLASS_ML), TOTAL_GLASSES);
   const pct = Math.min((totalMl / WATER_TARGET_ML) * 100, 100);
+  const liters = (totalMl / 1000);
+  const done = totalMl >= WATER_TARGET_ML;
 
   return (
     <div className="mx-4 mt-4 rounded-2xl overflow-hidden"
-      style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: `1px solid ${F.border}`, background: F.bg }}>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md flex items-center justify-center"
-            style={{ background: "rgba(56,189,248,0.15)" }}>
-            <Droplets size={11} strokeWidth={2} style={{ color: "#38bdf8" }} />
-          </div>
-          <p className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: F.ts }}>Hidratación del Día</p>
-        </div>
-        <p className="text-[11px] font-semibold tabular-nums" style={{ color: "#38bdf8" }}>
-          {(totalMl / 1000).toFixed(2).replace(".", ",")} L
+      style={{
+        background: F.cardGlass,
+        border: `1px solid ${F.border}`,
+        boxShadow: F.shadow,
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}>
+      <div className="px-5 pt-5 pb-4">
+        {/* Header label */}
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: F.ts }}>
+          Hidratación del Día
         </p>
-      </div>
 
-      <div className="p-4 space-y-3">
-        {/* Progress bar */}
-        <div>
-          <div className="flex justify-between mb-1.5">
-            <span className="text-[11px]" style={{ color: F.tt }}>Consumido</span>
-            <span className="text-[11px] tabular-nums" style={{ color: F.ts }}>
-              {totalMl} ml / {WATER_TARGET_ML} ml
+        {/* Big metric row */}
+        <div className="flex items-end justify-between mb-4">
+          <div className="flex items-baseline gap-2">
+            <span style={{
+              fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+              fontWeight: 900,
+              fontSize: "clamp(60px, 20vw, 80px)",
+              lineHeight: 1,
+              color: done ? F.green : F.tp,
+              letterSpacing: "-0.04em",
+              filter: done ? `drop-shadow(0 0 14px rgba(52,211,153,0.5))` : undefined,
+            }}>
+              {liters.toFixed(1)}
             </span>
+            <span className="text-[18px] font-light mb-1" style={{ color: F.ts }}>L</span>
           </div>
-          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: F.border }}>
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #0ea5e9, #38bdf8)" }} />
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[10px]" style={{ color: F.ts }}>{totalMl} / {WATER_TARGET_ML} ml</span>
+            {done && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg"
+                style={{ background: "rgba(52,211,153,0.1)", border: `1px solid rgba(52,211,153,0.2)` }}>
+                <CheckCircle2 size={9} strokeWidth={2.5} style={{ color: F.green }} />
+                <span className="text-[9px] font-bold" style={{ color: F.green }}>Meta ✓</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Glass grid */}
-        <div className="grid grid-cols-6 gap-1.5">
-          {Array.from({ length: TOTAL_GLASSES }).map((_, i) => (
-            <div key={i}
-              className="aspect-square rounded-xl flex items-center justify-center transition-all duration-300"
-              style={{
-                background: i < filledGlasses ? "rgba(56,189,248,0.18)" : F.bg,
-                border: `1px solid ${i < filledGlasses ? "#38bdf830" : F.border}`,
-              }}>
-              <Droplets
-                size={16} strokeWidth={i < filledGlasses ? 2 : 1.5}
-                style={{ color: i < filledGlasses ? "#38bdf8" : F.border }} />
-            </div>
-          ))}
+        {/* Slim progress bar */}
+        <div className="w-full h-[3px] rounded-full overflow-hidden mb-4" style={{ background: F.track }}>
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{
+              width: `${pct}%`,
+              background: done
+                ? `linear-gradient(90deg, ${F.green}, #86efac)`
+                : `linear-gradient(90deg, #0ea5e9, #38bdf8)`,
+              boxShadow: done ? `0 0 8px rgba(52,211,153,0.5)` : `0 0 8px rgba(56,189,248,0.5)`,
+            }} />
         </div>
 
-        {/* Quick-add buttons */}
-        <div className="flex gap-2 pt-1">
+        {/* Log Water buttons */}
+        <div className="flex gap-2">
           {[250, 500].map(ml => (
-            <button key={ml}
-              onClick={() => onAdd(ml)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-semibold cursor-pointer transition-all active:scale-95"
-              style={{ background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
+            <button key={ml} onClick={() => onAdd(ml)}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl cursor-pointer transition-transform active:scale-95"
+              style={{
+                height: 44,
+                background: ml === 500 ? "#38bdf8" : F.card,
+                border: `1px solid ${ml === 500 ? "transparent" : F.border}`,
+                color: ml === 500 ? "#000" : "#38bdf8",
+                fontFamily: "var(--font-display, sans-serif)",
+                fontWeight: 800,
+                fontStyle: "italic",
+                fontSize: "13px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                boxShadow: ml === 500 ? "0 4px 14px rgba(56,189,248,0.3)" : undefined,
+              }}>
               <Plus size={12} strokeWidth={2.5} />
               +{ml} ml
             </button>
           ))}
         </div>
-
-        {/* Completion message */}
-        {totalMl >= WATER_TARGET_ML && (
-          <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl"
-            style={{ background: "rgba(52,211,153,0.1)", border: `1px solid ${F.green}30` }}>
-            <CheckCircle2 size={12} strokeWidth={2.5} style={{ color: F.green }} />
-            <span className="text-[11px] font-semibold" style={{ color: F.green }}>¡Meta de hidratación alcanzada!</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1689,9 +1893,10 @@ function MeasTrendLine({ months, metric, color }: { months: any[]; metric: strin
   const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ overflow: "visible", flexShrink: 0 }}>
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2" fill={color} opacity="0.85" />
+      <path d={d} fill="none" stroke={color} strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill={color}
+        style={{ filter: `drop-shadow(0 0 3px ${color}88)` }} />
     </svg>
   );
 }
@@ -1769,9 +1974,10 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
                 <button key={i} onClick={() => setActiveMonthIdx(i)}
                   className="flex-shrink-0 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-200"
                   style={{
-                    background: i === activeMonthIdx ? F.blue : F.bg,
-                    color: i === activeMonthIdx ? "#fff" : F.ts,
-                    border: `1px solid ${i === activeMonthIdx ? F.blue : F.border}`,
+                    background: i === activeMonthIdx ? F.volt : F.bg,
+                    color: i === activeMonthIdx ? "#000" : F.ts,
+                    border: `1px solid ${i === activeMonthIdx ? F.volt : F.border}`,
+                    fontWeight: i === activeMonthIdx ? 900 : 600,
                   }}>
                   Mes {i + 1}
                 </button>
@@ -1833,10 +2039,10 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
                           <p className="text-[9px] uppercase tracking-wider" style={{ color: F.tt }}>{lbl}</p>
                           <MeasTrendLine months={sortedMonths} metric={key} color={F.blue} />
                         </div>
-                        <p className="text-[20px] font-light tabular-nums leading-none"
-                          style={{ color: val ? F.tp : F.tt }}>
+                        <p className="tabular-nums leading-none font-black"
+                          style={{ color: val ? F.tp : F.tt, fontSize: "clamp(22px,7vw,28px)", letterSpacing: "-0.03em" }}>
                           {val ?? "—"}
-                          {val ? <span className="text-[9px] font-normal ml-0.5" style={{ color: F.tt }}>cm</span> : null}
+                          {val ? <span className="text-[9px] font-bold ml-0.5 uppercase tracking-wider" style={{ color: F.tt }}>cm</span> : null}
                         </p>
                         {delta !== null && delta !== 0 && (
                           <p className="text-[9px] font-semibold mt-1 tabular-nums"
@@ -1996,60 +2202,264 @@ function TabProgreso({ student, detail, startWeight, carreras, onBadge }: {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   TAB: SALAS (light)
+   STRENGTH TELEMETRY — Volt sparkline SVG
 ══════════════════════════════════════════════════════════════ */
-function TabSalas() {
-  return (
-    <div className="px-4 pt-4 pb-4 space-y-3">
-      <div>
-        <h1 className="text-[22px] font-bold" style={{ color: F.tp }}>Salas</h1>
-        <p className="text-[12px]" style={{ color: F.tt }}>Gym Squads y Ligas</p>
-      </div>
+function StrengthTelemetry({ logs }: { logs: WorkoutLogEntry[] }) {
+  const pts = logs.length > 1
+    ? logs.slice(-14).map(l => l.sets.filter(s => s.completed).length)
+    : [4,3,5,2,6,3,5,4,7,3,6,4,5,3];
 
-      <div className="rounded-2xl p-6" style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-        <div className="flex flex-col items-center py-8 gap-4">
-          <div className="relative w-20 h-20">
-            {[0,1,2].map(i => (
-              <div key={i} className="absolute inset-0 rounded-full"
-                style={{ border: `1px solid ${F.border}`, transform: `scale(${1 + i * 0.28})` }} />
-            ))}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: F.blueBg }}>
-                <Users size={22} strokeWidth={1.25} style={{ color: F.blue }} />
-              </div>
+  const max = Math.max(...pts, 1), min = Math.min(...pts, 0);
+  const W = 280, H = 44;
+  const norm = pts.map(p => (max === min) ? 0.5 : (p - min) / (max - min));
+  const pathD = norm.map((y, i) => {
+    const px = (i / (norm.length - 1)) * W;
+    const py = H - y * H * 0.85 - H * 0.05;
+    return `${i === 0 ? "M" : "L"}${px.toFixed(1)},${py.toFixed(1)}`;
+  }).join(" ");
+  const fillD = pathD + ` L${W},${H} L0,${H} Z`;
+
+  return (
+    <div className="px-4 pt-3 pb-2" style={{ borderTop: `1px solid ${F.border}` }}>
+      <p className="text-[9px] font-black uppercase tracking-[0.18em] mb-2" style={{ color: F.ts }}>
+        Strength Telemetry
+      </p>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height: 44, display: "block" }}>
+        <defs>
+          <linearGradient id="voltAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={VOLT} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={VOLT} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <defs>
+          <linearGradient id="voltAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={VOLT} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={VOLT} stopOpacity="0" />
+          </linearGradient>
+          <filter id="tele-glow" x="-10%" y="-60%" width="120%" height="220%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <path d={fillD} fill="url(#voltAreaGrad)" />
+        <path d={pathD} fill="none" stroke={VOLT} strokeWidth="3"
+          strokeLinecap="round" strokeLinejoin="round" filter="url(#tele-glow)" />
+        {/* Last point dot */}
+        {norm.length > 0 && (() => {
+          const last = norm[norm.length - 1];
+          const px = W;
+          const py = H - last * H * 0.85 - H * 0.05;
+          return <circle cx={px} cy={py} r={4} fill={VOLT} style={{ filter: "drop-shadow(0 0 6px rgba(212,255,0,0.9))" }} />;
+        })()}
+      </svg>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RANK BADGE UTILS
+══════════════════════════════════════════════════════════════ */
+function getRank(streak: number): { emoji: string; label: string; color: string; glow?: string } {
+  if (streak >= 16) return { emoji: "👑", label: "Bestia Elite", color: "#f59e0b", glow: "0 0 10px rgba(245,158,11,0.35)" };
+  if (streak >= 6)  return { emoji: "🔥", label: "Constante",   color: "#fb923c" };
+  return { emoji: "🥚", label: "Novato", color: "#71717a" };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOTIVATIONAL BANNER
+══════════════════════════════════════════════════════════════ */
+const QUOTES_MORNING   = ["El cuerpo logra lo que la mente ordena. 🌅", "Cada mañana es otra oportunidad para ser imparable. ⚡", "Los campeones se forjan antes de que salga el sol. 💪"];
+const QUOTES_AFTERNOON = ["A mitad del día, a mitad del camino — no pares ahora. 🔥", "El dolor es temporal; la mediocridad, para siempre. 💥", "No busques motivación — sé la razón por la que otros se motivan. 🏆"];
+const QUOTES_EVENING   = ["Una sesión más y tu yo del futuro te lo agradecerá. ⭐", "La constancia supera siempre al talento. 👑", "Cierra el día sin deudas contigo mismo. 💯"];
+const QUOTES_COMPLETED = ["¡Sesión completada! Eso es lo que distingue a los mejores. 🏆", "Entrenamiento listo. Nadie te puede quitar ese trabajo. 🔥", "Bestia mode ON. Otra sesión en el banco. 💪"];
+
+function MotivationalBanner({ sessionCompleted, streak }: { sessionCompleted: boolean; streak: number }) {
+  const [quote, setQuote] = useState("");
+  const rank = getRank(streak);
+
+  useEffect(() => {
+    const h = new Date().getHours();
+    const pool = sessionCompleted ? QUOTES_COMPLETED : h < 12 ? QUOTES_MORNING : h < 18 ? QUOTES_AFTERNOON : QUOTES_EVENING;
+    setQuote(pool[Math.floor(Math.random() * pool.length)]);
+  }, [sessionCompleted]);
+
+  if (!quote) return null;
+
+  return (
+    <div className="mx-4 mt-3 rounded-2xl px-4 py-3.5 relative overflow-hidden"
+      style={{
+        background: sessionCompleted
+          ? `linear-gradient(135deg, rgba(52,211,153,0.06) 0%, ${F.voltBg} 100%)`
+          : F.voltBg,
+        border: `1px solid ${sessionCompleted ? "rgba(52,211,153,0.22)" : F.voltBor}`,
+      }}>
+      {/* Volt accent bar */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl"
+        style={{ background: sessionCompleted ? F.green : F.volt }} />
+      <p className="text-[13px] font-semibold leading-snug pl-1" style={{ color: F.tp }}>{quote}</p>
+      <div className="flex items-center gap-1.5 mt-1.5 pl-1">
+        <span className="text-[11px] font-bold" style={{ color: rank.color }}>{rank.emoji} {rank.label}</span>
+        <span className="text-[10px]" style={{ color: F.ts }}>· {streak} días de racha</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB: COMUNIDAD (group chat + gamified rank badges)
+══════════════════════════════════════════════════════════════ */
+interface GroupMsg { id: string; senderId: string; senderName: string; role: string; content: string; createdAt: string; }
+
+function TabComunidad({ student }: { student: Student }) {
+  const coachId = student.coachId;
+  const rank = getRank(student.streak);
+  const [messages, setMessages] = useState<GroupMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const loadMessages = useCallback(async () => {
+    if (!coachId) return;
+    try {
+      const res = await fetch(`/api/community/messages?coachId=${coachId}`);
+      if (res.ok) { const data = await res.json(); setMessages(Array.isArray(data) ? data : []); setLoaded(true); }
+    } catch {}
+  }, [coachId]);
+
+  useEffect(() => {
+    loadMessages();
+    const t = setInterval(loadMessages, 10000);
+    return () => clearInterval(t);
+  }, [loadMessages]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
+
+  const sendMessage = async () => {
+    if (!coachId || !input.trim() || sending) return;
+    setSending(true);
+    const content = input.trim();
+    setInput("");
+    try {
+      const res = await fetch("/api/community/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachId, content, senderName: student.name }),
+      });
+      if (res.ok) loadMessages();
+    } finally { setSending(false); }
+  };
+
+  const fmt = (iso: string) => new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+
+  if (!coachId) {
+    return (
+      <div className="px-4 pt-4 pb-4">
+        <h1 className="text-[22px] font-bold mb-1" style={{ color: F.tp }}>Comunidad</h1>
+        <div className="rounded-2xl p-8 flex flex-col items-center gap-3 mt-4"
+          style={{ background: F.card, border: `1px solid ${F.border}` }}>
+          <MessageCircle size={28} strokeWidth={1.25} style={{ color: F.tt }} />
+          <p className="text-[13px] text-center" style={{ color: F.tt }}>No estás vinculado a un coach todavía.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col pb-4">
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[22px] font-bold" style={{ color: F.tp }}>Comunidad</h1>
+            <p className="text-[12px]" style={{ color: F.tt }}>Sala de tu equipo</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+            style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: rank.glow ?? "none" }}>
+            <span style={{ fontSize: 16 }}>{rank.emoji}</span>
+            <div>
+              <p className="text-[11px] font-semibold" style={{ color: rank.color }}>{rank.label}</p>
+              <p className="text-[10px]" style={{ color: F.tt }}>{student.streak} días</p>
             </div>
           </div>
-          <div className="text-center max-w-[240px]">
-            <p className="text-[16px] font-semibold mb-1.5" style={{ color: F.tp }}>Próximamente</p>
-            <p className="text-[12px] leading-relaxed" style={{ color: F.ts }}>
-              Crea tu squad, compite en ligas semanales y gana insignias con tus compañeros.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
-            style={{ background: F.bg, border: `1px solid ${F.border}` }}>
-            <Sparkles size={12} style={{ color: F.tt }} />
-            <span className="text-[11px]" style={{ color: F.tt }}>En desarrollo · Q3 2025</span>
-          </div>
+        </div>
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {([
+            { emoji: "🥚", label: "Novato",       sub: "1-5 días",  color: "#71717a" },
+            { emoji: "🔥", label: "Constante",    sub: "6-15 días", color: "#fb923c" },
+            { emoji: "👑", label: "Bestia Elite",  sub: "16+ días",  color: "#f59e0b" },
+          ] as const).map(r => (
+            <div key={r.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+              style={{ background: F.card, border: `1px solid ${F.border}` }}>
+              <span style={{ fontSize: 13 }}>{r.emoji}</span>
+              <span className="text-[10px] font-semibold" style={{ color: r.color }}>{r.label}</span>
+              <span className="text-[10px]" style={{ color: F.tt }}>{r.sub}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {[
-        { title: "Gym Squads",      sub: "Equipos de hasta 6 personas",             icon: Users,    bg: F.blueBg, color: F.blue },
-        { title: "Ligas Semanales", sub: "Ranking por adherencia y progreso",        icon: TrendingUp, bg: "#EEF0FF", color: "#6366F1" },
-        { title: "Insignias Grupales", sub: "Logros compartidos con tu squad",      icon: Sparkles, bg: "#FFFBEB", color: F.carbs },
-      ].map((item, i) => (
-        <div key={i} className="flex items-center gap-4 rounded-2xl px-4 py-3.5"
-          style={{ background: F.card, border: `1px solid ${F.border}`, boxShadow: F.shadow }}>
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ background: item.bg }}>
-            <item.icon size={16} strokeWidth={1.75} style={{ color: item.color }} />
+      <div className="px-4 space-y-3 overflow-y-auto pb-2" style={{ minHeight: 200, maxHeight: "calc(100vh - 62px - 260px)" }}>
+        {!loaded ? (
+          <div className="flex justify-center py-10">
+            <Loader2 size={18} className="animate-spin" style={{ color: F.tt }} />
           </div>
-          <div>
-            <p className="text-[13px] font-semibold" style={{ color: F.tp }}>{item.title}</p>
-            <p className="text-[11px]" style={{ color: F.tt }}>{item.sub}</p>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center py-10 gap-2">
+            <MessageCircle size={28} strokeWidth={1.25} style={{ color: F.tt }} />
+            <p className="text-[13px]" style={{ color: F.tt }}>Sé el primero en escribir algo. 💪</p>
           </div>
+        ) : (
+          messages.map(msg => {
+            const isMine = msg.senderName === student.name && msg.role !== "COACH";
+            const isCoach = msg.role === "COACH";
+            const msgRank = getRank(isMine ? student.streak : 0);
+            return (
+              <div key={msg.id} className={`flex gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[14px]"
+                  style={{ background: isCoach ? "rgba(99,102,241,0.2)" : F.card, border: `1px solid ${F.border}` }}>
+                  {isCoach ? "🏋️" : (isMine ? rank.emoji : "🥚")}
+                </div>
+                <div className={`max-w-[72%] flex flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-medium" style={{ color: isCoach ? "#818cf8" : F.ts }}>
+                      {isCoach ? "Coach" : msg.senderName}
+                    </span>
+                    {!isCoach && <span className="text-[10px]" style={{ color: msgRank.color }}>{isMine ? rank.label : "Novato"}</span>}
+                    <span className="text-[9px]" style={{ color: F.tt }}>{fmt(msg.createdAt)}</span>
+                  </div>
+                  <div className="rounded-2xl px-3 py-2"
+                    style={{
+                      background: isMine ? F.blueBg : isCoach ? "rgba(99,102,241,0.12)" : F.card,
+                      border: `1px solid ${isMine ? F.blue + "30" : isCoach ? "rgba(99,102,241,0.25)" : F.border}`,
+                    }}>
+                    <p className="text-[13px] leading-snug" style={{ color: F.tp }}>{msg.content}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="px-4 pt-3" style={{ borderTop: `1px solid ${F.border}` }}>
+        <div className="flex items-center gap-2">
+          <input
+            value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            placeholder="Escribe algo motivador…"
+            className="flex-1 rounded-2xl px-4 py-2.5 text-[13px] outline-none"
+            style={{ background: F.card, border: `1px solid ${F.border}`, color: F.tp }}
+          />
+          <button onClick={sendMessage} disabled={!input.trim() || sending}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-opacity disabled:opacity-40 cursor-pointer"
+            style={{ background: F.blue }}>
+            {sending
+              ? <Loader2 size={15} className="animate-spin" style={{ color: "#000" }} />
+              : <Send size={15} style={{ color: "#000" }} />}
+          </button>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -2123,7 +2533,7 @@ function CancelSubscriptionSheet({ reason, onReasonChange, onConfirm, status, on
       </button>
       <button onClick={onClose}
         className="w-full flex items-center justify-center mt-3 rounded-2xl text-[14px] font-semibold cursor-pointer transition-opacity hover:opacity-80"
-        style={{ height: 52, background: F.blue, color: "#fff" }}>
+        style={{ height: 52, background: F.blue, color: "#000" }}>
         Mantener suscripción
       </button>
     </>
@@ -2220,7 +2630,7 @@ function TabPerfil({ student, detail, avatarUrl, onAvatarUpdate, onCancelRequest
                 <span className="text-[9px] uppercase tracking-wider font-medium" style={{ color: F.tt }}>{label}</span>
                 <Icon size={11} style={{ color }} />
               </div>
-              <p className="text-[18px] font-light" style={{ color: value === "—" ? F.tt : F.tp }}>{value}</p>
+              <p className="tabular-nums leading-tight font-black" style={{ color: value === "—" ? F.tt : F.tp, fontSize: "clamp(20px,6vw,24px)", letterSpacing: "-0.02em" }}>{value}</p>
             </div>
           ))}
         </div>
@@ -2304,22 +2714,23 @@ function TabPerfil({ student, detail, avatarUrl, onAvatarUpdate, onCancelRequest
    BOTTOM NAV (Fitia light)
 ══════════════════════════════════════════════════════════════ */
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "today",    label: "Dieta",    icon: Utensils },
-  { id: "progress", label: "Progreso", icon: TrendingUp },
-  { id: "squads",   label: "Salas",    icon: Users },
-  { id: "profile",  label: "Perfil",   icon: User },
+  { id: "today",     label: "Dieta",     icon: Utensils },
+  { id: "progress",  label: "Progreso",  icon: TrendingUp },
+  { id: "comunidad", label: "Comunidad", icon: MessageCircle },
+  { id: "profile",   label: "Perfil",    icon: User },
 ];
 
 function BottomNav({ active, onChange, onSignOut }: {
   active: TabId; onChange: (t: TabId) => void; onSignOut: () => void;
 }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50"
+    <div className="fixed bottom-0 left-0 right-0 z-50 no-print"
       style={{
         background: F.navBg,
         borderTop: `1px solid ${F.navBor}`,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        boxShadow: "0 -1px 12px rgba(0,0,0,0.06)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
       }}>
       <div className="flex justify-around items-center px-2 h-[62px] max-w-xl mx-auto">
         {TABS.map(({ id, label, icon: Icon }) => {
@@ -2330,14 +2741,18 @@ function BottomNav({ active, onChange, onSignOut }: {
               style={{ minHeight: 44 }}>
               <div className="relative">
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75}
-                  style={{ color: isActive ? F.active : F.inactive, transition: "color 0.2s ease" }} />
+                  style={{
+                    color: isActive ? F.volt : F.inactive,
+                    transition: "color 0.2s ease",
+                    filter: isActive ? "drop-shadow(0 0 6px rgba(212,255,0,0.55))" : undefined,
+                  }} />
                 {isActive && (
-                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style={{ background: F.active, animation: "dotPop 0.2s ease" }} />
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                    style={{ background: F.volt, animation: "dotPop 0.2s ease", boxShadow: "0 0 6px rgba(212,255,0,0.7)" }} />
                 )}
               </div>
-              <span className="text-[10px] font-medium"
-                style={{ color: isActive ? F.active : F.inactive, transition: "color 0.2s ease" }}>
+              <span className="text-[10px] font-semibold tracking-wide"
+                style={{ color: isActive ? F.volt : F.inactive, transition: "color 0.2s ease" }}>
                 {label}
               </span>
             </button>
@@ -2348,7 +2763,7 @@ function BottomNav({ active, onChange, onSignOut }: {
           className="flex flex-col items-center gap-1 flex-1 py-2 cursor-pointer transition-all duration-200 active:opacity-50"
           style={{ minHeight: 44 }}>
           <LogOut size={20} strokeWidth={1.75} style={{ color: F.inactive }} />
-          <span className="text-[10px] font-medium" style={{ color: F.inactive }}>Salir</span>
+          <span className="text-[10px] font-semibold tracking-wide" style={{ color: F.inactive }}>Salir</span>
         </button>
       </div>
       <style>{`@keyframes dotPop { from{transform:translateX(-50%) scale(0)} to{transform:translateX(-50%) scale(1)} }`}</style>
@@ -2546,7 +2961,18 @@ export default function PortalPage() {
   }));
 
   return (
-    <div style={{ background: F.bg, minHeight: "100vh" }}>
+    <div style={{ background: F.bg, minHeight: "100vh", backgroundImage: "radial-gradient(ellipse 80% 40% at 50% -20%, rgba(212,255,0,0.04) 0%, transparent 60%)" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body { background: #fff !important; color: #111 !important; }
+          .no-print { display: none !important; }
+          [data-fixed], [style*="position: fixed"], [style*="position:fixed"] { display: none !important; }
+          .print-header { display: flex !important; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        .print-header { display: none; }
+      `}} />
+
       {/* Date header — only on "today" tab */}
       {activeTab === "today" && (
         <DateHeader date={selectedDate} onPrev={() => shiftDate(-1)} onNext={() => shiftDate(1)} />
@@ -2586,7 +3012,7 @@ export default function PortalPage() {
               weightHistory: detail.weightHistory,
             })} />
         )}
-        {activeTab === "squads"  && <TabSalas />}
+        {activeTab === "comunidad" && <TabComunidad student={student} />}
         {activeTab === "profile" && (
           <TabPerfil student={student} detail={detail}
             avatarUrl={avatarUrl} onAvatarUpdate={fetchMe}
@@ -2595,8 +3021,10 @@ export default function PortalPage() {
       </div>
 
       {/* Bottom nav */}
-      <BottomNav active={activeTab} onChange={switchTab}
-        onSignOut={() => signOut({ callbackUrl: "/login" })} />
+      <div className="no-print">
+        <BottomNav active={activeTab} onChange={switchTab}
+          onSignOut={() => signOut({ callbackUrl: "/login" })} />
+      </div>
 
       {/* Meal detail sheet */}
       <BottomSheet open={!!activeMeal} onClose={() => setActiveMeal(null)}>

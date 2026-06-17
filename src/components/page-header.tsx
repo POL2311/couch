@@ -26,10 +26,16 @@ export function PageHeader({
       style={{ height: "var(--page-header-h)", borderBottom: "1px solid var(--border-subtle)" }}
     >
       <div className="flex items-center gap-1.5 min-w-0">
-        <h1 className="text-[22px] font-semibold tracking-tight truncate" style={{ color: "var(--text-primary)" }}>
+        <h1 className="truncate" style={{
+          fontFamily: "var(--font-display, 'Barlow Condensed', sans-serif)",
+          fontWeight: 900, fontStyle: "italic",
+          fontSize: "clamp(20px, 5vw, 26px)",
+          textTransform: "uppercase", letterSpacing: "0.04em",
+          color: "var(--text-primary)", lineHeight: 1.1,
+        }}>
           {title}
           {typeof count === "number" && (
-            <span className="text-[13px] font-normal ml-1.5" style={{ color: "var(--text-secondary)" }}>· {count}</span>
+            <span className="ml-2" style={{ fontFamily: "inherit", fontSize: "0.55em", fontWeight: 700, fontStyle: "normal", letterSpacing: "0.06em", color: "var(--text-tertiary)", verticalAlign: "middle" }}>· {count}</span>
           )}
         </h1>
         {hint && <InfoHint text={hint} />}

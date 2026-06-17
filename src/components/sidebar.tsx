@@ -81,9 +81,9 @@ export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
               aria-label={item.label}
               className={`group relative flex items-center gap-3 py-2.5 rounded-xl text-[13px] outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)] ${collapsed ? "justify-center px-0" : "px-3"}`}
               style={{
-                color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
+                color: isActive ? "var(--text-sidebar-active, #D4FF00)" : "var(--text-sidebar-secondary)",
                 background: isActive ? "var(--bg-sidebar-active)" : "transparent",
-                fontWeight: isActive ? 500 : 400,
+                fontWeight: isActive ? 600 : 400,
                 transition: "all var(--transition-fast)",
                 letterSpacing: isActive ? "0.01em" : "0",
               }}
@@ -203,7 +203,7 @@ export function MobileBottomNav() {
             className="flex flex-col items-center justify-center gap-1 py-2 px-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)]"
             style={{
               minHeight: 44,
-              color: isActive ? "var(--text-sidebar-primary)" : "var(--text-sidebar-secondary)",
+              color: isActive ? "var(--text-sidebar-active, #D4FF00)" : "var(--text-sidebar-secondary)",
               transition: "color var(--transition-fast)",
             }}
           >
