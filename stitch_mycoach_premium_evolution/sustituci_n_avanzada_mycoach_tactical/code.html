@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>MYCOACH | Precision Substitution</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .rim-light {
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05), 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        .volt-glow {
+            box-shadow: 0 0 25px rgba(197, 244, 0, 0.5);
+        }
+        .beam-gradient {
+            background: linear-gradient(90deg, #00F0FF 0%, #CEFF00 100%);
+        }
+        @keyframes pulse-volt {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+        .animate-pulse-volt {
+            animation: pulse-volt 2s infinite ease-in-out;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            background-color: #0d0e0f;
+            color: #e3e2e2;
+            overflow-x: hidden;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#7df4ff",
+                        "inverse-surface": "#e3e2e2",
+                        "on-tertiary-container": "#656464",
+                        "on-primary": "#293500",
+                        "background": "#121414",
+                        "tertiary": "#ffffff",
+                        "tertiary-fixed": "#e5e2e1",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "secondary-container": "#00eefc",
+                        "on-primary-fixed": "#161e00",
+                        "on-secondary-fixed": "#002022",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "on-surface-variant": "#c4c9ac",
+                        "surface-container": "#1f2020",
+                        "primary-fixed": "#c5f400",
+                        "on-background": "#e3e2e2",
+                        "surface-tint": "#acd600",
+                        "surface-container-high": "#292a2a",
+                        "on-secondary-container": "#00686f",
+                        "primary-container": "#c5f400",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "surface-dim": "#121414",
+                        "on-primary-fixed-variant": "#3c4d00",
+                        "surface-container-highest": "#343535",
+                        "surface-bright": "#383939",
+                        "surface-container-low": "#1b1c1c",
+                        "on-tertiary": "#313030",
+                        "on-secondary": "#00363a",
+                        "secondary": "#d3fbff",
+                        "secondary-fixed-dim": "#00dbe9",
+                        "outline-variant": "#444933",
+                        "on-surface": "#e3e2e2",
+                        "primary-fixed-dim": "#acd600",
+                        "inverse-primary": "#516600",
+                        "on-secondary-fixed-variant": "#004f54",
+                        "surface-container-lowest": "#0d0e0f",
+                        "outline": "#8e9379",
+                        "tertiary-container": "#e5e2e1",
+                        "surface-variant": "#343535",
+                        "on-primary-container": "#566c00",
+                        "primary": "#ffffff",
+                        "inverse-on-surface": "#303031",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#121414",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "bento-gap": "12px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["64px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "data-sm": ["12px", {"lineHeight": "1.0", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "data-lg": ["20px", {"lineHeight": "1.0", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-background/20 backdrop-blur-xl border-b border-white/10">
+<div class="flex items-center justify-between px-margin-mobile md:px-margin-desktop h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary-fixed hover:opacity-80 cursor-pointer transition-opacity active:scale-95">menu</span>
+<h1 class="font-display-lg text-headline-lg-mobile italic font-black tracking-tighter text-primary-fixed uppercase">MYCOACH</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:opacity-80 cursor-pointer transition-opacity active:scale-95">settings</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop min-h-screen flex flex-col items-center">
+<!-- Header Section -->
+<div class="w-full max-w-4xl mb-8 text-center md:text-left">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-surface-container-highest rounded-full mb-4">
+<span class="material-symbols-outlined text-primary-fixed text-[14px]" style="font-variation-settings: 'FILL' 1;">restaurant_menu</span>
+<span class="font-data-sm text-data-sm text-primary-fixed tracking-widest uppercase">Real Food Selection</span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-white mb-2 italic uppercase">Substitution Engine</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Intelligent protein alternatives balanced to your exact requirement.</p>
+</div>
+<!-- Active Ingredient Card -->
+<div class="relative w-full max-w-md mb-12">
+<div class="relative z-10 glass-card rounded-3xl overflow-hidden border-primary-fixed/20 volt-glow" id="active-ingredient">
+<div class="h-48 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCr9Q65EB5HHIv-t7Kc7cCJSctRf3WgriW__y1QCR1mhjK6AoNV9LJg6SZIz12fqSDpyo1AhrmlCoo8iFpyG4gwv3woXsoyj_fHABDxY9HFNhqSq6oRH1gJtjX_2mOPtGXIp0LzWSELA6q1v4TrZpAYWIEFhUZl5O-iIx3gPXcfSO2WjYqu20ahjNy_CWHdtCuOkjyua3czbdR0VCcGTh7pDn5pGB_MSVjstw6DuBUjU6yOYB9agBBuhGYpse1EFpwVivZtsmVVSw')"></div>
+<div class="p-6 bg-surface-container-lowest/80 backdrop-blur-md">
+<span class="font-data-sm text-data-sm text-primary-fixed uppercase tracking-widest mb-1 block">Current Target</span>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-white leading-tight uppercase italic font-black" id="active-title">4 HUEVOS ENTEROS</h3>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="font-display-lg text-[48px] text-white italic tracking-tighter leading-none" id="active-weight">200</span>
+<span class="font-headline-md text-on-surface-variant italic">G</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Horizontal Carousel of Interaction Cards -->
+<div class="w-full max-w-5xl mb-12">
+<div class="flex items-center justify-between mb-4 px-2">
+<h4 class="font-data-sm text-data-sm text-on-surface-variant uppercase tracking-widest">Recommended Swaps</h4>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-on-surface-variant/40">arrow_back_ios</span>
+<span class="material-symbols-outlined text-primary-fixed">arrow_forward_ios</span>
+</div>
+</div>
+<div class="flex overflow-x-auto gap-4 px-2 pb-6 hide-scrollbar snap-x scroll-smooth" id="carousel">
+<!-- Card 1: Pechuga de Pollo -->
+<div class="flex-none w-56 snap-start cursor-pointer group" onclick="selectSwap('Pechuga de Pollo', 120, 1.0, 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&amp;fit=crop&amp;q=80&amp;w=600')">
+<div class="glass-card rim-light rounded-2xl overflow-hidden border-white/5 transition-all duration-300 group-hover:border-primary-fixed/40 group-active:scale-95">
+<div class="h-40 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDn1cd2q9hn9KyKfW-NdAeSIRmD70_S1e-9ALvbomtzZb1OrlxKTnCJzYghdBC3fjK7jsKqifRimd10LLEAnvqSI_J7V_MJanOtJ8eAlpCuR67Y64yrUjgYBwLjRnrrUq9wWivz3GSvgM_dpRCc0o-dfn0_uK-4GDERuzKBwXWOZ23pRP_ur8IN22v7tTGg43ubZ8w9n8kvx3SdZ1i7nitt23BiwwxiwYzIfAe4VoLdv28RdC67YGEsumHlrVphsAaKJqZOQehZ5g')"></div>
+<div class="p-4">
+<h5 class="font-headline-md text-[16px] text-white uppercase italic font-black leading-tight mb-1">120g Pechuga de Pollo</h5>
+<span class="font-data-sm text-[10px] text-primary-fixed uppercase tracking-tighter">Protein Focus</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Whey Protein -->
+<div class="flex-none w-56 snap-start cursor-pointer group" onclick="selectSwap('Whey Protein', 32, 0.98, 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?auto=format&amp;fit=crop&amp;q=80&amp;w=600')">
+<div class="glass-card rim-light rounded-2xl overflow-hidden border-white/5 transition-all duration-300 group-hover:border-primary-fixed/40 group-active:scale-95">
+<div class="h-40 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAX6JmY5kSx51-9nNq8QXBAJBZO2gGRjac9-JJAC1LeiP6nhovqOXd5UW4bxazBF2t3fQ9iHFyswtWO6NAPRzvunbnW7xSYsl5R38TYx7EBXXkfsMcXeXjTRBE5Ml8ixJYssxbXJN7chrK3pChgN4KFyXN8xrEepGtwaM_29_4HRi0lj2gpQAbq2FmvwEoWWKDnwcAbIo5tIkQX5cNkyXTK3iPC7Mg9xjNDyAp92pP2kue072M5uYQu6zKbPwRImX3i3HQPOYz8ZA')"></div>
+<div class="p-4">
+<h5 class="font-headline-md text-[16px] text-white uppercase italic font-black leading-tight mb-1">1 Scoop de Whey</h5>
+<span class="font-data-sm text-[10px] text-secondary-fixed uppercase tracking-tighter">Fast Absorption</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Atun -->
+<div class="flex-none w-56 snap-start cursor-pointer group" onclick="selectSwap('Atún al Natural', 150, 1.0, 'https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?auto=format&amp;fit=crop&amp;q=80&amp;w=600')">
+<div class="glass-card rim-light rounded-2xl overflow-hidden border-white/5 transition-all duration-300 group-hover:border-primary-fixed/40 group-active:scale-95">
+<div class="h-40 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDwW7fHSSSEVkCpEQCPPuKOjpmhaiI5KGo43yu3XkY7KJ4RWdwnOZaNF5P5PQOxTf4fmpAMI_W-QGieH6VPUf9nVh_EZAxnJLTVtDJSCxVOnO92g-t3nVfq1brDoDqOLm0Ft5eKjqEo8fjTFaFeFeahP13ly0P-TL4qEXcyhVI-jb_7saQx_yxgfB-xdkOph9wXJGGAnOHY6Ae-P_M7q6Kn1A1h5oIlekuxFnn1wBxf5s-YmUDfTbTGFKveHbU0D-POisOEXVYLgA')"></div>
+<div class="p-4">
+<h5 class="font-headline-md text-[16px] text-white uppercase italic font-black leading-tight mb-1">150g de Atún</h5>
+<span class="font-data-sm text-[10px] text-primary-fixed uppercase tracking-tighter">Lean Source</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Tofu -->
+<div class="flex-none w-56 snap-start cursor-pointer group" onclick="selectSwap('Tofu Firme', 250, 0.95, 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&amp;fit=crop&amp;q=80&amp;w=600')">
+<div class="glass-card rim-light rounded-2xl overflow-hidden border-white/5 transition-all duration-300 group-hover:border-primary-fixed/40 group-active:scale-95">
+<div class="h-40 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAVAtYsKFCw3yN_g58a8rhhi2x6y_EuCaADcSy0Lj7boPGn7h_SZEoG8pBMfNtvusosSEA-WIBPWRP0QRuKAmwI-Uh4a4JFfmsQXmsQrK46_zrDq0lopuHXg24XdJZizKpNQ7CLrUuJExcx8g2ss-YiM4wUMsirgcGTQlQKFyX0lDqDm4MCGhvoEB06GAU7Ua6WfI7bNqdf5BxQxHEofiYyvNuoqPWPvj3GMcf567oX7EZrdXzluLWuSHfvwy85fyp_zvRB2KZ8cg')"></div>
+<div class="p-4">
+<h5 class="font-headline-md text-[16px] text-white uppercase italic font-black leading-tight mb-1">250g de Tofu</h5>
+<span class="font-data-sm text-[10px] text-on-surface-variant uppercase tracking-tighter">Plant Based</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Macro Validation & Action -->
+<div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-bento-gap items-center">
+<!-- Precision Meter -->
+<div class="glass-card p-6 rounded-3xl flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-data-sm text-data-sm text-on-surface-variant uppercase tracking-widest">MACRO BALANCE MATCH</span>
+<span class="font-data-lg text-primary-fixed italic" id="match-pct">100%</span>
+</div>
+<div class="relative h-10 flex items-center">
+<div class="absolute w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-fixed volt-glow transition-all duration-1000 animate-pulse-volt" id="beam-fill" style="width: 100%"></div>
+</div>
+<div class="absolute left-1/2 -translate-x-1/2 w-[2px] h-10 bg-white/20"></div>
+</div>
+<div class="flex justify-between font-data-sm text-[10px] text-on-surface-variant/50 uppercase tracking-tighter">
+<span>Minimum Var</span>
+<span class="text-primary-fixed">Perfect Match</span>
+</div>
+</div>
+<!-- Confirm Button -->
+<div class="flex flex-col gap-2">
+<button class="w-full py-6 bg-primary-fixed text-on-primary-fixed font-display-lg text-[22px] uppercase italic font-black hover:scale-[1.02] active:scale-95 transition-all volt-glow rounded-2xl flex items-center justify-center gap-3">
+<span class="material-symbols-outlined font-normal" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+            Confirm Swap
+        </button>
+</div>
+</div>
+<!-- Extra Stats -->
+<div class="w-full max-w-4xl mt-bento-gap grid grid-cols-2 md:grid-cols-4 gap-bento-gap">
+<div class="glass-card p-4 rounded-xl border-white/5">
+<span class="font-data-sm text-[10px] text-on-surface-variant uppercase block mb-1">Fat Diff.</span>
+<span class="font-data-lg text-white" id="stat-fat">-8.2g</span>
+</div>
+<div class="glass-card p-4 rounded-xl border-white/5">
+<span class="font-data-sm text-[10px] text-on-surface-variant uppercase block mb-1">Calorie Offset</span>
+<span class="font-data-lg text-secondary-fixed">-42 kcal</span>
+</div>
+<div class="glass-card p-4 rounded-xl border-white/5">
+<span class="font-data-sm text-[10px] text-on-surface-variant uppercase block mb-1">Bioavailability</span>
+<span class="font-data-lg text-white">Elite</span>
+</div>
+<div class="glass-card p-4 rounded-xl border-white/5">
+<span class="font-data-sm text-[10px] text-on-surface-variant uppercase block mb-1">Volume Rank</span>
+<span class="font-data-lg text-primary-fixed">S-Tier</span>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/80 backdrop-blur-2xl border-t border-white/5">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 p-3 hover:text-primary-fixed transition-all" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary-fixed rounded-xl p-3 shadow-[0_0_15px_rgba(197,244,0,0.3)] active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 p-3 hover:text-primary-fixed transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 p-3 hover:text-primary-fixed transition-all" href="#">
+<span class="material-symbols-outlined">person</span>
+</a>
+</div>
+</nav>
+<script>
+    function selectSwap(name, weight, match, imgSrc) {
+        const activeTitle = document.getElementById('active-title');
+        const activeWeight = document.getElementById('active-weight');
+        const activeCard = document.getElementById('active-ingredient');
+        const matchText = document.getElementById('match-pct');
+        const beamFill = document.getElementById('beam-fill');
+        const imageContainer = activeCard.querySelector('div');
+
+        // Animation Feedback
+        activeCard.style.transform = 'translateY(-8px) scale(1.02)';
+        activeCard.style.filter = 'brightness(1.2)';
+        
+        setTimeout(() => {
+            activeCard.style.transform = 'translateY(0) scale(1)';
+            activeCard.style.filter = 'brightness(1)';
+        }, 300);
+
+        // Update Content
+        activeTitle.innerText = name.toUpperCase();
+        imageContainer.style.backgroundImage = `url('${imgSrc}')`;
+
+        // Animate Number
+        let start = parseInt(activeWeight.innerText);
+        let duration = 600;
+        let startTime = null;
+
+        function animateNumber(currentTime) {
+            if (!startTime) startTime = currentTime;
+            let progress = Math.min((currentTime - startTime) / duration, 1);
+            let currentVal = Math.floor(progress * (weight - start) + start);
+            activeWeight.innerText = currentVal;
+            if (progress < 1) requestAnimationFrame(animateNumber);
+        }
+        requestAnimationFrame(animateNumber);
+
+        // Match Percentage
+        matchText.innerText = `${Math.round(match * 100)}%`;
+        beamFill.style.width = `${match * 100}%`;
+
+        if (match >= 0.98) {
+            beamFill.classList.add('animate-pulse-volt');
+        } else {
+            beamFill.classList.remove('animate-pulse-volt');
+        }
+    }
+</script>
+</body></html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>MYCOACH | Nutrition HUD</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #000000;
+            color: #e3e2e2;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .volt-glow {
+            box-shadow: 0 0 25px rgba(197, 244, 0, 0.3);
+        }
+        .cyan-glow {
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .gold-glow {
+            box-shadow: 0 0 20px rgba(200, 198, 197, 0.2);
+        }
+        @keyframes pulse-critical {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-critical {
+            animation: pulse-critical 1.5s ease-in-out infinite;
+        }
+        .radial-progress-container {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nike-italic {
+            font-style: italic;
+            transform: skewX(-5deg);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#7df4ff",
+                        "inverse-surface": "#e3e2e2",
+                        "on-tertiary-container": "#656464",
+                        "on-primary": "#293500",
+                        "background": "#000000",
+                        "tertiary": "#ffffff",
+                        "tertiary-fixed": "#e5e2e1",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "secondary-container": "#00eefc",
+                        "on-primary-fixed": "#161e00",
+                        "on-secondary-fixed": "#002022",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "on-surface-variant": "#c4c9ac",
+                        "surface-container": "#1f2020",
+                        "primary-fixed": "#c5f400",
+                        "on-background": "#e3e2e2",
+                        "surface-tint": "#acd600",
+                        "surface-container-high": "#292a2a",
+                        "on-secondary-container": "#00686f",
+                        "primary-container": "#c5f400",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "surface-dim": "#121414",
+                        "on-primary-fixed-variant": "#3c4d00",
+                        "surface-container-highest": "#343535",
+                        "surface-bright": "#383939",
+                        "surface-container-low": "#1b1c1c",
+                        "on-tertiary": "#313030",
+                        "on-secondary": "#00363a",
+                        "secondary": "#d3fbff",
+                        "secondary-fixed-dim": "#00dbe9",
+                        "outline-variant": "#444933",
+                        "on-surface": "#e3e2e2",
+                        "primary-fixed-dim": "#acd600",
+                        "inverse-primary": "#516600",
+                        "on-secondary-fixed-variant": "#004f54",
+                        "surface-container-lowest": "#0d0e0f",
+                        "outline": "#8e9379",
+                        "tertiary-container": "#e5e2e1",
+                        "surface-variant": "#343535",
+                        "on-primary-container": "#566c00",
+                        "primary": "#ffffff",
+                        "inverse-on-surface": "#303031",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#121414",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.375rem",
+                        "xl": "0.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "bento-gap": "12px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["64px", {"lineHeight": "1.0", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "data-sm": ["11px", {"lineHeight": "1.0", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "900"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "fontWeight": "900"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "data-lg": ["20px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.2", "fontWeight": "800"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<header class="fixed top-0 w-full z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5">
+<div class="flex items-center justify-between px-margin-mobile md:px-margin-desktop h-16 w-full">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full border border-primary-fixed/30 overflow-hidden cursor-pointer hover:scale-105 transition-transform active:scale-95">
+<img alt="Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIjOvJGySqjkLJzQtXFbp4vbG7wC5bOy0Pt3G_uf3p6FS0NwdA9AWElulkzvgmpkencDNHjb9l-_BZm-_C7zW4pwQ88iKiWXm0E_AvfyF3I06opAbt4RjGKu12VygniEIlsAFAjNojufhTm22OOpRUTlrTQ5rD3lTa1nYMvOvAQjrZ_ijd2h63hskKn2KARA3tn78FyjQF6uGDsrMwIQYtX_eMBGPLEs69UVM0nSblxmacVu9oAyydEPzferE_S6mRChZMyNFn3w"/>
+</div>
+<h1 class="font-display-lg text-headline-lg-mobile md:text-headline-lg nike-italic tracking-tighter text-white uppercase">MYCOACH</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-8 mr-8">
+<span class="font-data-sm text-on-surface-variant uppercase tracking-[0.2em] cursor-pointer hover:text-primary-fixed transition-colors">TRAINING</span>
+<span class="font-data-sm text-primary-fixed uppercase tracking-[0.2em] cursor-pointer">FUELING</span>
+<span class="font-data-sm text-on-surface-variant uppercase tracking-[0.2em] cursor-pointer hover:text-primary-fixed transition-colors">RECOVERY</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-white transition-colors cursor-pointer">tune</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
+<!-- Macro Dashboard Section -->
+<section class="mb-bento-gap">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+<div>
+<h2 class="font-display-lg text-[40px] md:text-[56px] nike-italic uppercase text-white leading-none">ESTADO NUTRICIONAL</h2>
+<div class="flex items-center gap-2 mt-2">
+<span class="w-2 h-2 bg-primary-fixed rounded-full animate-pulse"></span>
+<p class="font-data-sm text-on-surface-variant uppercase tracking-[0.15em]">SISTEMA TÁCTICO ACTIVO • 100% SYNC</p>
+</div>
+</div>
+<div class="flex items-center gap-2 text-error animate-critical border border-error/20 bg-error/5 px-3 py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[16px] fill-1">warning</span>
+<span class="font-data-sm italic font-black uppercase tracking-tighter">COMBUSTIBLE CRÍTICO: PROTEÍNA REQUERIDA</span>
+</div>
+</div>
+<!-- Radial HUD -->
+<div class="glass-card rounded-2xl p-8 flex flex-col md:flex-row items-center justify-around gap-12 border-white/10">
+<div class="radial-progress-container">
+<!-- Calories Ring (Outer) -->
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle cx="120" cy="120" fill="transparent" r="100" stroke="rgba(255,255,255,0.05)" stroke-width="12"></circle>
+<circle class="volt-glow" cx="120" cy="120" fill="transparent" r="100" stroke="#c5f400" stroke-dasharray="628.3" stroke-dashoffset="150" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<!-- Macro Concentric Rings (Inner) -->
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<!-- Protein (Cyan) -->
+<circle cx="120" cy="120" fill="transparent" r="75" stroke="rgba(255,255,255,0.05)" stroke-width="8"></circle>
+<circle cx="120" cy="120" fill="transparent" r="75" stroke="#7df4ff" stroke-dasharray="471.2" stroke-dashoffset="174" stroke-linecap="round" stroke-width="8"></circle>
+<!-- Carbs (Volt) -->
+<circle cx="120" cy="120" fill="transparent" r="60" stroke="rgba(255,255,255,0.05)" stroke-width="8"></circle>
+<circle cx="120" cy="120" fill="transparent" r="60" stroke="#acd600" stroke-dasharray="377" stroke-dashoffset="113" stroke-linecap="round" stroke-width="8"></circle>
+<!-- Fats (Muted Gold) -->
+<circle cx="120" cy="120" fill="transparent" r="45" stroke="rgba(255,255,255,0.05)" stroke-width="8"></circle>
+<circle cx="120" cy="120" fill="transparent" r="45" stroke="#c8c6c5" stroke-dasharray="282.7" stroke-dashoffset="98" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<div class="text-center z-10">
+<p class="font-data-sm text-on-surface-variant uppercase mb-1">TOTAL KCAL</p>
+<h3 class="font-display-lg text-headline-lg-mobile md:text-headline-lg nike-italic text-white">2,450</h3>
+<p class="font-data-sm text-primary-fixed/60 uppercase tracking-widest mt-1">/ 3,200</p>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-6 w-full md:w-auto">
+<div class="flex items-center justify-between md:justify-start gap-8 border-l-4 border-secondary-fixed pl-4">
+<div>
+<p class="font-data-sm text-on-surface-variant uppercase tracking-widest">PROTEÍNA (P)</p>
+<p class="font-data-lg text-white">140<span class="text-secondary-fixed text-sm ml-1">/ 220g</span></p>
+</div>
+<div class="text-right">
+<p class="font-data-sm text-secondary-fixed font-black">63%</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-start gap-8 border-l-4 border-primary-fixed-dim pl-4">
+<div>
+<p class="font-data-sm text-on-surface-variant uppercase tracking-widest">CARBOHIDRATOS (C)</p>
+<p class="font-data-lg text-white">280<span class="text-primary-fixed-dim text-sm ml-1">/ 400g</span></p>
+</div>
+<div class="text-right">
+<p class="font-data-sm text-primary-fixed-dim font-black">70%</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-start gap-8 border-l-4 border-tertiary-fixed-dim pl-4">
+<div>
+<p class="font-data-sm text-on-surface-variant uppercase tracking-widest">GRASAS (G)</p>
+<p class="font-data-lg text-white">55<span class="text-tertiary-fixed-dim text-sm ml-1">/ 85g</span></p>
+</div>
+<div class="text-right">
+<p class="font-data-sm text-tertiary-fixed-dim font-black">65%</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Tactical Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-bento-gap">
+<!-- Main: COMIDA -->
+<div class="md:col-span-8 relative rounded-[2rem] overflow-hidden group h-[520px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/10">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-110" style="background-image: url('https://lh3.googleusercontent.com/aida/AP1WRLtD6_n8jTKeGdPt-qgB2K0AjQAtgGcmqfOSFkurFFCCr2dzo4DnZsMzCWd04zcWu0DkoJkoRN7EcqpWFqitpPOa0mdbrKrJaoH9y28QFy-lTpkxMW_a_LMitTnsxWavwz2YCA4z-8ZSL_LvCMbmC4ES8x8tfJQ0qmJvG8VedNUsFuVK4HD9I7hc1I0d-Q09Tun7n4IlJRSQKniNgoIzIu_b6fY8oNGDb1olXhRE_cTg_2cC67PPcnmhZg')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-10 w-full">
+<div class="flex items-center gap-3 mb-4">
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed font-data-sm uppercase tracking-tighter rounded-sm font-black">ACTUAL</span>
+<span class="font-data-sm text-white/60 uppercase tracking-[0.2em]">SESS: 14:00 - 15:30</span>
+</div>
+<h3 class="font-display-lg text-[64px] md:text-[96px] nike-italic font-black uppercase text-white leading-[0.85] mb-8">COMIDA</h3>
+<div class="flex flex-wrap gap-4">
+<div class="bg-black/40 backdrop-blur-md px-5 py-4 border border-white/10 rounded-xl flex items-center gap-4">
+<span class="material-symbols-outlined text-primary-fixed scale-110">restaurant</span>
+<div>
+<p class="font-data-sm text-white/40 uppercase tracking-widest">PROTOCOLO RECOMENDADO</p>
+<p class="font-headline-md text-white">Pollo Asado + Quinoa</p>
+</div>
+</div>
+<button class="bg-primary-fixed text-on-primary-fixed px-10 py-4 rounded-xl font-black uppercase tracking-tighter flex items-center gap-3 hover:bg-white transition-all hover:scale-[1.02] active:scale-95 shadow-xl">
+                        REGISTRAR AHORA
+                        <span class="material-symbols-outlined fill-1">bolt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Completed: DESAYUNO -->
+<div class="md:col-span-4 glass-card rounded-[2rem] p-8 flex flex-col justify-between group hover:bg-white/5 transition-all cursor-pointer border-white/5">
+<div>
+<div class="flex justify-between items-start mb-8">
+<span class="material-symbols-outlined text-primary-fixed text-4xl fill-1">check_circle</span>
+<span class="font-data-sm text-on-surface-variant uppercase tracking-widest">COMPLETO 08:30</span>
+</div>
+<h4 class="font-display-lg text-headline-lg nike-italic uppercase text-on-surface-variant/40 line-through">DESAYUNO</h4>
+<p class="font-body-md text-on-surface-variant mt-2 font-medium">Huevos con Avena y Fruta</p>
+</div>
+<div class="pt-8 border-t border-white/5 flex justify-between items-center">
+<span class="font-data-sm uppercase text-on-surface-variant font-black tracking-widest">840 KCAL</span>
+<span class="material-symbols-outlined text-white/20 group-hover:text-primary-fixed group-hover:translate-x-2 transition-all">east</span>
+</div>
+</div>
+<!-- Upcoming: CENA -->
+<div class="md:col-span-4 glass-card rounded-[2rem] p-8 flex flex-col justify-between group hover:border-secondary-fixed/30 transition-all cursor-pointer relative overflow-hidden border-white/5">
+<div class="absolute -top-4 -right-4">
+<span class="material-symbols-outlined text-secondary-fixed/5 text-[120px] select-none">dark_mode</span>
+</div>
+<div>
+<div class="flex justify-between items-start mb-8">
+<span class="material-symbols-outlined text-secondary-fixed">schedule</span>
+<span class="font-data-sm text-on-surface-variant uppercase tracking-widest">PENDIENTE 20:30</span>
+</div>
+<h4 class="font-display-lg text-headline-lg nike-italic uppercase text-white">CENA</h4>
+<p class="font-body-md text-on-surface-variant mt-2 font-medium">Salmón con Espárragos</p>
+</div>
+<div class="pt-8 border-t border-white/5 flex justify-between items-center">
+<span class="font-data-sm uppercase text-white/40 font-black tracking-widest">620 KCAL</span>
+<span class="material-symbols-outlined text-secondary-fixed group-hover:translate-x-2 transition-all">east</span>
+</div>
+</div>
+<!-- Snacks Area -->
+<div class="md:col-span-8 glass-card rounded-[2rem] p-8 flex items-center justify-between group hover:bg-white/[0.04] transition-all cursor-pointer border-white/5">
+<div class="flex items-center gap-8">
+<div class="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary-fixed/50 transition-colors">
+<span class="material-symbols-outlined text-primary-fixed text-4xl">nutrition</span>
+</div>
+<div>
+<h4 class="font-headline-md text-white uppercase nike-italic leading-none">SNACKS &amp; SUPLEMENTOS</h4>
+<p class="font-data-sm text-on-surface-variant uppercase tracking-widest mt-2 flex items-center gap-2">
+<span class="w-1.5 h-1.5 bg-secondary-fixed rounded-full"></span>
+                        Próximo: Batido de Proteína (17:00)
+                    </p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right hidden sm:block">
+<p class="font-data-sm text-on-surface-variant uppercase tracking-tighter">RESTO DÍA</p>
+<p class="font-data-lg text-white">250 <span class="text-xs text-white/40">KCAL</span></p>
+</div>
+<div class="w-12 h-12 bg-primary-fixed rounded-xl flex items-center justify-center text-on-primary-fixed hover:rotate-90 transition-transform">
+<span class="material-symbols-outlined fill-1">add</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Tactical Quick Action -->
+<button class="fixed bottom-28 right-6 md:right-12 z-50 w-16 h-16 bg-white text-black rounded-2xl shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center justify-center active:scale-90 transition-all hover:-translate-y-1">
+<span class="material-symbols-outlined text-3xl font-bold">sync_alt</span>
+</button>
+<!-- Bottom Nav -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-black/80 backdrop-blur-3xl border-t border-white/10">
+<div class="flex justify-around items-center h-20 px-4 w-full">
+<div class="flex flex-col items-center justify-center text-white/30 p-3 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">fitness_center</span>
+</div>
+<div class="flex flex-col items-center justify-center relative p-3">
+<div class="absolute -top-2 w-1.5 h-1.5 bg-primary-fixed rounded-full"></div>
+<span class="material-symbols-outlined text-2xl text-primary-fixed fill-1">restaurant</span>
+</div>
+<div class="flex flex-col items-center justify-center text-white/30 p-3 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">monitoring</span>
+</div>
+<div class="flex flex-col items-center justify-center text-white/30 p-3 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">person_search</span>
+</div>
+</div>
+</nav>
+<script>
+    document.querySelectorAll('.glass-card, button').forEach(el => {
+        el.addEventListener('mousedown', () => { el.style.transform = 'scale(0.97)'; });
+        el.addEventListener('mouseup', () => { el.style.transform = ''; });
+        el.addEventListener('mouseleave', () => { el.style.transform = ''; });
+    });
+</script>
+</body></html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MyCoach | Training Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #000000;
+            color: #e3e2e2;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-module {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 60px -15px rgba(0, 0, 0, 0.8);
+        }
+        .neon-glow-volt:focus-within {
+            border-color: #c5f400;
+            box-shadow: 0 0 15px rgba(197, 244, 0, 0.3);
+        }
+        .progress-gradient {
+            background: linear-gradient(90deg, #00f0ff 0%, #c5f400 100%);
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#161e00",
+                        "surface-bright": "#383939",
+                        "primary-fixed": "#c5f400",
+                        "surface-variant": "#343535",
+                        "error": "#ffb4ab",
+                        "on-background": "#e3e2e2",
+                        "surface-container": "#1f2020",
+                        "outline-variant": "#444933",
+                        "background": "#121414",
+                        "surface-container-highest": "#343535",
+                        "on-secondary-fixed-variant": "#004f54",
+                        "primary-container": "#c5f400",
+                        "surface-container-high": "#292a2a",
+                        "secondary-fixed": "#7df4ff",
+                        "surface-dim": "#121414",
+                        "secondary": "#d3fbff",
+                        "secondary-fixed-dim": "#00dbe9",
+                        "on-primary": "#293500",
+                        "inverse-primary": "#516600",
+                        "on-tertiary-container": "#656464",
+                        "on-surface": "#e3e2e2",
+                        "surface": "#121414",
+                        "on-secondary-container": "#00686f",
+                        "inverse-on-surface": "#303031",
+                        "tertiary": "#ffffff",
+                        "inverse-surface": "#e3e2e2",
+                        "on-primary-container": "#566c00",
+                        "secondary-container": "#00eefc",
+                        "error-container": "#93000a",
+                        "tertiary-container": "#e5e2e1",
+                        "surface-tint": "#acd600",
+                        "on-surface-variant": "#c4c9ac",
+                        "surface-container-lowest": "#0d0e0f",
+                        "outline": "#8e9379",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#acd600",
+                        "primary": "#ffffff",
+                        "on-primary-fixed-variant": "#3c4d00",
+                        "on-secondary-fixed": "#002022",
+                        "surface-container-low": "#1b1c1c",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "on-secondary": "#00363a",
+                        "on-tertiary": "#313030",
+                        "tertiary-fixed": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "bento-gap": "12px",
+                        "margin-mobile": "20px",
+                        "gutter": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "data-lg": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "800"}],
+                        "data-sm": ["12px", {"lineHeight": "1.0", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "data-lg": ["20px", {"lineHeight": "1.0", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                        "display-lg": ["64px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-black text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-50 backdrop-blur-xl bg-background/20 flex justify-between items-center px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden border border-outline/20">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhr4TRmfgOzrMcc6AY0uvlQjh5yE21fttZlkhPs1Fjw1LqGi3gVKyOuI7IqAbiI5639OZPMiTQXPP5PoEW3qqT5swlVLO4Oi3W8F1xnHfXe6lwkVzUg_SIKnxaBsZ6UvLVsm5-MLVDwwiTWJcaf0ew48rchA20p_DQavPVYYf5K3Jgk9UFYds6IPP4jrDoVC7HoJe3srKr2FLWxOLj_bP2lJUS83fcMXTTLujTy0iT8UUDRuhiOshMfokE0hgN-LE2uAF9J6SN6w"/>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-black tracking-tighter text-primary">MYCOACH</span>
+</div>
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform text-primary">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</header>
+<!-- Main Content: Focus Card -->
+<main class="flex-grow flex flex-col items-center justify-center px-margin-mobile pb-32 pt-4">
+<div class="w-full max-w-2xl flex flex-col gap-bento-gap shadow-[0_0_100px_rgba(197,244,0,0.05)]">
+<!-- Exercise Context Header -->
+<div class="flex justify-between items-end mb-2">
+<div>
+<span class="font-data-sm text-data-sm text-primary-fixed tracking-widest uppercase mb-1 block">RESTING - SET 2 COMPLETED</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-white font-black tracking-tight">BARBELL SQUAT</h1>
+</div>
+<div class="text-right">
+<span class="font-data-sm text-data-sm text-on-surface-variant block">Current Heart Rate</span>
+<span class="font-data-lg text-data-lg text-error flex items-center justify-end gap-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                        142 BPM
+                    </span>
+</div>
+</div>
+<!-- Focus Module: Video & Demonstration -->
+<div class="relative w-full aspect-video rounded-3xl overflow-hidden glass-module group">
+<img class="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" data-alt="A professional high-contrast cinematic shot of a focused male bodybuilder performing a deep barbell squat in a dark, atmospheric industrial gym. The lighting is dramatic and moody, featuring sharp rim lighting on his muscles against an absolute black background. Subtle neon volt accents highlight the equipment and the gym's architectural edges, creating a futuristic, tactical training environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDy3TFGr7uki5RyUz6xqwCCPaYvslWriqdz25VzjqK17xs5nsgWI2-XC2P_DvLZqk0eRDL8uEE0s_BbToOVWzsSj0Xg1LYdTy5vBCTKnx8FaxMxBujkHp-d4OnKl8LggLTZvioJzV2qPQMZzq5pA3HkeDoNmEF4JteLDOKrD_d0J7H1SBaoWEy01u5rU47jaA9miWRYL2tp-RblOsgcuwExmHA2zYS21TgnqPY85OwJeo_8uxb4BJxsqiNgTbPobg7Ek-VIAZLggA"/>
+<!-- Video Overlay UI -->
+<div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+<div class="absolute bottom-6 left-6 flex items-center gap-4">
+<button class="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 hover:bg-white/20 transition-all active:scale-90">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+<div>
+<p class="font-data-sm text-data-sm text-white/70">Performance Guide</p>
+<p class="font-body-md text-body-md text-white font-bold">Watch Form Check</p>
+</div>
+</div>
+<!-- Live Track -->
+<div class="absolute top-6 right-6">
+<div class="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-primary-fixed/30 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary-fixed animate-pulse"></div>
+<span class="font-data-sm text-data-sm text-primary-fixed uppercase tracking-tighter">Live Form Tracking</span>
+</div>
+</div>
+</div>
+<!-- Interaction Module: Big Inputs -->
+<div class="grid grid-cols-2 gap-4 mt-2">
+<!-- KG Input -->
+<div class="glass-module rounded-[32px] p-6 flex flex-col items-center justify-center neon-glow-volt transition-all duration-300">
+<label class="font-data-sm text-data-sm text-on-surface-variant uppercase tracking-[0.2em] mb-2">Weight (KG)</label>
+<div class="flex items-baseline gap-2">
+<input class="bg-transparent border-none text-center font-display-lg text-display-lg text-white w-32 focus:ring-0 p-0" pattern="[0-9]*" type="number" value="120"/>
+</div>
+<div class="flex gap-4 mt-4">
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center active:scale-90 transition-all hover:bg-white/5" onclick="this.parentNode.previousElementSibling.querySelector('input').stepDown()">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center active:scale-90 transition-all hover:bg-white/5" onclick="this.parentNode.previousElementSibling.querySelector('input').stepUp()">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+<!-- Reps Input -->
+<div class="glass-module rounded-[32px] p-6 flex flex-col items-center justify-center neon-glow-volt transition-all duration-300">
+<label class="font-data-sm text-data-sm text-on-surface-variant uppercase tracking-[0.2em] mb-2">Target Reps</label>
+<div class="flex items-baseline gap-2">
+<input class="bg-transparent border-none text-center font-display-lg text-display-lg text-primary-fixed w-24 focus:ring-0 p-0" pattern="[0-9]*" type="number" value="8"/>
+</div>
+<div class="flex gap-4 mt-4">
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center active:scale-90 transition-all hover:bg-white/5" onclick="this.parentNode.previousElementSibling.querySelector('input').stepDown()">
+<span class="material-symbols-outlined text-white">remove</span>
+</button>
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center active:scale-90 transition-all hover:bg-white/5" onclick="this.parentNode.previousElementSibling.querySelector('input').stepUp()">
+<span class="material-symbols-outlined text-white">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Complete Action -->
+<div class="w-full py-8 bg-surface-container-high border-2 border-primary-fixed rounded-[32px] shadow-[0_0_30px_rgba(197,244,0,0.2)] mt-4 flex flex-col items-center justify-center gap-2 relative overflow-hidden">
+<div class="absolute bottom-0 left-0 h-1 bg-primary-fixed w-[70%] transition-all duration-1000"></div>
+<span class="font-data-sm text-data-sm text-primary-fixed uppercase tracking-widest">Resting Time Remaining</span>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary-fixed text-4xl animate-pulse">timer</span>
+<span class="font-display-lg text-display-lg text-white tracking-tighter">01:24</span>
+</div>
+<button class="mt-2 px-6 py-2 rounded-full border border-white/20 text-data-sm text-white/70 hover:bg-white/10 transition-all uppercase tracking-widest">Skip Rest</button>
+</div>
+<!-- Workout Progress Visualizer -->
+<div class="mt-4 px-2">
+<div class="flex justify-between items-center mb-2">
+<span class="font-data-sm text-data-sm text-white/50">Workout Duration: 42:15</span>
+<span class="font-data-sm text-data-sm text-white/50">65% Overall Progress</span>
+</div>
+<div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="progress-gradient h-full w-[65%] rounded-full shadow-[0_0_10px_rgba(197,244,0,0.5)]"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] rounded-full z-50 bg-surface-container-lowest/80 border border-outline-variant/30 backdrop-blur-3xl shadow-[0_20px_40px_rgba(0,0,0,0.8)] flex justify-around items-center py-2 px-4">
+<a class="flex flex-col items-center justify-center bg-primary-fixed text-on-primary-fixed rounded-full p-unit w-12 h-12 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">equalizer</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for input focus
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.closest('.glass-module').classList.add('border-primary-fixed');
+            });
+            input.addEventListener('blur', () => {
+                input.closest('.glass-module').classList.remove('border-primary-fixed');
+            });
+            // Auto-select on focus for faster editing
+            input.addEventListener('click', function() {
+                this.select();
+            });
+        });
+
+        // Set Complete Animation
+        const completeBtn = document.querySelector('button.bg-primary-fixed');
+        completeBtn.addEventListener('click', () => {
+            completeBtn.innerHTML = '<span class="material-symbols-outlined text-3xl animate-spin">sync</span> RECORDING...';
+            setTimeout(() => {
+                completeBtn.innerHTML = '<span class="material-symbols-outlined text-3xl">check_circle</span> SET RECORDED';
+                completeBtn.classList.replace('bg-primary-fixed', 'bg-secondary-container');
+                completeBtn.classList.replace('text-on-primary-fixed', 'text-on-secondary-container');
+                
+                setTimeout(() => {
+                   window.location.reload(); // Simple reset simulation
+                }, 1000);
+            }, 800);
+        });
+    </script>
+</body></html>
