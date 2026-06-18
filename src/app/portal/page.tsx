@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 import {
   Flame, Ruler, Droplet, LogOut, Camera, Loader2, CheckCircle2, Check,
@@ -377,28 +378,34 @@ interface Equivalent {
   name: string;
   gramsPerCarb?: number;
   gramsPerProtein?: number;
+  calsPer100g?: number;
+  fatPer100g?: number;
   icon?: string;
+  photo?: string;
   note?: string;
   macroType?: "carb" | "protein";
 }
 
+const UP = (id: string) => `https://images.unsplash.com/photo-${id}?w=300&h=300&fit=crop&auto=format&q=80`;
+
 const EQUIV_CARBS: Equivalent[] = [
-  { name: "Arroz blanco",    gramsPerCarb: 3.3,  icon: "rice",         note: "Digestión rápida, post-entreno",  macroType:"carb" },
-  { name: "Avena",           gramsPerCarb: 5.3,  icon: "oats",         note: "Alta en beta-glucanos",           macroType:"carb" },
-  { name: "Camote",          gramsPerCarb: 5.8,  icon: "sweet-potato", note: "Alto en potasio y vitamina A",    macroType:"carb" },
-  { name: "Papa cocida",     gramsPerCarb: 6.25, icon: "potato",       note: "Versátil y saciante",             macroType:"carb" },
-  { name: "Tortilla de maíz",gramsPerCarb: 4.0,  icon: "tortilla",     note: "2 tortillas pequeñas por porción",macroType:"carb" },
-  { name: "Pan integral",    gramsPerCarb: 4.35, icon: "bread",        note: "100% integral preferible",        macroType:"carb" },
-  { name: "Plátano",         gramsPerCarb: 4.35, icon: "banana",       note: "Ideal pre-entreno",               macroType:"carb" },
+  { name: "Arroz blanco",    gramsPerCarb: 3.3,  calsPer100g: 130, fatPer100g: 0.3, icon: "rice",         photo: UP("1536304929831-ee1ca9d44906"), note: "Digestión rápida, post-entreno",  macroType:"carb" },
+  { name: "Avena",           gramsPerCarb: 5.3,  calsPer100g: 389, fatPer100g: 6.9, icon: "oats",         photo: UP("1571068316344-75bc2b04e67b"), note: "Alta en beta-glucanos",           macroType:"carb" },
+  { name: "Camote",          gramsPerCarb: 5.8,  calsPer100g:  86, fatPer100g: 0.1, icon: "sweet-potato", photo: UP("1596133322891-1f30a48df1af"), note: "Alto en potasio y vitamina A",    macroType:"carb" },
+  { name: "Papa cocida",     gramsPerCarb: 6.25, calsPer100g:  77, fatPer100g: 0.1, icon: "potato",       photo: UP("1518977676601-b53f82aba655"), note: "Versátil y saciante",             macroType:"carb" },
+  { name: "Tortilla de maíz",gramsPerCarb: 4.0,  calsPer100g: 218, fatPer100g: 4.0, icon: "tortilla",     photo: UP("1565299585323-38d6b0865b47"), note: "2 tortillas pequeñas por porción",macroType:"carb" },
+  { name: "Pan integral",    gramsPerCarb: 4.35, calsPer100g: 247, fatPer100g: 3.5, icon: "bread",        photo: UP("1509440159596-0249088772ff"), note: "100% integral preferible",        macroType:"carb" },
+  { name: "Plátano",         gramsPerCarb: 4.35, calsPer100g:  89, fatPer100g: 0.3, icon: "banana",       photo: UP("1571771894821-ce9b6c11b08e"), note: "Ideal pre-entreno",               macroType:"carb" },
 ];
 
 const EQUIV_PROTEIN: Equivalent[] = [
-  { name: "Pechuga de Pollo", gramsPerProtein: 4.5, icon: "chicken", note: "Proteína magra #1",           macroType:"protein" },
-  { name: "Carne magra",      gramsPerProtein: 5.0, icon: "beef",    note: "Rica en zinc y B12",          macroType:"protein" },
-  { name: "Atún en agua",     gramsPerProtein: 4.0, icon: "tuna",    note: "Omega-3 y bajo en grasa",     macroType:"protein" },
-  { name: "Salmón",           gramsPerProtein: 5.3, icon: "fish",    note: "Grasa saludable omega-3",     macroType:"protein" },
-  { name: "Huevo entero",     gramsPerProtein: 8.0, icon: "egg",     note: "Proteína completa",           macroType:"protein" },
-  { name: "Leche descremada", gramsPerProtein:10.0, icon: "milk",    note: "Calcio + proteína",           macroType:"protein" },
+  { name: "Pechuga de Pollo", gramsPerProtein: 4.5, calsPer100g: 165, fatPer100g:  3.6, icon: "chicken", photo: UP("1604503468506-a8da13d82791"), note: "Proteína magra #1",           macroType:"protein" },
+  { name: "Carne magra",      gramsPerProtein: 5.0, calsPer100g: 250, fatPer100g: 12.0, icon: "beef",    photo: UP("1529694157872-7cc33244d072"), note: "Rica en zinc y B12",          macroType:"protein" },
+  { name: "Atún en agua",     gramsPerProtein: 4.0, calsPer100g: 116, fatPer100g:  0.5, icon: "tuna",    photo: UP("1559847844-5315695dadae"),    note: "Omega-3 y bajo en grasa",     macroType:"protein" },
+  { name: "Salmón",           gramsPerProtein: 5.3, calsPer100g: 208, fatPer100g: 13.0, icon: "fish",    photo: UP("1467003909585-2f8a72700288"), note: "Grasa saludable omega-3",     macroType:"protein" },
+  { name: "Huevo entero",     gramsPerProtein: 8.0, calsPer100g: 155, fatPer100g: 11.0, icon: "egg",     photo: UP("1482049016688-2d3e1b311543"), note: "Proteína completa",           macroType:"protein" },
+  { name: "Leche descremada", gramsPerProtein:10.0, calsPer100g:  34, fatPer100g:  0.1, icon: "milk",    photo: UP("1550583724-b2692b85b150"),    note: "Calcio + proteína",           macroType:"protein" },
+  { name: "Lomo de Cerdo",    gramsPerProtein: 4.8, calsPer100g: 242, fatPer100g: 14.0, icon: "beef",    photo: UP("1432139555190-58524dae6a55"), note: "Alto en B1 y zinc",           macroType:"protein" },
 ];
 
 // Combined catalog — used for display
@@ -595,114 +602,213 @@ function IngredientRow({
    EQUIVALENTS CATALOG — Fitia card grid style
 ══════════════════════════════════════════════════════════════ */
 
-function EquivCatalog({ ingredient, selected, onSelect }: {
+function EquivCatalog({ ingredient, selected, onSelect, onConfirm, macroType }: {
   ingredient: Ingredient;
   selected: Equivalent | null;
   onSelect: (eq: Equivalent | null) => void;
+  onConfirm?: () => void;
+  macroType: "protein" | "carb";
 }) {
-  const baseCarbs   = ingredient.macros?.carbs    ?? Math.round(ingredient.calories * 0.45 / 4);
-  const baseProtein = ingredient.macros?.protein  ?? Math.round(ingredient.calories * 0.25 / 4);
-  const [activeTab, setActiveTabLocal] = useState<"protein"|"carb">("protein");
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const baseCarbs   = ingredient.macros?.carbs   ?? Math.round(ingredient.calories * 0.45 / 4);
+  const baseProtein = ingredient.macros?.protein ?? Math.round(ingredient.calories * 0.25 / 4);
+  const baseFat     = ingredient.macros?.fat     ?? Math.round(ingredient.calories * 0.30 / 9);
 
-  const list = EQUIV_CATALOG.filter(e => e.macroType === activeTab);
+  const list = EQUIV_CATALOG.filter(e => e.macroType === macroType);
 
   const calcGrams = (eq: Equivalent) => {
     if (eq.macroType === "protein") return Math.round(baseProtein * (eq.gramsPerProtein ?? 5));
     return Math.round(baseCarbs * (eq.gramsPerCarb ?? 0));
   };
+  const calcCalOffset = (eq: Equivalent) => {
+    if (!eq.calsPer100g) return null;
+    return Math.round(calcGrams(eq) * eq.calsPer100g / 100) - ingredient.calories;
+  };
+  const calcFatDelta = (eq: Equivalent) => {
+    if (!eq.fatPer100g) return null;
+    const newFat = Math.round((calcGrams(eq) * eq.fatPer100g / 100) * 10) / 10;
+    return Math.round((newFat - baseFat) * 10) / 10;
+  };
+  const calcMatchPct = (eq: Equivalent) => {
+    const target   = eq.macroType === "protein" ? baseProtein : baseCarbs;
+    const divisor  = eq.macroType === "protein" ? (eq.gramsPerProtein ?? 5) : (eq.gramsPerCarb ?? 3.3);
+    const delivered = Math.round(calcGrams(eq) / divisor);
+    return Math.min(100, Math.round((delivered / Math.max(target, 1)) * 100));
+  };
+  const matchLabel = (pct: number) =>
+    pct >= 98 ? "COINCIDENCIA PERFECTA 100%" : pct >= 90 ? `COINCIDENCIA ALTA ${pct}%` : `COINCIDENCIA PARCIAL ${pct}%`;
+
+  const selMatch     = selected ? calcMatchPct(selected) : null;
+  const selOffset    = selected ? calcCalOffset(selected) : null;
+  const selFatDelta  = selected ? calcFatDelta(selected) : null;
+  const selGrams     = selected ? calcGrams(selected) : null;
 
   return (
     <div style={{ animation: "fadeSlideIn 0.22s ease" }}>
-      {/* Title */}
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Cambios inteligentes para <span style={{ color: "#fff" }}>{ingredient.name}</span>
-        </p>
+
+      {/* ── HEADER: CONVERSIÓN AUTOMÁTICA + match badge ── */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em]"
+            style={{ fontFamily: DS, color: "#CEFF00" }}>
+            CONVERSIÓN AUTOMÁTICA
+          </span>
+          {selMatch !== null && (
+            <span className="px-2 py-[3px] rounded-md text-[8px] font-black uppercase tracking-[0.1em]"
+              style={{ fontFamily: DS, background: selMatch >= 98 ? "#CEFF00" : "rgba(255,255,255,0.08)", color: selMatch >= 98 ? "#000" : "#808080" }}>
+              {matchLabel(selMatch)}
+            </span>
+          )}
+        </div>
         {selected && (
           <button onClick={() => onSelect(null)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px]"
-            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.38)" }}>
-            <RefreshCw size={9} /> Reset
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <RefreshCw size={9} style={{ color: "rgba(255,255,255,0.4)" }} />
+            <span style={{ fontFamily: DS, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.38)" }}>
+              RESET
+            </span>
           </button>
         )}
       </div>
 
-      {/* Tab toggle: Proteína / Carbos */}
-      <div className="flex gap-1.5 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        {(["protein","carb"] as const).map(t => (
-          <button key={t} onClick={() => setActiveTabLocal(t)}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200"
-            style={{
-              background: activeTab === t ? "rgba(255,255,255,0.1)" : "transparent",
-              color: activeTab === t ? "#fff" : "rgba(255,255,255,0.32)",
-              border: activeTab === t ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
-            }}>
-            {t === "protein" ? "🥩 Proteína" : "🌾 Carbohidratos"}
-          </button>
-        ))}
+      {/* ── COMPARISON BLOCK ── */}
+      {selected && selGrams !== null && (
+        <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", animation: "fadeSlideIn 0.18s ease" }}>
+          <div className="text-center flex-1">
+            <p className="text-[8px] font-black uppercase tracking-[0.14em] mb-0.5" style={{ color: "#808080", fontFamily: DS }}>ORIGINAL</p>
+            <p className="font-black text-white tabular-nums" style={{ fontFamily: DS, fontSize: 18, lineHeight: 1 }}>{ingredient.grams}g</p>
+            <p className="text-[9px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)", fontFamily: DS, textTransform: "uppercase" }}>{ingredient.name}</p>
+          </div>
+          <ArrowLeftRight size={14} style={{ color: "#CEFF00", flexShrink: 0 }} />
+          <div className="text-center flex-1">
+            <p className="text-[8px] font-black uppercase tracking-[0.14em] mb-0.5" style={{ color: "#CEFF00", fontFamily: DS }}>SUSTITUTO</p>
+            <p className="font-black tabular-nums" style={{ fontFamily: DS, fontSize: 18, lineHeight: 1, color: "#CEFF00" }}>{selGrams}g</p>
+            <p className="text-[9px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)", fontFamily: DS, textTransform: "uppercase" }}>{selected.name}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── LOCKED CATEGORY LABEL ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+          style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.18)" }}>
+          <Zap size={9} fill="#CEFF00" stroke="none" />
+          <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "#CEFF00" }}>
+            {macroType === "protein" ? "PROTEÍNA — FILTRO ACTIVO" : "CARBOHIDRATO — FILTRO ACTIVO"}
+          </span>
+        </div>
       </div>
 
-      {/* Card grid — 3 cols */}
-      <div className="grid grid-cols-3 gap-2.5 mb-4">
+      {/* ── HORIZONTAL CAROUSEL ── */}
+      <div className="flex overflow-x-auto gap-4 pb-4 -mx-1 px-1 mb-4"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
         {list.map((eq) => {
-          const grams = calcGrams(eq);
+          const grams  = calcGrams(eq);
+          const offset = calcCalOffset(eq);
+          const match  = calcMatchPct(eq);
           const active = selected?.name === eq.name;
+          const macroSub = eq.macroType === "protein"
+            ? `${Math.round(grams / (eq.gramsPerProtein ?? 5))}g Prot`
+            : `${Math.round(grams / (eq.gramsPerCarb ?? 3.3))}g Carb`;
+
           return (
             <button
               key={eq.name}
               onClick={() => onSelect(active ? null : eq)}
-              className="relative flex flex-col items-center text-center rounded-2xl p-3 transition-all duration-200 active:scale-95"
+              className="w-[160px] bg-[#1A1A1A] rounded-2xl p-4 flex-shrink-0 border flex flex-col justify-between relative active:scale-95 transition-all duration-200"
               style={{
-                background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                border: `1.5px solid ${active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)"}`,
-                boxShadow: active ? "0 0 0 2px rgba(96,165,250,0.2)" : "none",
-              }}
-            >
-              {/* Illustration */}
-              <div className="mb-2">
-                <FoodIllu iconKey={eq.icon} size={52} />
-              </div>
-              {/* Name */}
-              <p className="text-[11px] font-medium leading-tight mb-1.5"
-                style={{ color: active ? "#fff" : "rgba(255,255,255,0.65)" }}>
-                {eq.name}
-              </p>
-              {/* Grams pill */}
-              <div className="px-2 py-0.5 rounded-full"
-                style={{ background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)" }}>
-                <span className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: active ? "#60a5fa" : "rgba(255,255,255,0.45)" }}>
-                  {grams}g
-                </span>
-              </div>
+                borderColor: active ? "#CEFF00" : "rgba(255,255,255,0.04)",
+                boxShadow: active ? "0 0 18px rgba(206,255,0,0.14)" : "none",
+                minHeight: 160,
+              }}>
+
               {/* Active check */}
               {active && (
-                <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
-                  style={{ background: "#60a5fa" }}>
-                  <CheckCircle2 size={10} strokeWidth={3} style={{ color: "#fff" }} />
+                <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full flex items-center justify-center z-10"
+                  style={{ background: "#CEFF00" }}>
+                  <Check size={10} strokeWidth={3} style={{ color: "#000" }} />
                 </div>
               )}
+
+              {/* Food photo */}
+              <div className="w-14 h-14 rounded-xl overflow-hidden mb-3 mx-auto flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {eq.photo
+                  ? <img src={eq.photo} alt={eq.name} className="w-full h-full object-cover object-center rounded-xl"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  : <FoodIllu iconKey={eq.icon} size={56} />
+                }
+              </div>
+
+              {/* Name + macro metric */}
+              <div>
+                <p className="font-bold text-white uppercase leading-tight mb-1"
+                  style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", letterSpacing: "0.03em" }}>
+                  {eq.name}
+                </p>
+                <p className="text-[11px] font-black tabular-nums"
+                  style={{ fontFamily: DS, fontStyle: "normal", color: "#00F0FF" }}>
+                  {macroSub}
+                </p>
+                {/* Calorie offset chip */}
+                {offset !== null && (
+                  <span className="text-[9px] font-black mt-1 inline-block"
+                    style={{ fontFamily: DS, color: offset <= 0 ? "#CEFF00" : "rgba(255,100,100,0.85)" }}>
+                    {offset > 0 ? "+" : ""}{offset} kcal
+                  </span>
+                )}
+                {/* Alignment label when active */}
+                {active && (
+                  <p className="text-[8px] font-black uppercase mt-0.5"
+                    style={{ fontFamily: DS, letterSpacing: "0.1em", color: match >= 98 ? "#CEFF00" : "#808080" }}>
+                    {matchLabel(match)}
+                  </p>
+                )}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Conversion breakdown */}
+      {/* ── TELEMETRY GRID ── */}
       {selected && (
-        <div className="rounded-2xl px-4 py-3.5 mt-1"
-          style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)", animation: "fadeSlideIn 0.2s ease" }}>
-          <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(96,165,250,0.5)" }}>Conversión automática</p>
-          <p className="text-[13px] leading-relaxed font-medium" style={{ color: "rgba(255,255,255,0.78)" }}>
-            <span style={{ color: "#fff" }}>{ingredient.grams}g</span>{" de "}{ingredient.name}
-            {" = "}
-            <span style={{ color: "#60a5fa" }}>{calcGrams(selected)}g</span>{" de "}{selected.name}
-          </p>
-          <p className="text-[10px] mt-1.5" style={{ color: "rgba(255,255,255,0.25)" }}>
-            {selected.macroType === "protein"
-              ? `Base: ${baseProtein}g proteína · ${selected.gramsPerProtein ?? 5}g alimento / 1g proteína`
-              : `Base: ${baseCarbs}g carbos · ${selected.gramsPerCarb}g alimento / 1g carbo`}
-          </p>
+        <div className="grid grid-cols-2 gap-3 mb-4" style={{ animation: "fadeSlideIn 0.18s ease" }}>
+          <div className="rounded-2xl p-3.5"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p className="text-[#808080] font-mono text-[10px] uppercase tracking-widest mb-1.5">
+              DIFERENCIA CALÓRICA
+            </p>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: selOffset !== null ? (selOffset <= 0 ? "#CEFF00" : "rgba(255,100,100,0.9)") : "#808080" }}>
+              {selOffset !== null ? `${selOffset > 0 ? "+" : ""}${selOffset}` : "—"}
+            </p>
+            <p className="text-[9px] mt-0.5 font-black uppercase tracking-[0.12em]" style={{ color: "#808080", fontFamily: DS }}>KCAL</p>
+          </div>
+          <div className="rounded-2xl p-3.5"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p className="text-[#808080] font-mono text-[10px] uppercase tracking-widest mb-1.5">
+              VARIANZA DE GRASA
+            </p>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: selFatDelta !== null ? (selFatDelta <= 0 ? "#CEFF00" : "rgba(255,180,60,0.9)") : "#808080" }}>
+              {selFatDelta !== null ? `${selFatDelta > 0 ? "+" : ""}${selFatDelta}` : "—"}
+            </p>
+            <p className="text-[9px] mt-0.5 font-black uppercase tracking-[0.12em]" style={{ color: "#808080", fontFamily: DS }}>GRAMOS</p>
+          </div>
         </div>
+      )}
+
+      {/* ── CTA BUTTON ── */}
+      {selected && (
+        <button
+          onClick={() => { onConfirm?.(); }}
+          className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl tracking-wider w-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+          style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)", letterSpacing: "0.14em", boxShadow: "0 0 28px rgba(206,255,0,0.22)" }}>
+          CONFIRMAR SUSTITUCIÓN
+          <Zap size={16} fill="#000" stroke="none" />
+        </button>
       )}
     </div>
   );
@@ -721,8 +827,8 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         grams: [250, 180, 120, 200, 150][i % 5],
         calories: Math.round(meal.calories / meal.items.length),
         icon: ["egg", "wheat", "beef", "salad", "chicken"][i % 5],
-        unitQty: [1, 0.5, 1.5, 2, 1][i % 5],
-        unit: ["pieza", "taza", "tazas", "piezas", "porción"][i % 5],
+        unitQty: [1, 2, 1.5, 1, 1][i % 5],
+        unit: ["pieza", "piezas", "tazas", "porción", "porción"][i % 5],
         macros: {
           protein: Math.round(macros.protein / meal.items.length),
           carbs:   Math.round(macros.carbs   / meal.items.length),
@@ -730,158 +836,175 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         },
       }));
 
-  const [swapOpen, setSwapOpen] = useState<number | null>(null);
-  const [swaps, setSwaps]       = useState<Record<number, Equivalent | null>>({});
-  const [logged, setLogged]     = useState(false);
+  const [swapDrawerIdx, setSwapDrawerIdx] = useState<number | null>(null);
+  const [swaps, setSwaps]                = useState<Record<number, Equivalent | null>>({});
 
-  const heroImg    = getFoodImg(meal.name);
-  const nutriScore = Math.min(10, 6.5 + macros.protein / 60).toFixed(1);
-  const waterPct   = Math.min(waterMl / 2500, 1);
+  const lockedMacroType = (idx: number): "protein" | "carb" => {
+    const ing = ingredients[idx];
+    const PROTEIN_ICONS = new Set(["egg","chicken","beef","tuna","fish","milk"]);
+    const CARB_ICONS    = new Set(["oats","wheat","rice","sweet-potato","potato","tortilla","bread","banana","salad","corn"]);
+    const PROTEIN_KEYS  = ["huevo","pollo","pechuga","carne","atun","salmon","cerdo","res","pescado","proteina","clara","albumina"];
+    const CARB_KEYS     = ["avena","arroz","camote","papa","platano","tortilla","pan","maiz","yam","pasta","quinoa","frijol","lenteja"];
+    const nameLower = ing.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    if (ing.icon && PROTEIN_ICONS.has(ing.icon)) return "protein";
+    if (ing.icon && CARB_ICONS.has(ing.icon))    return "carb";
+    if (PROTEIN_KEYS.some(k => nameLower.includes(k))) return "protein";
+    if (CARB_KEYS.some(k   => nameLower.includes(k))) return "carb";
+    const p = ing.macros?.protein ?? Math.round(macros.protein / ingredients.length);
+    const c = ing.macros?.carbs   ?? Math.round(macros.carbs   / ingredients.length);
+    return p >= c ? "protein" : "carb";
+  };
+  const [confirmed, setConfirmed] = useState(false);
 
-  const MACRO_PILLS = [
-    { label: "PROT",  value: `${macros.protein}g`, labelColor: "#00F0FF" },
-    { label: "CARBS", value: `${macros.carbs}g`,   labelColor: "#808080" },
-    { label: "FAT",   value: `${macros.fat}g`,     labelColor: "#808080" },
+  const heroImg  = getFoodImg(meal.name);
+  const waterPct = Math.min(waterMl / 2500, 1);
+
+  const H_MACROS = [
+    { label: "PROT",  value: `${macros.protein}g`, color: "#00F0FF" },
+    { label: "CARBS", value: `${macros.carbs}g`,   color: "#808080" },
+    { label: "GRASA", value: `${macros.fat}g`,     color: "#808080" },
   ];
 
   return (
     <>
-      {/* ── CINEMA HERO ── */}
-      <div className="relative -mx-5 mb-6 overflow-hidden" style={{ minHeight: 230 }}>
+      {/* ── HERO: full-bleed with horizontal macro row ── */}
+      <div className="relative -mx-5 mb-6 overflow-hidden" style={{ minHeight: 260 }}>
         <img src={heroImg} alt={meal.name}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: 0.52 }} />
+          style={{ opacity: 0.48 }} />
         <div className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, #070708 0%, rgba(7,7,8,0.28) 55%, transparent 100%)" }} />
-        <div className="relative z-10 px-5 pt-8 pb-6 flex items-end justify-between" style={{ minHeight: 230 }}>
-          <div className="flex-1 pr-3">
-            <p className="text-[9px] font-black uppercase mb-2"
-              style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.22em", color: "#CEFF00" }}>
-              ELITE NUTRITION
-            </p>
-            <h2 style={{
-              fontFamily: DS, fontWeight: 900, fontStyle: "italic",
-              fontSize: "clamp(34px,10.5vw,46px)", lineHeight: 0.88,
-              textTransform: "uppercase", letterSpacing: "0.03em", color: "#fff",
-            }}>
-              {meal.name}
-            </h2>
-          </div>
-          {/* Glassmorphic macro pills */}
-          <div className="flex flex-col gap-2 shrink-0">
-            {MACRO_PILLS.map(({ label, value, labelColor }) => (
-              <div key={label} className="rounded-2xl flex flex-col items-center justify-center"
+          style={{ background: "linear-gradient(to top, #070708 0%, rgba(7,7,8,0.2) 60%, transparent 100%)" }} />
+
+        <div className="relative z-10 px-5 pt-10 pb-6 flex flex-col justify-end" style={{ minHeight: 260 }}>
+          <p className="text-[9px] font-black uppercase mb-2"
+            style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.24em", color: "#CEFF00" }}>
+            ELITE NUTRITION
+          </p>
+          <h2 style={{
+            fontFamily: DS, fontWeight: 900, fontStyle: "italic",
+            fontSize: "clamp(32px,9.5vw,44px)", lineHeight: 0.9,
+            textTransform: "uppercase", letterSpacing: "0.03em", color: "#fff",
+          }}>
+            {meal.name}
+          </h2>
+
+          {/* Horizontal macro pill row */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {H_MACROS.map(({ label, value, color }) => (
+              <div key={label}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl"
                 style={{
-                  width: 80, height: 64,
-                  background: "rgba(26,26,26,0.84)",
-                  backdropFilter: "blur(14px)",
-                  WebkitBackdropFilter: "blur(14px)",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+                  background: "rgba(20,20,20,0.86)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid rgba(255,255,255,0.06)",
                 }}>
-                <p className="text-[9px] font-black uppercase"
-                  style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.1em", color: labelColor }}>
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color }}>
                   {label}
-                </p>
-                <p className="font-black tabular-nums leading-tight"
-                  style={{ fontFamily: DS, fontStyle: "normal", fontSize: 17, color: "#fff" }}>
+                </span>
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 15, color: "#fff" }}>
                   {value}
-                </p>
+                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── ANÁLISIS DE COMPOSICIÓN heading ── */}
+      {/* ── COMPONENTES DE LA COMIDA ── */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-black uppercase"
-          style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.04em", color: "#fff" }}>
-          ANÁLISIS DE COMPOSICIÓN
+        <h3 style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: "clamp(14px,4.2vw,17px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff" }}>
+          COMPONENTES DE LA COMIDA
         </h3>
-        <span className="text-[9px] font-black tracking-[0.14em]"
-          style={{ fontFamily: DS, fontStyle: "normal", color: "#CEFF00" }}>
+        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
           BETA v2.4
         </span>
       </div>
 
-      {/* ── INGREDIENT ROWS ── */}
+      {/* ── INGREDIENT CARDS ── */}
       <div className="mb-5">
         {ingredients.map((ing, i) => {
-          const swapped  = swaps[i];
-          const dispGrams = swapped
+          const swapped       = swaps[i];
+          const isSub         = !!swapped;
+          const ingProt       = ing.macros?.protein ?? Math.round(macros.protein / ingredients.length);
+          const ingCarb       = ing.macros?.carbs   ?? Math.round(macros.carbs   / ingredients.length);
+          const dispGrams     = swapped
             ? swapped.macroType === "protein"
-              ? `${Math.round((ing.macros?.protein ?? macros.protein / ingredients.length) * (swapped.gramsPerProtein ?? 5))}g`
-              : `${Math.round((ing.macros?.carbs ?? macros.carbs / ingredients.length) * (swapped.gramsPerCarb ?? 3.3))}g`
+              ? `${Math.round(ingProt * (swapped.gramsPerProtein ?? 5))}g`
+              : `${Math.round(ingCarb * (swapped.gramsPerCarb ?? 3.3))}g`
             : `${ing.grams}g`;
-          const dispName  = swapped ? swapped.name : ing.name;
-          const subtitle  = ing.unit
-            ? `${ing.unitQty ?? ""} ${ing.unit}`.trim().toUpperCase()
-            : ing.name.toUpperCase();
+          const dispName      = (swapped ? swapped.name : ing.name).toUpperCase();
+          const subLabel      = isSub
+            ? (swapped!.macroType === "protein" ? "BASE PROTEIN" : "BASE CARB")
+            : `PROT ${ingProt}G · CARB ${ingCarb}G`;
+          const amountDisplay = dispGrams;
 
           return (
             <div key={i}>
-              {/* Bento ingredient row */}
-              <div className="flex items-center gap-4 rounded-[24px] p-5"
-                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-                {/* Circular thumbnail */}
-                <div className="w-14 h-14 rounded-full overflow-hidden relative shrink-0"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <img src={getIngrImg(ing.icon)} alt={ing.name}
-                    className="absolute inset-0 w-full h-full object-cover" />
+
+              {/* ── Standard Ingredient Card (template-exact) ── */}
+              <div className="w-full bg-[#1A1A1A] rounded-[20px] p-4 flex items-center justify-between mb-3 border relative overflow-hidden"
+                style={{
+                  borderColor: isSub ? "#CEFF00" : "rgba(255,255,255,0.02)",
+                  boxShadow: isSub ? "0 0 22px rgba(206,255,0,0.09)" : "none",
+                  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                }}>
+
+                {/* SUSTITUYENDO badge */}
+                {isSub && (
+                  <div className="absolute top-2.5 right-3 z-10 px-2 py-[3px] rounded-md"
+                    style={{ background: "#CEFF00" }}>
+                    <span className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 7, letterSpacing: "0.18em", textTransform: "uppercase", color: "#000" }}>
+                      SUSTITUYENDO
+                    </span>
+                  </div>
+                )}
+
+                {/* LEFT */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-zinc-900 border border-white/[0.06] flex-shrink-0 relative">
+                    <img src={getIngrImg(ing.icon)} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-[#808080] font-mono tracking-widest uppercase">
+                      {subLabel}
+                    </span>
+                    <span className="text-xl font-bold text-white uppercase tracking-tight"
+                      style={{ fontFamily: DS, fontStyle: "normal", paddingTop: isSub ? 14 : 0 }}>
+                      {dispName}
+                    </span>
+                  </div>
                 </div>
-                {/* Name + desc */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-black truncate"
-                    style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)", lineHeight: 1.1, color: "#fff" }}>
-                    {dispName}
-                  </p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.12em] truncate mt-0.5"
-                    style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
-                    {subtitle}
-                  </p>
-                </div>
-                {/* Grams + protein */}
-                <div className="text-right shrink-0">
-                  <p className="font-black tabular-nums leading-none"
-                    style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(22px,6.5vw,28px)", color: "#fff" }}>
-                    {dispGrams}
-                  </p>
-                  <p className="text-[10px] font-black mt-0.5"
-                    style={{ fontFamily: DS, fontStyle: "normal", color: "#00F0FF" }}>
-                    {ing.macros?.protein ?? Math.round(macros.protein / ingredients.length)}g Proteína
-                  </p>
+
+                {/* RIGHT */}
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl font-black text-white tracking-tight"
+                    style={{ fontFamily: DS, fontStyle: "normal" }}>
+                    {amountDisplay}
+                  </span>
+                  <div className="text-[#808080] p-1 opacity-40 hover:opacity-100 transition-opacity">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="9"  cy="5"  r="1"/><circle cx="9"  cy="12" r="1"/><circle cx="9"  cy="19" r="1"/>
+                      <circle cx="15" cy="5"  r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* Swap node between rows */}
+              {/* Volt swap badge between rows */}
               {i < ingredients.length - 1 && (
-                <div className="flex flex-col items-center gap-0 py-1.5">
+                <div className="flex items-center justify-center py-0.5 -mt-1.5 z-10 relative">
                   <button
-                    onClick={() => setSwapOpen(p => p === i ? null : i)}
+                    onClick={() => setSwapDrawerIdx(i)}
                     className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all"
                     style={{
-                      background: swapOpen === i ? "rgba(206,255,0,0.15)" : "#CEFF00",
-                      border: swapOpen === i ? "2px solid #CEFF00" : "2px solid #070708",
-                      boxShadow: "0 0 14px rgba(206,255,0,0.32), 0 2px 8px rgba(0,0,0,0.5)",
+                      background: swapDrawerIdx === i ? "rgba(206,255,0,0.14)" : "#CEFF00",
+                      border: swapDrawerIdx === i ? "2px solid #CEFF00" : "2px solid #070708",
+                      boxShadow: "0 0 16px rgba(206,255,0,0.32), 0 2px 8px rgba(0,0,0,0.5)",
                     }}>
                     <ArrowLeftRight size={14} strokeWidth={2.5}
-                      style={{ color: swapOpen === i ? "#CEFF00" : "#000" }} />
+                      style={{ color: swapDrawerIdx === i ? "#CEFF00" : "#000" }} />
                   </button>
-                </div>
-              )}
-
-              {/* Inline equiv catalog */}
-              {swapOpen === i && (
-                <div className="rounded-2xl overflow-hidden mb-2"
-                  style={{ background: "rgba(20,20,20,0.96)", border: "1px solid rgba(206,255,0,0.14)", animation: "fadeSlideIn 0.18s ease" }}>
-                  <div className="px-4 pt-4 pb-3">
-                    <EquivCatalog
-                      ingredient={ing}
-                      selected={swaps[i] ?? null}
-                      onSelect={eq => { setSwaps(p => ({ ...p, [i]: eq })); if (!eq) setSwapOpen(null); }}
-                    />
-                  </div>
                 </div>
               )}
             </div>
@@ -889,57 +1012,39 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         })}
       </div>
 
-      {/* ── TELEMETRY GRID ── */}
+      {/* ── STATS ROW ── */}
       <div className="flex gap-3 mb-4">
-        <div className="flex-1 rounded-2xl p-4 flex flex-col gap-2"
+        <div className="flex-1 rounded-2xl p-4 flex items-center gap-3"
           style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-          <Flame size={16} style={{ color: "#CEFF00" }} />
+          <Flame size={18} style={{ color: "#CEFF00" }} />
           <div>
-            <p className="font-black tabular-nums leading-none"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(26px,8vw,34px)", color: "#fff" }}>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: "#fff" }}>
               {meal.calories}
             </p>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-1"
-              style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
+            <p style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080" }}>
               KCAL TOTAL
             </p>
           </div>
         </div>
-        <div className="flex-1 rounded-2xl p-4 flex flex-col gap-2"
+        <div className="flex-1 rounded-2xl p-4 flex items-center gap-3"
           style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-          <Dumbbell size={16} style={{ color: "#00F0FF" }} />
+          <Droplet size={18} style={{ color: "#00F0FF" }} />
           <div>
-            <p className="font-black tabular-nums leading-none"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(26px,8vw,34px)", color: "#fff" }}>
-              {nutriScore}
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: "#fff" }}>
+              {waterMl}ml
             </p>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-1"
-              style={{ fontFamily: DS, fontStyle: "normal", color: "#808080", lineHeight: 1.4 }}>
-              / 10{"\n"}SCORE NUTRICIONAL
+            <p style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080" }}>
+              HIDRATACIÓN
             </p>
           </div>
         </div>
       </div>
 
-      {/* ── HYDRATION MODULE ── */}
-      <div className="rounded-2xl p-4 mb-5"
-        style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Droplet size={14} style={{ color: "#00F0FF" }} />
-            <p className="font-black uppercase text-white"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13, letterSpacing: "0.08em" }}>
-              Hidratación
-            </p>
-          </div>
-          <p className="tabular-nums text-[11px] font-black"
-            style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
-            {waterMl}ml
-            <span style={{ color: "rgba(255,255,255,0.18)" }}> / </span>
-            2.5L
-          </p>
-        </div>
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      {/* Hydration track */}
+      <div className="mb-5">
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.max(waterPct * 100, 2)}%`, background: "#CEFF00", boxShadow: "0 0 8px rgba(206,255,0,0.4)" }} />
         </div>
@@ -947,22 +1052,99 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
 
       {/* ── CTA BUTTON ── */}
       <button
-        onClick={() => setLogged(p => !p)}
+        onClick={() => setConfirmed(p => !p)}
         className="w-full py-5 rounded-2xl flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
         style={{
           fontFamily: DS, fontStyle: "normal", fontWeight: 900,
-          fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.12em",
+          fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.14em",
           textTransform: "uppercase",
-          background: logged ? "rgba(206,255,0,0.12)" : "#CEFF00",
-          color: logged ? "#CEFF00" : "#000",
-          border: logged ? "1px solid rgba(206,255,0,0.28)" : "none",
-          boxShadow: logged ? "none" : "0 0 28px rgba(206,255,0,0.22)",
+          background: confirmed ? "rgba(206,255,0,0.1)" : "#CEFF00",
+          color: confirmed ? "#CEFF00" : "#000",
+          border: confirmed ? "1px solid rgba(206,255,0,0.3)" : "none",
+          boxShadow: confirmed ? "none" : "0 0 32px rgba(206,255,0,0.25)",
         }}>
-        {logged
+        {confirmed
           ? <Check size={18} strokeWidth={3} />
           : <CheckCircle2 size={18} strokeWidth={2.5} />}
-        {logged ? "REGISTRADO" : `LOGUEAR ${meal.name.toUpperCase()}`}
+        {confirmed ? "COMIDA CONFIRMADA" : "CONFIRMAR COMIDA"}
       </button>
+
+      {/* ── SWAP DRAWER PORTAL ── */}
+      {swapDrawerIdx !== null && typeof document !== "undefined" && createPortal(
+        <>
+          {/* Scrim */}
+          <div
+            className="fixed inset-0 z-[70] bg-black/60"
+            style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", animation: "bsFadeIn 0.2s ease" }}
+            onClick={() => setSwapDrawerIdx(null)}
+          />
+          {/* Sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-[80] w-full overflow-y-auto"
+            style={{
+              background: "rgba(7,7,8,0.98)",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderRadius: "32px 32px 0 0",
+              maxHeight: "85vh",
+              animation: "bsSlideUp 0.3s cubic-bezier(0.32,0.72,0,1)",
+              paddingBottom: "calc(24px + env(safe-area-inset-bottom,0px))",
+            }}>
+
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-[3px] rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
+            </div>
+
+            <div className="px-6 pt-3 pb-6">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(16px,5vw,20px)", letterSpacing: "0.06em", color: "#fff" }}>
+                    SUSTITUCIÓN
+                  </p>
+                  <p className="text-[10px] font-mono tracking-widest uppercase mt-0.5" style={{ color: "#808080" }}>
+                    MOTOR DE CONVERSIÓN AUTOMÁTICA
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSwapDrawerIdx(null)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <X size={15} style={{ color: "rgba(255,255,255,0.5)" }} />
+                </button>
+              </div>
+
+              {/* Target ingredient pill */}
+              <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-white/[0.06] flex-shrink-0">
+                  <img src={getIngrImg(ingredients[swapDrawerIdx].icon)} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-mono tracking-widest uppercase mb-0.5" style={{ color: "#808080" }}>
+                    {lockedMacroType(swapDrawerIdx) === "protein" ? "PROTEÍNA" : "CARBOHIDRATO"} — BUSCANDO ALTERNATIVAS
+                  </p>
+                  <p className="font-bold uppercase truncate" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 15, color: "#fff" }}>
+                    {ingredients[swapDrawerIdx].name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Catalog */}
+              <EquivCatalog
+                ingredient={ingredients[swapDrawerIdx]}
+                macroType={lockedMacroType(swapDrawerIdx)}
+                selected={swaps[swapDrawerIdx] ?? null}
+                onSelect={eq => setSwaps(p => ({ ...p, [swapDrawerIdx!]: eq }))}
+                onConfirm={() => setSwapDrawerIdx(null)}
+              />
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
@@ -1685,7 +1867,18 @@ function TabHoy({
 }) {
   void detail; void day; void onExerciseOpen;
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
-  const [checkedMeals, setCheckedMeals] = useState<Set<number>>(new Set());
+  const [checkedMeals, setCheckedMeals] = useState<Set<number>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const v = localStorage.getItem("mc:meals_checked");
+      return v ? new Set(JSON.parse(v) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("mc:meals_checked", JSON.stringify([...checkedMeals])); }
+    catch {}
+  }, [checkedMeals]);
 
   const toggleMeal = (i: number) => setCheckedMeals(s => {
     const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n;
@@ -1870,40 +2063,191 @@ function TabProgreso({
   student: Student; detail: Detail; startWeight: number;
   onBadge: () => void;
 }) {
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
   const diff = +(student.currentWeight - startWeight).toFixed(1);
+  const [dayTab, setDayTab] = useState(2);
+
+  /* ── Weight chart SVG math ── */
+  const history = detail.weightHistory;
+  const PW = 320, PH = 80, PAD = 10;
+  const weights = history.map(h => h.weight);
+  const minW = Math.min(...weights) - 0.8;
+  const maxW = Math.max(...weights) + 0.8;
+  const toY = (w: number) => PAD + (1 - (w - minW) / (maxW - minW)) * (PH - PAD * 2);
+  const toX = (i: number) => PAD + (i / Math.max(weights.length - 1, 1)) * (PW - PAD * 2);
+  const pts  = weights.map((w, i) => `${toX(i).toFixed(1)},${toY(w).toFixed(1)}`);
+  const linePath = `M ${pts.join(" L ")}`;
+  const areaPath = `${linePath} L ${toX(weights.length - 1)},${PH - PAD} L ${toX(0)},${PH - PAD} Z`;
+
+  /* ── Biometric cards ── */
+  const latest = detail.measurements[detail.measurements.length - 1];
+  const prev   = detail.measurements[detail.measurements.length - 2];
+  const bioCards = [
+    { label: "BRAZO",   curr: latest?.armR  ?? 28.5, base: prev?.armR  ?? 28,   unit: "cm", goodIfPos: true  },
+    { label: "CINTURA", curr: latest?.waist ?? 68,   base: prev?.waist ?? 71,   unit: "cm", goodIfPos: false },
+    { label: "PECHO",   curr: latest?.chest ?? 88,   base: prev?.chest ?? 89,   unit: "cm", goodIfPos: true  },
+    { label: "PIERNA",  curr: latest?.thighR ?? 55,  base: prev?.thighR ?? 55.5, unit: "cm", goodIfPos: true  },
+  ];
+
+  /* ── Visual log photos (real Unsplash athletic shots) ── */
+  const VISUAL_LOG = [
+    { photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=560&fit=crop&auto=format&q=80", month: "MES 1 · BASELINE",  angle: "FRONTAL"   },
+    { photo: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=560&fit=crop&auto=format&q=80", month: "MES 2 · PROGRESO", angle: "POSTERIOR" },
+    { photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=560&fit=crop&auto=format&q=80", month: "MES 3 · ACTUAL",   angle: "LATERAL"   },
+  ];
+
+  const DAY_TABS = ["LUN", "MAR", "MIÉ", "HOY"];
 
   return (
-    <div className="space-y-4">
-      <div className="pt-2 pb-1">
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#fff" }}>Progreso</h1>
-        <p className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Tu evolución en el tiempo</p>
+    <div className="w-full flex flex-col pb-24">
+
+      {/* ── 1. PERFORMANCE HEADER ── */}
+      <div className="pt-5 pb-6">
+        <p className="font-mono uppercase mb-2"
+          style={{ fontSize: 9, letterSpacing: "0.22em", color: "#CEFF00" }}>
+          PERFORMANCE INTELLIGENCE
+        </p>
+        <h1 className="font-black italic uppercase leading-none"
+          style={{ fontFamily: DS, fontSize: "clamp(30px,9vw,40px)", letterSpacing: "0.03em", color: "#fff" }}>
+          ANÁLISIS DE<br />RENDIMIENTO
+        </h1>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <StatCard label="Peso actual" value={student.currentWeight} unit="kg"
-          sub={diff !== 0 ? `${diff > 0 ? "+" : ""}${diff} kg desde inicio` : "Sin cambios"}
-          subColor={diff <= 0 ? "#34d399" : "#f87171"} icon={TrendingDown} accent="#34d399" />
-        <StatCard label="Racha" value={student.streak} unit="días" icon={Flame} accent="#fb923c" />
+      {/* ── 2. WEIGHT EVOLUTION BENTO ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
+
+        {/* Header row */}
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>
+              EVOLUCIÓN PESO
+            </p>
+            <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(28px,8vw,36px)", color: "#fff" }}>
+              {student.currentWeight}
+              <span style={{ fontSize: "clamp(15px,4vw,18px)", color: "rgba(255,255,255,0.45)", marginLeft: 4 }}>KG</span>
+            </p>
+          </div>
+          <div className="px-3 py-1 rounded-full mt-1 flex-shrink-0"
+            style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.2)" }}>
+            <span className="font-mono font-bold text-xs" style={{ color: "#CEFF00" }}>
+              {diff > 0 ? "+" : ""}{diff}kg Total
+            </span>
+          </div>
+        </div>
+
+        {/* SVG chart */}
+        <div className="w-full relative" style={{ height: 80 }}>
+          <svg viewBox={`0 0 ${PW} ${PH}`} preserveAspectRatio="none"
+            className="w-full h-full" style={{ overflow: "visible" }}>
+            <defs>
+              <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#CEFF00" stopOpacity="0.2" />
+                <stop offset="60%"  stopColor="#CEFF00" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#CEFF00" stopOpacity="0" />
+              </linearGradient>
+              <filter id="chartGlow">
+                <feGaussianBlur stdDeviation="2.5" result="b" />
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d={areaPath} fill="url(#wGrad)" />
+            <path d={linePath} fill="none" stroke="#CEFF00" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" filter="url(#chartGlow)" />
+            <circle
+              cx={toX(weights.length - 1)} cy={toY(weights[weights.length - 1])}
+              r="4" fill="#CEFF00" filter="url(#chartGlow)" />
+          </svg>
+        </div>
+
+        {/* Day toggle tabs */}
+        <div className="grid grid-cols-4 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {DAY_TABS.map((d, i) => (
+            <button key={d} onClick={() => setDayTab(i)}
+              className="py-3 text-center transition-colors"
+              style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+              <span className="font-black uppercase"
+                style={{ fontFamily: DS, fontStyle: "normal", fontSize: 11, letterSpacing: "0.1em",
+                  color: dayTab === i ? "#CEFF00" : "rgba(255,255,255,0.22)" }}>
+                {d}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Chart */}
-      <CardWrap>
-        <SectionHeader icon={TrendingUp} title="Evolución de peso" />
-        <WeightChart history={detail.weightHistory} />
-      </CardWrap>
+      {/* ── 3. BIOMETRIC MEASUREMENTS ── */}
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "#808080" }}>
+        MEDICIONES BIOMÉTRICAS
+      </p>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {bioCards.map(({ label, curr, base, unit, goodIfPos }) => {
+          const delta   = +(curr - base).toFixed(1);
+          const isGood  = goodIfPos ? delta >= 0 : delta <= 0;
+          const deltaColor = delta === 0 ? "#808080" : isGood ? "#4ade80" : "rgba(248,113,113,0.9)";
+          return (
+            <div key={label}
+              className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
+              style={{ minHeight: 108 }}>
+              <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#808080" }}>
+                {label}
+              </p>
+              <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(30px,8.5vw,38px)", color: "#fff" }}>
+                {curr}
+                <span style={{ fontSize: "clamp(14px,4vw,17px)", color: "rgba(255,255,255,0.45)", marginLeft: 2 }}>
+                  {unit}
+                </span>
+              </p>
+              <p className="font-bold text-[11px] mt-2 tabular-nums"
+                style={{ color: deltaColor }}>
+                {delta >= 0 ? "+" : ""}{delta}cm
+              </p>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Log form */}
-      <CardWrap>
-        <SectionHeader icon={Weight} title="Registrar progreso de hoy" />
-        <ProgressForm onSaved={() => {}} />
-      </CardWrap>
+      {/* ── 4. VISUAL LOG CAROUSEL ── */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "#808080" }}>
+          REGISTRO VISUAL
+        </p>
+        <button style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 12,
+          letterSpacing: "0.06em", color: "#CEFF00" }}>
+          Ver Todo
+        </button>
+      </div>
+      <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 mb-6"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+        {VISUAL_LOG.map((v, i) => (
+          <div key={i}
+            className="rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/[0.04] shadow-2xl"
+            style={{ width: 220, height: 300 }}>
+            <img src={v.photo} alt={v.angle}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+              style={{ filter: "grayscale(0.55) brightness(0.8)" }} />
+            <div className="absolute inset-0"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.35) 48%, transparent 72%)" }} />
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <p className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: "0.2em", color: "#CEFF00" }}>
+                {v.month}
+              </p>
+              <p className="font-black italic uppercase leading-none"
+                style={{ fontFamily: DS, fontSize: "clamp(22px,6vw,28px)", color: "#fff" }}>
+                {v.angle}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {/* Badge */}
-      <button onClick={onBadge}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-75"
-        style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)" }}>
-        <Download size={14} strokeWidth={1.75} /> Descargar Insignia de Progreso
+      {/* ── 5. MASTER CTA ── */}
+      <button
+        onClick={onBadge}
+        className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+        style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)",
+          letterSpacing: "0.14em", boxShadow: "0 0 32px rgba(206,255,0,0.15), 0 8px 20px rgba(0,0,0,0.3)" }}>
+        COMPARA TU EVOLUCIÓN
+        <Camera size={18} strokeWidth={2} />
       </button>
     </div>
   );
@@ -2689,120 +3033,249 @@ function CancelSubscriptionSheet({
 function TabPerfil({ student, detail, onCancelRequest }: {
   student: Student; detail: Detail; onCancelRequest: () => void;
 }) {
-  const initials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
 
-  const infoRows = [
-    { label: "Correo", value: student.email ?? "—" },
-    { label: "Miembro desde", value: student.joinedDate ?? "—" },
-    { label: "Estado", value: student.paymentStatus ?? "Activo" },
-  ];
+  /* Rank derived from streak */
+  const rankTitle = student.streak >= 60 ? "LEYENDA"
+    : student.streak >= 30 ? "BESTIA"
+    : student.streak >= 14 ? "GUERRERO"
+    : "ATLETA";
+  const rankSub = student.streak >= 30 ? "ELITE" : student.streak >= 14 ? "PRO" : "NIVEL 1";
 
-  const bodyRows = [
-    { label: "Estatura", value: detail.height && detail.height > 0 ? `${detail.height} cm` : "—", icon: Ruler, accent: "#a78bfa" },
-    { label: "% Grasa corporal", value: detail.bodyFat && detail.bodyFat > 0 ? `${detail.bodyFat}%` : "—", icon: Droplet, accent: "#60a5fa" },
-    { label: "Peso actual", value: `${student.currentWeight} kg`, icon: TrendingDown, accent: "#34d399" },
-    { label: "Racha activa", value: `${student.streak} días`, icon: Flame, accent: "#fb923c" },
+  /* Subscription tier label */
+  const planLabel = student.stage === "Volumen" ? "Plan Berserker"
+    : student.stage === "Definición" ? "Plan Shredder"
+    : "Plan Performance";
+
+  /* Monthly progress: streak vs 30-day target */
+  const monthPct = Math.min(100, Math.round((student.streak / 30) * 100));
+
+  /* PR data (static display values) */
+  const PR_ITEMS = [
+    { label: "SQUAT",    value: "180", unit: "KG", accentColor: "#CEFF00" },
+    { label: "DEADLIFT", value: "220", unit: "KG", accentColor: "#00F0FF" },
+    { label: "BENCH",    value: "140", unit: "KG", accentColor: "#808080" },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="pt-2 pb-1">
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#fff" }}>Perfil</h1>
-        <p className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Tu cuenta y datos físicos</p>
+    <div className="w-full flex flex-col pb-24">
+
+      {/* ── 1. HERO BANNER ── */}
+      <div className="w-full relative overflow-hidden mb-6"
+        style={{ height: 280, marginLeft: "-1rem", width: "calc(100% + 2rem)" }}>
+        <img
+          src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop&auto=format&q=80"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ filter: "grayscale(0.4) brightness(0.55)" }}
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(7,7,8,0.25) 0%, rgba(7,7,8,0.15) 40%, rgba(7,7,8,0.85) 85%, rgba(7,7,8,1) 100%)" }} />
+        {/* Identity tagline */}
+        <div className="absolute bottom-0 left-0 px-5 pb-5">
+          <p className="font-black uppercase leading-tight"
+            style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.02em" }}>
+            UNA SERIE MÁS,
+          </p>
+          <p className="font-black uppercase leading-tight"
+            style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.02em" }}>
+            UNA COMIDA MÁS.
+          </p>
+          <p className="font-black italic text-sm tracking-wide mt-1"
+            style={{ fontFamily: DS, color: "#CEFF00", letterSpacing: "0.06em" }}>
+            DISCIPLINA ABSOLUTA.
+          </p>
+        </div>
+        {/* Avatar chip top-right */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-2xl"
+          style={{ background: "rgba(7,7,8,0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
+            style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, border: "1.5px solid rgba(206,255,0,0.5)" }}>
+            {student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+          </div>
+          <div className="leading-tight">
+            <p className="font-black text-white truncate max-w-[110px]"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13 }}>
+              {student.name.split(" ")[0].toUpperCase()}
+            </p>
+            <p className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "#CEFF00" }}>
+              {student.stage} · E{student.stageNumber}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Avatar card */}
-      <CardWrap>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-[20px] font-semibold"
-            style={{ background: student.avatarColor ?? "rgba(255,255,255,0.08)", color: "#fff" }}>
-            {initials}
+      {/* ── 2. STREAK & RANK GRID ── */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Racha */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
+          style={{ minHeight: 110 }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
+              RACHA DE DÍAS
+            </p>
+            <Flame size={13} style={{ color: "#CEFF00", filter: "drop-shadow(0 0 4px rgba(206,255,0,0.5))" }} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-semibold tracking-tight truncate" style={{ color: "#fff" }}>{student.name}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.32)" }}>{student.email ?? ""}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#34d399" }} />
-              <span className="text-[10px]" style={{ color: "#34d399" }}>Suscripción activa</span>
-            </div>
+          <p className="font-black italic leading-none"
+            style={{ fontFamily: DS, fontSize: "clamp(26px,7vw,32px)", color: "#CEFF00", letterSpacing: "0.02em" }}>
+            {student.streak}
+            <span style={{ fontSize: "clamp(14px,3.5vw,16px)", marginLeft: 4 }}>DÍAS</span>
+          </p>
+        </div>
+
+        {/* Rango */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
+          style={{ minHeight: 110 }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
+              RANGO
+            </p>
+            <Sparkles size={13} style={{ color: "#00F0FF", filter: "drop-shadow(0 0 4px rgba(0,240,255,0.45))" }} />
           </div>
-        </div>
-      </CardWrap>
-
-      {/* Body stats */}
-      <CardWrap>
-        <SectionHeader icon={User} title="Datos físicos" />
-        <div className="grid grid-cols-2 gap-2">
-          {bodyRows.map(({ label, value, icon: Icon, accent }) => (
-            <div key={label} className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
-                <Icon size={11} style={{ color: accent }} />
-              </div>
-              <p className="text-[20px] font-light" style={{ color: value === "—" ? "rgba(255,255,255,0.2)" : "#fff" }}>{value}</p>
-            </div>
-          ))}
-        </div>
-      </CardWrap>
-
-      {/* Account info */}
-      <CardWrap>
-        <SectionHeader icon={CreditCard} title="Cuenta" />
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.065)" }}>
-          {infoRows.map((row, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: i < infoRows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>{row.label}</span>
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.72)" }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </CardWrap>
-
-      {/* Stage */}
-      <CardWrap>
-        <SectionHeader icon={Calendar} title="Plan activo" />
-        <div className="flex items-center justify-between">
           <div>
-            <p className="text-[15px] font-medium" style={{ color: "#fff" }}>{student.stage}</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Etapa {student.stageNumber}</p>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.16)" }}>
-            <span className="text-[11px]" style={{ color: "#34d399" }}>En curso</span>
+            <p className="font-black uppercase leading-tight"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.03em" }}>
+              {rankTitle}
+            </p>
+            <p className="font-mono font-bold text-xs mt-0.5"
+              style={{ color: "#CEFF00", letterSpacing: "0.12em", filter: "drop-shadow(0 0 6px rgba(206,255,0,0.4))" }}>
+              {rankSub}
+            </p>
           </div>
         </div>
-      </CardWrap>
+      </div>
 
-      {/* Suscripción — solo visible cuando está activa */}
-      {(student.paymentStatus === "active" || student.paymentStatus === "grace_period") && (
-        <CardWrap>
-          <SectionHeader icon={CreditCard} title="Mi suscripción" />
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[14px] font-medium" style={{ color: "#fff" }}>Plan mensual</p>
-              <p className="text-[12px] mt-0.5" style={{ color: "#8E8E93" }}>$1,200 MXN / mes</p>
-            </div>
-            <div className="px-3 py-1.5 rounded-xl"
-              style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.13)" }}>
-              <span className="text-[11px]" style={{ color: "#34d399" }}>Activa</span>
-            </div>
+      {/* ── 3. PERSONAL RECORDS ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#808080" }}>
+            PERSONAL RECORDS
+          </p>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#CEFF00" }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
           </div>
+        </div>
+
+        {/* 3-col split */}
+        <div className="grid grid-cols-3">
+          {PR_ITEMS.map(({ label, value, unit, accentColor }, i) => (
+            <div key={label}
+              className="flex flex-col px-4 py-2"
+              style={{
+                borderLeft: `2px solid ${accentColor}`,
+                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                marginLeft: i > 0 ? 0 : undefined,
+              }}>
+              <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#808080" }}>
+                {label}
+              </p>
+              <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(22px,6vw,28px)", color: "#fff" }}>
+                {value}
+              </p>
+              <p className="font-mono text-[9px] uppercase tracking-widest mt-0.5" style={{ color: accentColor }}>
+                {unit}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 4. MURO DE HONOR ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: "#CEFF00", boxShadow: "0 0 8px rgba(206,255,0,0.5)" }} />
+        <h2 className="font-black italic uppercase tracking-wider"
+          style={{ fontFamily: DS, fontSize: "clamp(16px,5vw,20px)", color: "#fff" }}>
+          MURO DE HONOR
+        </h2>
+      </div>
+
+      {/* Row 1: Correo */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-3 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>CORREO</p>
+          <p className="font-bold text-white truncate" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            {student.email ?? "atleta@elite.com"}
+          </p>
+        </div>
+      </div>
+
+      {/* Row 2: Suscripción */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-3 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(206,255,0,0.07)", border: "1px solid rgba(206,255,0,0.14)" }}>
+          <Zap size={15} fill="#CEFF00" stroke="none" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>SUSCRIPCIÓN</p>
+          <p className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            {planLabel}
+          </p>
+        </div>
+        {(student.paymentStatus === "active" || student.paymentStatus === "grace_period") && (
           <button
             onClick={onCancelRequest}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] cursor-pointer transition-opacity hover:opacity-70"
-            style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.1)", color: "#f87171", minHeight: 46 }}
-          >
-            <X size={13} />
-            Cancelar suscripción
+            className="flex-shrink-0 px-2.5 py-1.5 rounded-xl text-[9px] font-mono uppercase tracking-wide"
+            style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.15)", color: "rgba(248,113,113,0.8)" }}>
+            Cancelar
           </button>
-        </CardWrap>
-      )}
+        )}
+      </div>
 
-      {/* Sign out */}
+      {/* Row 3: Ajustes */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-6 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <Settings size={15} style={{ color: "rgba(255,255,255,0.5)" }} />
+        </div>
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>AJUSTES</p>
+          <p className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            Preferencia de cuenta
+          </p>
+        </div>
+        <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.2)", marginLeft: "auto", flexShrink: 0 }} />
+      </div>
+
+      {/* ── 5. MONTHLY PROGRESS BAR ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 mb-6 border border-white/[0.02]">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#fff", letterSpacing: "0.04em" }}>
+            PROGRESO MENSUAL
+          </span>
+          <span className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#CEFF00" }}>
+            {monthPct}%
+          </span>
+          <span className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#fff", letterSpacing: "0.04em" }}>
+            COMPLETADO
+          </span>
+        </div>
+        <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="h-3 rounded-full transition-all duration-700"
+            style={{
+              width: `${monthPct}%`,
+              background: "linear-gradient(to right, rgba(206,255,0,0.5), #CEFF00)",
+              boxShadow: "0 0 10px rgba(206,255,0,0.35)",
+            }} />
+        </div>
+      </div>
+
+      {/* ── SIGN OUT ── */}
       <button onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] cursor-pointer transition-opacity hover:opacity-75"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.065)", color: "rgba(255,255,255,0.38)" }}>
-        <LogOut size={14} strokeWidth={1.5} /> Cerrar sesión
+        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl cursor-pointer transition-opacity hover:opacity-75"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.065)", color: "rgba(255,255,255,0.35)", fontSize: 13 }}>
+        <LogOut size={14} strokeWidth={1.5} />
+        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Cerrar Sesión
+        </span>
       </button>
     </div>
   );
@@ -2883,9 +3356,14 @@ function GlobalHeader({ student }: { student: Student }) {
         <Zap size={14} fill="#CEFF00" stroke="none" />
         <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(16px,4.8vw,19px)", letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>MYCOACH</span>
       </div>
-      <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black shrink-0"
-        style={{ background: student.avatarColor ?? "#CEFF00", border: "2px solid #CEFF00", color: "#000", fontFamily: DS, letterSpacing: "0.02em" }}>
-        {student.avatarInitials}
+      <div className="relative shrink-0">
+        {/* Outer glow ring */}
+        <div className="absolute inset-0 rounded-full"
+          style={{ boxShadow: "0 0 0 2px #070708, 0 0 0 4px #CEFF00, 0 0 18px rgba(206,255,0,0.35)", borderRadius: "50%" }} />
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-black relative z-10"
+          style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, letterSpacing: "0.02em", border: "2px solid rgba(206,255,0,0.6)" }}>
+          {student.avatarInitials}
+        </div>
       </div>
     </div>
   );
@@ -2914,8 +3392,16 @@ export default function PortalPage() {
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null);
   const [activeExercise, setActiveExercise] = useState<(Exercise & { muscleGroup?: string }) | null>(null);
 
-  // Shared hydration state (cross-tab)
-  const [waterMl, setWaterMl] = useState(0);
+  // Shared hydration state (cross-tab, localStorage-persisted)
+  const [waterMl, setWaterMl] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try { return Number(localStorage.getItem("mc:water_ml")) || 0; }
+    catch { return 0; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mc:water_ml", String(waterMl)); }
+    catch {}
+  }, [waterMl]);
   const addWater = () => setWaterMl(w => Math.min(w + 250, 4000));
 
   // Workout focus mode (hides global header during exercise focus view)
