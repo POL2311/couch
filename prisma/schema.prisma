@@ -17,6 +17,12 @@ enum Role {
   CLIENT
 }
 
+enum MembershipTier {
+  DIET_ONLY
+  ROUTINE_ONLY
+  FULL
+}
+
 // ─────────────────────────────────────────────
 // Autenticación / cuentas (3 roles)
 // ─────────────────────────────────────────────
@@ -64,8 +70,9 @@ model Student {
   stage          String
   stageNumber    Int
 
-  isActive             Boolean @default(true)
-  paymentStatus        String  @default("inactive")
+  isActive             Boolean        @default(true)
+  membershipTier       MembershipTier @default(FULL)
+  paymentStatus        String         @default("inactive")
   stripeCustomerId     String?
   stripeSubscriptionId String?
   joinedDate           String
@@ -252,6 +259,22 @@ model WaterLog {
   date      String   // YYYY-MM-DD
   amountMl  Int
   createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Mensajes grupales por sala de coach
+// ─────────────────────────────────────────────
+model GroupMessage {
+  id         String   @id @default(cuid())
+  coachId    String
+  senderId   String
+  senderName String
+  role       String   @default("CLIENT")
+  content    String
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+
+  @@index([coachId, createdAt])
 }
 
 // ─────────────────────────────────────────────

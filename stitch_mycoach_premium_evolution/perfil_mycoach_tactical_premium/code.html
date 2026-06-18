@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Muro de Honor | MYCOACH</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#383939",
+                        "on-secondary-container": "#00686f",
+                        "outline": "#8e9379",
+                        "primary": "#ffffff",
+                        "surface": "#121414",
+                        "surface-container-lowest": "#0d0e0f",
+                        "on-secondary": "#00363a",
+                        "on-background": "#e3e2e2",
+                        "secondary-fixed": "#7df4ff",
+                        "outline-variant": "#444933",
+                        "on-secondary-fixed": "#002022",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#c5f400",
+                        "on-primary": "#293500",
+                        "on-tertiary-container": "#656464",
+                        "on-tertiary": "#313030",
+                        "surface-container": "#1f2020",
+                        "primary-container": "#c5f400",
+                        "on-secondary-fixed-variant": "#004f54",
+                        "on-tertiary-fixed": "#1c1b1b",
+                        "surface-container-low": "#1b1c1c",
+                        "surface-container-high": "#292a2a",
+                        "on-primary-fixed-variant": "#3c4d00",
+                        "secondary-fixed-dim": "#00dbe9",
+                        "on-primary-container": "#566c00",
+                        "inverse-primary": "#516600",
+                        "surface-variant": "#343535",
+                        "tertiary-fixed-dim": "#c8c6c5",
+                        "on-surface": "#e3e2e2",
+                        "on-error": "#690005",
+                        "background": "#121414",
+                        "surface-container-highest": "#343535",
+                        "tertiary": "#ffffff",
+                        "error-container": "#93000a",
+                        "surface-tint": "#acd600",
+                        "on-surface-variant": "#c4c9ac",
+                        "secondary": "#d3fbff",
+                        "tertiary-fixed": "#e5e2e1",
+                        "primary-fixed-dim": "#acd600",
+                        "secondary-container": "#00eefc",
+                        "inverse-on-surface": "#303031",
+                        "inverse-surface": "#e3e2e2",
+                        "error": "#ffb4ab",
+                        "surface-dim": "#121414",
+                        "on-primary-fixed": "#161e00",
+                        "on-tertiary-fixed-variant": "#474746",
+                        "tertiary-container": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "margin-desktop": "40px",
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "bento-gap": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-lg": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-lg": ["64px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "900"}],
+                        "data-sm": ["12px", {"lineHeight": "1.0", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                        "data-lg": ["20px", {"lineHeight": "1.0", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+            color: #e3e2e2;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 60px -15px rgba(0, 0, 0, 0.5);
+        }
+        .neon-glow-volt {
+            text-shadow: 0 0 10px rgba(205, 255, 0, 0.5);
+        }
+        .vault-shadow {
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="overflow-x-hidden pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface/20 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-black">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary-fixed/30 active:scale-95 duration-200 cursor-pointer">
+<img class="w-full h-full object-cover" data-alt="A professional male athlete with a determined expression, lit by dramatic cinematic side-lighting in a dark, high-performance gym setting. The photography uses deep blacks and high-contrast shadows to emphasize muscular definition and intensity. The overall mood is elite and focused, perfectly aligning with the absolute black and volt green brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWdjWrOwL-e6mnSnSEG_NZg8hgeYZglHR1hhtHsFJFgAB8dS-RgX9dfkPSwrvuG8NY5oCPd9hPS5txq_c6Oy7nPOUlZWem5YPdeP9WuhrdIZ56_SljGdBeL1_AqT1FkvztMz28khD_d97PXhvBskDMFmrkpcugdSNEjM1QddOY4qNfocDhsoMBB059a75cB7uj4YAnQ1WihOionRIFlx9Z-R2FZQ0w-kT8ZMmKPLAJDQlopNDMOIFpZMlGvgZR8Jo2_JgTnZUljQ"/>
+</div>
+<span class="font-headline-lg text-primary-fixed uppercase italic tracking-tighter">MYCOACH</span>
+</div>
+<button class="material-symbols-outlined text-primary-fixed hover:opacity-80 transition-opacity active:scale-95 duration-200" data-icon="settings">
+            settings
+        </button>
+</header>
+<main class="mt-16 w-full max-w-screen-xl mx-auto px-4 md:px-margin-desktop">
+<!-- Banner Motivacional -->
+<section class="relative w-full h-[353px] md:h-[530px] overflow-hidden rounded-xl mt-6 group">
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10"></div>
+<img class="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-700" data-alt="A massive, full-width cinematic fitness background showcasing a high-intensity training session in a dark industrial gym environment. Dramatic low-key lighting creates powerful silhouettes and highlights sweat and grit. The color palette is dominated by deep blacks and cool grays, providing a perfect backdrop for bold typography overlays." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNTgwK8coh6LjixIAMAyNHG9bzekeUYk7nFVrPSEc3HVKg96BZXBVF1PzS67O6oX2ZSETAwiCi3mzx-Wo2z3c2lmUCk9CHH7HfQRm4VlrZO7HZ7sGnBZiCE1HlWNa107OU1InN2U2rSDdZZo_pWvaEI14DGMJgAig-kF2dCTS7ZmkrTMA8eUWqJn-i5MGF7AS_I3_MqVXy1DI3RJEn-kC-ltZpKvkBcZNzzz7x-7d55CJO2CkUKj536vbsPlYRzV-a74NQ_Z2e1g"/>
+<div class="absolute inset-0 z-20 flex flex-col justify-end p-6 md:p-12">
+<h1 class="font-display-lg text-white italic uppercase leading-none max-w-4xl">
+<span class="block">UNA SERIE MÁS,</span>
+<span class="block">UNA COMIDA MÁS.</span>
+<span class="block text-primary-fixed neon-glow-volt">DISCIPLINA ABSOLUTA.</span>
+</h1>
+</div>
+</section>
+<!-- Estadísticas de Estatus -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-bento-gap mt-bento-gap">
+<!-- RACHA -->
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between vault-shadow h-40">
+<div class="flex justify-between items-start">
+<span class="font-data-sm text-on-surface-variant/70 uppercase">RACHA DE DÍAS</span>
+<span class="material-symbols-outlined text-primary-fixed fill-icon" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-primary-fixed leading-none">42</span>
+<span class="font-headline-md text-primary-fixed/50 italic">DÍAS</span>
+</div>
+</div>
+<!-- RANGO -->
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between vault-shadow h-40 col-span-1">
+<div class="flex justify-between items-start">
+<span class="font-data-sm text-on-surface-variant/70 uppercase">RANGO</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div>
+<span class="font-headline-md text-white uppercase italic block">BESTIA</span>
+<span class="font-headline-lg-mobile text-primary-fixed neon-glow-volt italic">ELITE</span>
+</div>
+</div>
+<!-- PRs Grid -->
+<div class="glass-card p-6 rounded-xl col-span-2 vault-shadow h-40 overflow-hidden flex flex-col justify-between">
+<div class="flex justify-between items-center mb-2">
+<span class="font-data-sm text-on-surface-variant/70 uppercase">PERSONAL RECORDS</span>
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary-fixed/30"></div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div class="border-l-2 border-primary-fixed pl-3">
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Squat</p>
+<p class="font-data-lg text-white">180<span class="text-xs ml-1 opacity-50">KG</span></p>
+</div>
+<div class="border-l-2 border-secondary-fixed-dim pl-3">
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Deadlift</p>
+<p class="font-data-lg text-white">220<span class="text-xs ml-1 opacity-50">KG</span></p>
+</div>
+<div class="border-l-2 border-primary-fixed/40 pl-3">
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Bench</p>
+<p class="font-data-lg text-white">140<span class="text-xs ml-1 opacity-50">KG</span></p>
+</div>
+</div>
+</div>
+</section>
+<!-- Sección de Datos (Bento Account) -->
+<h2 class="font-headline-md text-white italic uppercase mt-12 mb-4 tracking-wider border-l-4 border-primary-fixed pl-4">Muro de Honor</h2>
+<section class="grid grid-cols-1 md:grid-cols-3 gap-bento-gap">
+<!-- Account Card -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-white">mail</span>
+</div>
+<div>
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Correo</p>
+<p class="font-body-md text-white">atleta@elite.com</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary-fixed opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<!-- Subscription Card -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-fixed/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed">diamond</span>
+</div>
+<div>
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Suscripción</p>
+<p class="font-body-md text-white font-bold">Plan Berserker</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary-fixed opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<!-- Settings Card -->
+<div class="glass-card p-6 rounded-xl flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-white">tune</span>
+</div>
+<div>
+<p class="font-data-sm text-on-surface-variant/60 uppercase">Ajustes</p>
+<p class="font-body-md text-white">Preferencia de cuenta</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary-fixed opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+</section>
+<!-- Progress Visualizer (Tactical Detail) -->
+<div class="mt-8 glass-card p-6 rounded-xl vault-shadow">
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-md text-white uppercase italic">Progreso Mensual</h3>
+<span class="font-data-sm text-primary-fixed">88% COMPLETADO</span>
+</div>
+<div class="h-4 w-full bg-black rounded-full overflow-hidden border border-white/5 p-0.5">
+<div class="h-full rounded-full bg-gradient-to-r from-on-secondary-container to-primary-fixed w-[88%] relative overflow-hidden">
+<div class="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[pulse_2s_infinite]"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-20 bg-surface/20 backdrop-blur-2xl border-t border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 py-2 px-4 hover:text-primary-fixed/80 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mb-1">fitness_center</span>
+<span class="font-data-sm text-data-sm uppercase">Workout</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 py-2 px-4 hover:text-primary-fixed/80 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mb-1">restaurant</span>
+<span class="font-data-sm text-data-sm uppercase">Diet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60 py-2 px-4 hover:text-primary-fixed/80 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mb-1">monitoring</span>
+<span class="font-data-sm text-data-sm uppercase">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-fixed bg-primary-fixed/10 rounded-xl py-2 px-4 shadow-[0_0_15px_rgba(205,255,0,0.2)] active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined mb-1 fill-icon" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-data-sm text-data-sm uppercase">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for glass cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body></html>

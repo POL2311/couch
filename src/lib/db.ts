@@ -101,8 +101,10 @@ function toStudent(s: any): Student & { scheduledChange?: ScheduledChange | null
     stage: s.stage,
     stageNumber: s.stageNumber,
     isActive: s.isActive ?? true,
+    membershipTier: s.membershipTier ?? "FULL",
     paymentStatus: s.paymentStatus,
     joinedDate: s.joinedDate,
+    coachId: s.coachId ?? undefined,
     streak: s.streak,
     completionRate: s.completionRate,
     scheduledChange: s.scheduledChange

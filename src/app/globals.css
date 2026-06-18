@@ -1,20 +1,25 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════
-   MyCoach — SF Dark Pro Design System
-   Estilo App de Apple · Negro Puro Premium
-   (ROADMAP.md · 3. Directrices de Rediseño)
+   MyCoach — Nike Athletic Dark Design System
+   High-Performance Luxury · Carbon Black + Volt
    ═══════════════════════════════════════════ */
 
 :root {
-  /* ── Surfaces (Pure Black & Subtle Floating Grays) ── */
-  --bg-root: #0a0a0b; /* Carbón profundo — separa superficies y hairlines sin perder look OLED */
+  /* ── Volt Accent ── */
+  --volt:          #D4FF00;   /* Kinetic Volt — primary action & active states */
+  --volt-subtle:   rgba(212, 255, 0, 0.08);
+  --volt-border:   rgba(212, 255, 0, 0.20);
+  --volt-glow:     0 0 20px rgba(212, 255, 0, 0.25);
+
+  /* ── Surfaces (Carbon Black family) ── */
+  --bg-root: #070708; /* Near-pure black — OLED extreme contrast */
   --bg-sidebar: var(--glass); /* Cristal de chrome unificado (ver --glass) */
-  --bg-surface: #121214; /* Gris sutil que flota sobre el negro (tarjetas) */
-  --bg-surface-raised: #1c1c1e; /* Gris elevado estilo iOS */
-  --bg-surface-overlay: #1c1c1e; /* Overlay sutil */
-  --bg-hover: rgba(255, 255, 255, 0.04);
-  --bg-active: rgba(255, 255, 255, 0.07);
+  --bg-surface: #0e0e10; /* Tarjetas flotantes sobre el negro */
+  --bg-surface-raised: #161618; /* Gris elevado estilo iOS */
+  --bg-surface-overlay: #161618; /* Overlay sutil */
+  --bg-hover: rgba(212, 255, 0, 0.05); /* Volt hover tint */
+  --bg-active: rgba(212, 255, 0, 0.08); /* Volt active tint */
 
   /* ── Borders (White opacity — casi imperceptibles) ── */
   --border-subtle: rgba(255, 255, 255, 0.07); /* hairline visible en pantallas no-Retina */
@@ -38,15 +43,16 @@
   --text-tertiary: #8e8e93; /* Secundarios / etiquetas en Gris Apagado */
   --text-inverse: #000000; /* Texto negro sobre botones blancos */
 
-  /* ── Accent (Apple Action Button — Blanco de alto contraste) ── */
-  --accent-primary: #ffffff; /* Botón principal blanco puro */
-  --accent-primary-hover: #e5e5ea;
-  --accent-primary-subtle: rgba(255, 255, 255, 0.06);
+  /* ── Accent (Kinetic Volt — alto contraste sobre negro) ── */
+  --accent-primary: #D4FF00; /* Volt — botón principal */
+  --accent-primary-hover: #c4ef00; /* Volt oscuro para hover */
+  --accent-primary-subtle: rgba(212, 255, 0, 0.08); /* Volt sutil para fondos */
 
-  /* ── Sidebar specific (SF Dark Pro) ── */
+  /* ── Sidebar specific (Nike Athletic Dark) ── */
   --text-sidebar-primary: #ffffff; /* Blanco puro */
   --text-sidebar-secondary: #8e8e93; /* Gris apagado */
-  --bg-sidebar-active: rgba(255, 255, 255, 0.07); /* Estado activo translúcido sutil */
+  --text-sidebar-active: #D4FF00; /* Volt — ítem activo */
+  --bg-sidebar-active: rgba(212, 255, 0, 0.08); /* Volt tint activo */
   --bg-sidebar-hover: rgba(255, 255, 255, 0.04); /* Hover sutil */
   --border-sidebar-subtle: rgba(255, 255, 255, 0.05); /* border-white/5 */
 
@@ -116,8 +122,11 @@
 @theme inline {
   --color-background: var(--bg-root);
   --color-foreground: var(--text-primary);
+  --color-volt: #D4FF00;
+  --color-carbon: #0B0C0E;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
 /* ═══════════════════════════════════════════
@@ -139,6 +148,33 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+}
+
+/* ── Bento Glassmorphic Card ── */
+.glass-card {
+  background: rgba(18, 18, 20, 0.60);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+/* ── Telemetry micro-label ── */
+.telemetry-label {
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-tertiary);
+}
+
+/* ── Display metric — massive numerals ── */
+.metric-xl {
+  font-family: var(--font-display, "Barlow Condensed", sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 ::selection {
@@ -200,6 +236,13 @@ input::placeholder {
   border-radius: 8px;
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
+
+/* ── Volt pulse glow (active session, active nav) ── */
+@keyframes volt-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 255, 0, 0); }
+  50%       { box-shadow: 0 0 12px 4px rgba(212, 255, 0, 0.18); }
+}
+.animate-volt-pulse { animation: volt-pulse 2.4s ease-in-out infinite; }
 
 /* ── Bottom sheet / scrim (estilo iOS) ── */
 @keyframes sheet-up {
