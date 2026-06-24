@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 import {
   Flame, Ruler, Droplet, LogOut, Camera, Loader2, CheckCircle2, Check,
@@ -8,14 +9,16 @@ import {
   ArrowLeftRight, Info, Weight, BarChart3, RefreshCw,
   LayoutGrid, TrendingUp, Users, User, Sparkles, Zap, Search,
   Shield, CreditCard, Calendar, ChevronDown, ChevronUp,
-  AlertTriangle, Settings,
+  AlertTriangle, Settings, MessageSquare, Send, Heart, Printer, Lock,
+  MapPin, Activity,
+  Trophy, SlidersHorizontal, Plus, Bell, Pin,
 } from "lucide-react";
 import { Skeleton } from "@/components/skeleton";
 import { downloadBadge } from "@/lib/badge";
 import type { Student, StudentDetail, RoutineDay } from "@/lib/mock-data";
 
 type Detail = StudentDetail & { height?: number; bodyFat?: number; photoName?: string };
-type TabId = "today" | "progress" | "squads" | "profile";
+type TabId = "today" | "progress" | "squads" | "profile" | "community";
 
 /* ══════════════════════════════════════════════════════════════
    TYPES
@@ -377,28 +380,34 @@ interface Equivalent {
   name: string;
   gramsPerCarb?: number;
   gramsPerProtein?: number;
+  calsPer100g?: number;
+  fatPer100g?: number;
   icon?: string;
+  photo?: string;
   note?: string;
   macroType?: "carb" | "protein";
 }
 
+const UP = (id: string) => `https://images.unsplash.com/photo-${id}?w=300&h=300&fit=crop&auto=format&q=80`;
+
 const EQUIV_CARBS: Equivalent[] = [
-  { name: "Arroz blanco",    gramsPerCarb: 3.3,  icon: "rice",         note: "Digestión rápida, post-entreno",  macroType:"carb" },
-  { name: "Avena",           gramsPerCarb: 5.3,  icon: "oats",         note: "Alta en beta-glucanos",           macroType:"carb" },
-  { name: "Camote",          gramsPerCarb: 5.8,  icon: "sweet-potato", note: "Alto en potasio y vitamina A",    macroType:"carb" },
-  { name: "Papa cocida",     gramsPerCarb: 6.25, icon: "potato",       note: "Versátil y saciante",             macroType:"carb" },
-  { name: "Tortilla de maíz",gramsPerCarb: 4.0,  icon: "tortilla",     note: "2 tortillas pequeñas por porción",macroType:"carb" },
-  { name: "Pan integral",    gramsPerCarb: 4.35, icon: "bread",        note: "100% integral preferible",        macroType:"carb" },
-  { name: "Plátano",         gramsPerCarb: 4.35, icon: "banana",       note: "Ideal pre-entreno",               macroType:"carb" },
+  { name: "Arroz blanco",    gramsPerCarb: 3.3,  calsPer100g: 130, fatPer100g: 0.3, icon: "rice",         photo: UP("1536304929831-ee1ca9d44906"), note: "Digestión rápida, post-entreno",  macroType:"carb" },
+  { name: "Avena",           gramsPerCarb: 5.3,  calsPer100g: 389, fatPer100g: 6.9, icon: "oats",         photo: UP("1571068316344-75bc2b04e67b"), note: "Alta en beta-glucanos",           macroType:"carb" },
+  { name: "Camote",          gramsPerCarb: 5.8,  calsPer100g:  86, fatPer100g: 0.1, icon: "sweet-potato", photo: UP("1596133322891-1f30a48df1af"), note: "Alto en potasio y vitamina A",    macroType:"carb" },
+  { name: "Papa cocida",     gramsPerCarb: 6.25, calsPer100g:  77, fatPer100g: 0.1, icon: "potato",       photo: UP("1518977676601-b53f82aba655"), note: "Versátil y saciante",             macroType:"carb" },
+  { name: "Tortilla de maíz",gramsPerCarb: 4.0,  calsPer100g: 218, fatPer100g: 4.0, icon: "tortilla",     photo: UP("1565299585323-38d6b0865b47"), note: "2 tortillas pequeñas por porción",macroType:"carb" },
+  { name: "Pan integral",    gramsPerCarb: 4.35, calsPer100g: 247, fatPer100g: 3.5, icon: "bread",        photo: UP("1509440159596-0249088772ff"), note: "100% integral preferible",        macroType:"carb" },
+  { name: "Plátano",         gramsPerCarb: 4.35, calsPer100g:  89, fatPer100g: 0.3, icon: "banana",       photo: UP("1571771894821-ce9b6c11b08e"), note: "Ideal pre-entreno",               macroType:"carb" },
 ];
 
 const EQUIV_PROTEIN: Equivalent[] = [
-  { name: "Pechuga de Pollo", gramsPerProtein: 4.5, icon: "chicken", note: "Proteína magra #1",           macroType:"protein" },
-  { name: "Carne magra",      gramsPerProtein: 5.0, icon: "beef",    note: "Rica en zinc y B12",          macroType:"protein" },
-  { name: "Atún en agua",     gramsPerProtein: 4.0, icon: "tuna",    note: "Omega-3 y bajo en grasa",     macroType:"protein" },
-  { name: "Salmón",           gramsPerProtein: 5.3, icon: "fish",    note: "Grasa saludable omega-3",     macroType:"protein" },
-  { name: "Huevo entero",     gramsPerProtein: 8.0, icon: "egg",     note: "Proteína completa",           macroType:"protein" },
-  { name: "Leche descremada", gramsPerProtein:10.0, icon: "milk",    note: "Calcio + proteína",           macroType:"protein" },
+  { name: "Pechuga de Pollo", gramsPerProtein: 4.5, calsPer100g: 165, fatPer100g:  3.6, icon: "chicken", photo: UP("1604503468506-a8da13d82791"), note: "Proteína magra #1",           macroType:"protein" },
+  { name: "Carne magra",      gramsPerProtein: 5.0, calsPer100g: 250, fatPer100g: 12.0, icon: "beef",    photo: UP("1529694157872-7cc33244d072"), note: "Rica en zinc y B12",          macroType:"protein" },
+  { name: "Atún en agua",     gramsPerProtein: 4.0, calsPer100g: 116, fatPer100g:  0.5, icon: "tuna",    photo: UP("1559847844-5315695dadae"),    note: "Omega-3 y bajo en grasa",     macroType:"protein" },
+  { name: "Salmón",           gramsPerProtein: 5.3, calsPer100g: 208, fatPer100g: 13.0, icon: "fish",    photo: UP("1467003909585-2f8a72700288"), note: "Grasa saludable omega-3",     macroType:"protein" },
+  { name: "Huevo entero",     gramsPerProtein: 8.0, calsPer100g: 155, fatPer100g: 11.0, icon: "egg",     photo: UP("1482049016688-2d3e1b311543"), note: "Proteína completa",           macroType:"protein" },
+  { name: "Leche descremada", gramsPerProtein:10.0, calsPer100g:  34, fatPer100g:  0.1, icon: "milk",    photo: UP("1550583724-b2692b85b150"),    note: "Calcio + proteína",           macroType:"protein" },
+  { name: "Lomo de Cerdo",    gramsPerProtein: 4.8, calsPer100g: 242, fatPer100g: 14.0, icon: "beef",    photo: UP("1432139555190-58524dae6a55"), note: "Alto en B1 y zinc",           macroType:"protein" },
 ];
 
 // Combined catalog — used for display
@@ -595,114 +604,213 @@ function IngredientRow({
    EQUIVALENTS CATALOG — Fitia card grid style
 ══════════════════════════════════════════════════════════════ */
 
-function EquivCatalog({ ingredient, selected, onSelect }: {
+function EquivCatalog({ ingredient, selected, onSelect, onConfirm, macroType }: {
   ingredient: Ingredient;
   selected: Equivalent | null;
   onSelect: (eq: Equivalent | null) => void;
+  onConfirm?: () => void;
+  macroType: "protein" | "carb";
 }) {
-  const baseCarbs   = ingredient.macros?.carbs    ?? Math.round(ingredient.calories * 0.45 / 4);
-  const baseProtein = ingredient.macros?.protein  ?? Math.round(ingredient.calories * 0.25 / 4);
-  const [activeTab, setActiveTabLocal] = useState<"protein"|"carb">("protein");
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const baseCarbs   = ingredient.macros?.carbs   ?? Math.round(ingredient.calories * 0.45 / 4);
+  const baseProtein = ingredient.macros?.protein ?? Math.round(ingredient.calories * 0.25 / 4);
+  const baseFat     = ingredient.macros?.fat     ?? Math.round(ingredient.calories * 0.30 / 9);
 
-  const list = EQUIV_CATALOG.filter(e => e.macroType === activeTab);
+  const list = EQUIV_CATALOG.filter(e => e.macroType === macroType);
 
   const calcGrams = (eq: Equivalent) => {
     if (eq.macroType === "protein") return Math.round(baseProtein * (eq.gramsPerProtein ?? 5));
     return Math.round(baseCarbs * (eq.gramsPerCarb ?? 0));
   };
+  const calcCalOffset = (eq: Equivalent) => {
+    if (!eq.calsPer100g) return null;
+    return Math.round(calcGrams(eq) * eq.calsPer100g / 100) - ingredient.calories;
+  };
+  const calcFatDelta = (eq: Equivalent) => {
+    if (!eq.fatPer100g) return null;
+    const newFat = Math.round((calcGrams(eq) * eq.fatPer100g / 100) * 10) / 10;
+    return Math.round((newFat - baseFat) * 10) / 10;
+  };
+  const calcMatchPct = (eq: Equivalent) => {
+    const target   = eq.macroType === "protein" ? baseProtein : baseCarbs;
+    const divisor  = eq.macroType === "protein" ? (eq.gramsPerProtein ?? 5) : (eq.gramsPerCarb ?? 3.3);
+    const delivered = Math.round(calcGrams(eq) / divisor);
+    return Math.min(100, Math.round((delivered / Math.max(target, 1)) * 100));
+  };
+  const matchLabel = (pct: number) =>
+    pct >= 98 ? "COINCIDENCIA PERFECTA 100%" : pct >= 90 ? `COINCIDENCIA ALTA ${pct}%` : `COINCIDENCIA PARCIAL ${pct}%`;
+
+  const selMatch     = selected ? calcMatchPct(selected) : null;
+  const selOffset    = selected ? calcCalOffset(selected) : null;
+  const selFatDelta  = selected ? calcFatDelta(selected) : null;
+  const selGrams     = selected ? calcGrams(selected) : null;
 
   return (
     <div style={{ animation: "fadeSlideIn 0.22s ease" }}>
-      {/* Title */}
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Cambios inteligentes para <span style={{ color: "#fff" }}>{ingredient.name}</span>
-        </p>
+
+      {/* ── HEADER: CONVERSIÓN AUTOMÁTICA + match badge ── */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em]"
+            style={{ fontFamily: DS, color: "#CEFF00" }}>
+            CONVERSIÓN AUTOMÁTICA
+          </span>
+          {selMatch !== null && (
+            <span className="px-2 py-[3px] rounded-md text-[8px] font-black uppercase tracking-[0.1em]"
+              style={{ fontFamily: DS, background: selMatch >= 98 ? "#CEFF00" : "rgba(255,255,255,0.08)", color: selMatch >= 98 ? "#000" : "#808080" }}>
+              {matchLabel(selMatch)}
+            </span>
+          )}
+        </div>
         {selected && (
           <button onClick={() => onSelect(null)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px]"
-            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.38)" }}>
-            <RefreshCw size={9} /> Reset
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <RefreshCw size={9} style={{ color: "rgba(255,255,255,0.4)" }} />
+            <span style={{ fontFamily: DS, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.38)" }}>
+              RESET
+            </span>
           </button>
         )}
       </div>
 
-      {/* Tab toggle: Proteína / Carbos */}
-      <div className="flex gap-1.5 mb-4 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        {(["protein","carb"] as const).map(t => (
-          <button key={t} onClick={() => setActiveTabLocal(t)}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200"
-            style={{
-              background: activeTab === t ? "rgba(255,255,255,0.1)" : "transparent",
-              color: activeTab === t ? "#fff" : "rgba(255,255,255,0.32)",
-              border: activeTab === t ? "1px solid rgba(255,255,255,0.1)" : "1px solid transparent",
-            }}>
-            {t === "protein" ? "🥩 Proteína" : "🌾 Carbohidratos"}
-          </button>
-        ))}
+      {/* ── COMPARISON BLOCK ── */}
+      {selected && selGrams !== null && (
+        <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", animation: "fadeSlideIn 0.18s ease" }}>
+          <div className="text-center flex-1">
+            <p className="text-[8px] font-black uppercase tracking-[0.14em] mb-0.5" style={{ color: "#808080", fontFamily: DS }}>ORIGINAL</p>
+            <p className="font-black text-white tabular-nums" style={{ fontFamily: DS, fontSize: 18, lineHeight: 1 }}>{ingredient.grams}g</p>
+            <p className="text-[9px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)", fontFamily: DS, textTransform: "uppercase" }}>{ingredient.name}</p>
+          </div>
+          <ArrowLeftRight size={14} style={{ color: "#CEFF00", flexShrink: 0 }} />
+          <div className="text-center flex-1">
+            <p className="text-[8px] font-black uppercase tracking-[0.14em] mb-0.5" style={{ color: "#CEFF00", fontFamily: DS }}>SUSTITUTO</p>
+            <p className="font-black tabular-nums" style={{ fontFamily: DS, fontSize: 18, lineHeight: 1, color: "#CEFF00" }}>{selGrams}g</p>
+            <p className="text-[9px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.35)", fontFamily: DS, textTransform: "uppercase" }}>{selected.name}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── LOCKED CATEGORY LABEL ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+          style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.18)" }}>
+          <Zap size={9} fill="#CEFF00" stroke="none" />
+          <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "#CEFF00" }}>
+            {macroType === "protein" ? "PROTEÍNA — FILTRO ACTIVO" : "CARBOHIDRATO — FILTRO ACTIVO"}
+          </span>
+        </div>
       </div>
 
-      {/* Card grid — 3 cols */}
-      <div className="grid grid-cols-3 gap-2.5 mb-4">
+      {/* ── HORIZONTAL CAROUSEL ── */}
+      <div className="flex overflow-x-auto gap-4 pb-4 -mx-1 px-1 mb-4"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
         {list.map((eq) => {
-          const grams = calcGrams(eq);
+          const grams  = calcGrams(eq);
+          const offset = calcCalOffset(eq);
+          const match  = calcMatchPct(eq);
           const active = selected?.name === eq.name;
+          const macroSub = eq.macroType === "protein"
+            ? `${Math.round(grams / (eq.gramsPerProtein ?? 5))}g Prot`
+            : `${Math.round(grams / (eq.gramsPerCarb ?? 3.3))}g Carb`;
+
           return (
             <button
               key={eq.name}
               onClick={() => onSelect(active ? null : eq)}
-              className="relative flex flex-col items-center text-center rounded-2xl p-3 transition-all duration-200 active:scale-95"
+              className="w-[160px] bg-[#1A1A1A] rounded-2xl p-4 flex-shrink-0 border flex flex-col justify-between relative active:scale-95 transition-all duration-200"
               style={{
-                background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                border: `1.5px solid ${active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)"}`,
-                boxShadow: active ? "0 0 0 2px rgba(96,165,250,0.2)" : "none",
-              }}
-            >
-              {/* Illustration */}
-              <div className="mb-2">
-                <FoodIllu iconKey={eq.icon} size={52} />
-              </div>
-              {/* Name */}
-              <p className="text-[11px] font-medium leading-tight mb-1.5"
-                style={{ color: active ? "#fff" : "rgba(255,255,255,0.65)" }}>
-                {eq.name}
-              </p>
-              {/* Grams pill */}
-              <div className="px-2 py-0.5 rounded-full"
-                style={{ background: active ? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)" }}>
-                <span className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: active ? "#60a5fa" : "rgba(255,255,255,0.45)" }}>
-                  {grams}g
-                </span>
-              </div>
+                borderColor: active ? "#CEFF00" : "rgba(255,255,255,0.04)",
+                boxShadow: active ? "0 0 18px rgba(206,255,0,0.14)" : "none",
+                minHeight: 160,
+              }}>
+
               {/* Active check */}
               {active && (
-                <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
-                  style={{ background: "#60a5fa" }}>
-                  <CheckCircle2 size={10} strokeWidth={3} style={{ color: "#fff" }} />
+                <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full flex items-center justify-center z-10"
+                  style={{ background: "#CEFF00" }}>
+                  <Check size={10} strokeWidth={3} style={{ color: "#000" }} />
                 </div>
               )}
+
+              {/* Food photo */}
+              <div className="w-14 h-14 rounded-xl overflow-hidden mb-3 mx-auto flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {eq.photo
+                  ? <img src={eq.photo} alt={eq.name} className="w-full h-full object-cover object-center rounded-xl"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  : <FoodIllu iconKey={eq.icon} size={56} />
+                }
+              </div>
+
+              {/* Name + macro metric */}
+              <div>
+                <p className="font-bold text-white uppercase leading-tight mb-1"
+                  style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", letterSpacing: "0.03em" }}>
+                  {eq.name}
+                </p>
+                <p className="text-[11px] font-black tabular-nums"
+                  style={{ fontFamily: DS, fontStyle: "normal", color: "#00F0FF" }}>
+                  {macroSub}
+                </p>
+                {/* Calorie offset chip */}
+                {offset !== null && (
+                  <span className="text-[9px] font-black mt-1 inline-block"
+                    style={{ fontFamily: DS, color: offset <= 0 ? "#CEFF00" : "rgba(255,100,100,0.85)" }}>
+                    {offset > 0 ? "+" : ""}{offset} kcal
+                  </span>
+                )}
+                {/* Alignment label when active */}
+                {active && (
+                  <p className="text-[8px] font-black uppercase mt-0.5"
+                    style={{ fontFamily: DS, letterSpacing: "0.1em", color: match >= 98 ? "#CEFF00" : "#808080" }}>
+                    {matchLabel(match)}
+                  </p>
+                )}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Conversion breakdown */}
+      {/* ── TELEMETRY GRID ── */}
       {selected && (
-        <div className="rounded-2xl px-4 py-3.5 mt-1"
-          style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)", animation: "fadeSlideIn 0.2s ease" }}>
-          <p className="text-[9px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(96,165,250,0.5)" }}>Conversión automática</p>
-          <p className="text-[13px] leading-relaxed font-medium" style={{ color: "rgba(255,255,255,0.78)" }}>
-            <span style={{ color: "#fff" }}>{ingredient.grams}g</span>{" de "}{ingredient.name}
-            {" = "}
-            <span style={{ color: "#60a5fa" }}>{calcGrams(selected)}g</span>{" de "}{selected.name}
-          </p>
-          <p className="text-[10px] mt-1.5" style={{ color: "rgba(255,255,255,0.25)" }}>
-            {selected.macroType === "protein"
-              ? `Base: ${baseProtein}g proteína · ${selected.gramsPerProtein ?? 5}g alimento / 1g proteína`
-              : `Base: ${baseCarbs}g carbos · ${selected.gramsPerCarb}g alimento / 1g carbo`}
-          </p>
+        <div className="grid grid-cols-2 gap-3 mb-4" style={{ animation: "fadeSlideIn 0.18s ease" }}>
+          <div className="rounded-2xl p-3.5"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p className="text-[#808080] font-mono text-[10px] uppercase tracking-widest mb-1.5">
+              DIFERENCIA CALÓRICA
+            </p>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: selOffset !== null ? (selOffset <= 0 ? "#CEFF00" : "rgba(255,100,100,0.9)") : "#808080" }}>
+              {selOffset !== null ? `${selOffset > 0 ? "+" : ""}${selOffset}` : "—"}
+            </p>
+            <p className="text-[9px] mt-0.5 font-black uppercase tracking-[0.12em]" style={{ color: "#808080", fontFamily: DS }}>KCAL</p>
+          </div>
+          <div className="rounded-2xl p-3.5"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <p className="text-[#808080] font-mono text-[10px] uppercase tracking-widest mb-1.5">
+              VARIANZA DE GRASA
+            </p>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: selFatDelta !== null ? (selFatDelta <= 0 ? "#CEFF00" : "rgba(255,180,60,0.9)") : "#808080" }}>
+              {selFatDelta !== null ? `${selFatDelta > 0 ? "+" : ""}${selFatDelta}` : "—"}
+            </p>
+            <p className="text-[9px] mt-0.5 font-black uppercase tracking-[0.12em]" style={{ color: "#808080", fontFamily: DS }}>GRAMOS</p>
+          </div>
         </div>
+      )}
+
+      {/* ── CTA BUTTON ── */}
+      {selected && (
+        <button
+          onClick={() => { onConfirm?.(); }}
+          className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl tracking-wider w-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+          style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)", letterSpacing: "0.14em", boxShadow: "0 0 28px rgba(206,255,0,0.22)" }}>
+          CONFIRMAR SUSTITUCIÓN
+          <Zap size={16} fill="#000" stroke="none" />
+        </button>
       )}
     </div>
   );
@@ -712,7 +820,7 @@ function EquivCatalog({ ingredient, selected, onSelect }: {
    MEAL SHEET
 ══════════════════════════════════════════════════════════════ */
 
-function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
+function MealSheet({ meal, waterMl, onConfirm }: { meal: Meal; waterMl: number; onConfirm?: () => void }) {
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
   const macros = meal.macros ?? { protein: 32, carbs: 48, fat: 14 };
   const ingredients: Ingredient[] = meal.ingredients?.length ? meal.ingredients
@@ -721,8 +829,8 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         grams: [250, 180, 120, 200, 150][i % 5],
         calories: Math.round(meal.calories / meal.items.length),
         icon: ["egg", "wheat", "beef", "salad", "chicken"][i % 5],
-        unitQty: [1, 0.5, 1.5, 2, 1][i % 5],
-        unit: ["pieza", "taza", "tazas", "piezas", "porción"][i % 5],
+        unitQty: [1, 2, 1.5, 1, 1][i % 5],
+        unit: ["pieza", "piezas", "tazas", "porción", "porción"][i % 5],
         macros: {
           protein: Math.round(macros.protein / meal.items.length),
           carbs:   Math.round(macros.carbs   / meal.items.length),
@@ -730,158 +838,175 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         },
       }));
 
-  const [swapOpen, setSwapOpen] = useState<number | null>(null);
-  const [swaps, setSwaps]       = useState<Record<number, Equivalent | null>>({});
-  const [logged, setLogged]     = useState(false);
+  const [swapDrawerIdx, setSwapDrawerIdx] = useState<number | null>(null);
+  const [swaps, setSwaps]                = useState<Record<number, Equivalent | null>>({});
 
-  const heroImg    = getFoodImg(meal.name);
-  const nutriScore = Math.min(10, 6.5 + macros.protein / 60).toFixed(1);
-  const waterPct   = Math.min(waterMl / 2500, 1);
+  const lockedMacroType = (idx: number): "protein" | "carb" => {
+    const ing = ingredients[idx];
+    const PROTEIN_ICONS = new Set(["egg","chicken","beef","tuna","fish","milk"]);
+    const CARB_ICONS    = new Set(["oats","wheat","rice","sweet-potato","potato","tortilla","bread","banana","salad","corn"]);
+    const PROTEIN_KEYS  = ["huevo","pollo","pechuga","carne","atun","salmon","cerdo","res","pescado","proteina","clara","albumina"];
+    const CARB_KEYS     = ["avena","arroz","camote","papa","platano","tortilla","pan","maiz","yam","pasta","quinoa","frijol","lenteja"];
+    const nameLower = ing.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    if (ing.icon && PROTEIN_ICONS.has(ing.icon)) return "protein";
+    if (ing.icon && CARB_ICONS.has(ing.icon))    return "carb";
+    if (PROTEIN_KEYS.some(k => nameLower.includes(k))) return "protein";
+    if (CARB_KEYS.some(k   => nameLower.includes(k))) return "carb";
+    const p = ing.macros?.protein ?? Math.round(macros.protein / ingredients.length);
+    const c = ing.macros?.carbs   ?? Math.round(macros.carbs   / ingredients.length);
+    return p >= c ? "protein" : "carb";
+  };
+  const [confirmed, setConfirmed] = useState(false);
 
-  const MACRO_PILLS = [
-    { label: "PROT",  value: `${macros.protein}g`, labelColor: "#00F0FF" },
-    { label: "CARBS", value: `${macros.carbs}g`,   labelColor: "#808080" },
-    { label: "FAT",   value: `${macros.fat}g`,     labelColor: "#808080" },
+  const heroImg  = getFoodImg(meal.name);
+  const waterPct = Math.min(waterMl / 2500, 1);
+
+  const H_MACROS = [
+    { label: "PROT",  value: `${macros.protein}g`, color: "#00F0FF" },
+    { label: "CARBS", value: `${macros.carbs}g`,   color: "#808080" },
+    { label: "GRASA", value: `${macros.fat}g`,     color: "#808080" },
   ];
 
   return (
     <>
-      {/* ── CINEMA HERO ── */}
-      <div className="relative -mx-5 mb-6 overflow-hidden" style={{ minHeight: 230 }}>
+      {/* ── HERO: full-bleed with horizontal macro row ── */}
+      <div className="relative -mx-5 mb-6 overflow-hidden" style={{ minHeight: 260 }}>
         <img src={heroImg} alt={meal.name}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: 0.52 }} />
+          style={{ opacity: 0.48 }} />
         <div className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, #070708 0%, rgba(7,7,8,0.28) 55%, transparent 100%)" }} />
-        <div className="relative z-10 px-5 pt-8 pb-6 flex items-end justify-between" style={{ minHeight: 230 }}>
-          <div className="flex-1 pr-3">
-            <p className="text-[9px] font-black uppercase mb-2"
-              style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.22em", color: "#CEFF00" }}>
-              ELITE NUTRITION
-            </p>
-            <h2 style={{
-              fontFamily: DS, fontWeight: 900, fontStyle: "italic",
-              fontSize: "clamp(34px,10.5vw,46px)", lineHeight: 0.88,
-              textTransform: "uppercase", letterSpacing: "0.03em", color: "#fff",
-            }}>
-              {meal.name}
-            </h2>
-          </div>
-          {/* Glassmorphic macro pills */}
-          <div className="flex flex-col gap-2 shrink-0">
-            {MACRO_PILLS.map(({ label, value, labelColor }) => (
-              <div key={label} className="rounded-2xl flex flex-col items-center justify-center"
+          style={{ background: "linear-gradient(to top, #070708 0%, rgba(7,7,8,0.2) 60%, transparent 100%)" }} />
+
+        <div className="relative z-10 px-5 pt-10 pb-6 flex flex-col justify-end" style={{ minHeight: 260 }}>
+          <p className="text-[9px] font-black uppercase mb-2"
+            style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.24em", color: "#CEFF00" }}>
+            ELITE NUTRITION
+          </p>
+          <h2 style={{
+            fontFamily: DS, fontWeight: 900, fontStyle: "italic",
+            fontSize: "clamp(32px,9.5vw,44px)", lineHeight: 0.9,
+            textTransform: "uppercase", letterSpacing: "0.03em", color: "#fff",
+          }}>
+            {meal.name}
+          </h2>
+
+          {/* Horizontal macro pill row */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {H_MACROS.map(({ label, value, color }) => (
+              <div key={label}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl"
                 style={{
-                  width: 80, height: 64,
-                  background: "rgba(26,26,26,0.84)",
-                  backdropFilter: "blur(14px)",
-                  WebkitBackdropFilter: "blur(14px)",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+                  background: "rgba(20,20,20,0.86)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  border: "1px solid rgba(255,255,255,0.06)",
                 }}>
-                <p className="text-[9px] font-black uppercase"
-                  style={{ fontFamily: DS, fontStyle: "normal", letterSpacing: "0.1em", color: labelColor }}>
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color }}>
                   {label}
-                </p>
-                <p className="font-black tabular-nums leading-tight"
-                  style={{ fontFamily: DS, fontStyle: "normal", fontSize: 17, color: "#fff" }}>
+                </span>
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 15, color: "#fff" }}>
                   {value}
-                </p>
+                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── ANÁLISIS DE COMPOSICIÓN heading ── */}
+      {/* ── COMPONENTES DE LA COMIDA ── */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-black uppercase"
-          style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.04em", color: "#fff" }}>
-          ANÁLISIS DE COMPOSICIÓN
+        <h3 style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: "clamp(14px,4.2vw,17px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff" }}>
+          COMPONENTES DE LA COMIDA
         </h3>
-        <span className="text-[9px] font-black tracking-[0.14em]"
-          style={{ fontFamily: DS, fontStyle: "normal", color: "#CEFF00" }}>
+        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
           BETA v2.4
         </span>
       </div>
 
-      {/* ── INGREDIENT ROWS ── */}
+      {/* ── INGREDIENT CARDS ── */}
       <div className="mb-5">
         {ingredients.map((ing, i) => {
-          const swapped  = swaps[i];
-          const dispGrams = swapped
+          const swapped       = swaps[i];
+          const isSub         = !!swapped;
+          const ingProt       = ing.macros?.protein ?? Math.round(macros.protein / ingredients.length);
+          const ingCarb       = ing.macros?.carbs   ?? Math.round(macros.carbs   / ingredients.length);
+          const dispGrams     = swapped
             ? swapped.macroType === "protein"
-              ? `${Math.round((ing.macros?.protein ?? macros.protein / ingredients.length) * (swapped.gramsPerProtein ?? 5))}g`
-              : `${Math.round((ing.macros?.carbs ?? macros.carbs / ingredients.length) * (swapped.gramsPerCarb ?? 3.3))}g`
+              ? `${Math.round(ingProt * (swapped.gramsPerProtein ?? 5))}g`
+              : `${Math.round(ingCarb * (swapped.gramsPerCarb ?? 3.3))}g`
             : `${ing.grams}g`;
-          const dispName  = swapped ? swapped.name : ing.name;
-          const subtitle  = ing.unit
-            ? `${ing.unitQty ?? ""} ${ing.unit}`.trim().toUpperCase()
-            : ing.name.toUpperCase();
+          const dispName      = (swapped ? swapped.name : ing.name).toUpperCase();
+          const subLabel      = isSub
+            ? (swapped!.macroType === "protein" ? "BASE PROTEIN" : "BASE CARB")
+            : `PROT ${ingProt}G · CARB ${ingCarb}G`;
+          const amountDisplay = dispGrams;
 
           return (
             <div key={i}>
-              {/* Bento ingredient row */}
-              <div className="flex items-center gap-4 rounded-[24px] p-5"
-                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-                {/* Circular thumbnail */}
-                <div className="w-14 h-14 rounded-full overflow-hidden relative shrink-0"
-                  style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <img src={getIngrImg(ing.icon)} alt={ing.name}
-                    className="absolute inset-0 w-full h-full object-cover" />
+
+              {/* ── Standard Ingredient Card (template-exact) ── */}
+              <div className="w-full bg-[#1A1A1A] rounded-[20px] p-4 flex items-center justify-between mb-3 border relative overflow-hidden"
+                style={{
+                  borderColor: isSub ? "#CEFF00" : "rgba(255,255,255,0.02)",
+                  boxShadow: isSub ? "0 0 22px rgba(206,255,0,0.09)" : "none",
+                  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                }}>
+
+                {/* SUSTITUYENDO badge */}
+                {isSub && (
+                  <div className="absolute top-2.5 right-3 z-10 px-2 py-[3px] rounded-md"
+                    style={{ background: "#CEFF00" }}>
+                    <span className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 7, letterSpacing: "0.18em", textTransform: "uppercase", color: "#000" }}>
+                      SUSTITUYENDO
+                    </span>
+                  </div>
+                )}
+
+                {/* LEFT */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-zinc-900 border border-white/[0.06] flex-shrink-0 relative">
+                    <img src={getIngrImg(ing.icon)} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-[#808080] font-mono tracking-widest uppercase">
+                      {subLabel}
+                    </span>
+                    <span className="text-xl font-bold text-white uppercase tracking-tight"
+                      style={{ fontFamily: DS, fontStyle: "normal", paddingTop: isSub ? 14 : 0 }}>
+                      {dispName}
+                    </span>
+                  </div>
                 </div>
-                {/* Name + desc */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-black truncate"
-                    style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)", lineHeight: 1.1, color: "#fff" }}>
-                    {dispName}
-                  </p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.12em] truncate mt-0.5"
-                    style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
-                    {subtitle}
-                  </p>
-                </div>
-                {/* Grams + protein */}
-                <div className="text-right shrink-0">
-                  <p className="font-black tabular-nums leading-none"
-                    style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(22px,6.5vw,28px)", color: "#fff" }}>
-                    {dispGrams}
-                  </p>
-                  <p className="text-[10px] font-black mt-0.5"
-                    style={{ fontFamily: DS, fontStyle: "normal", color: "#00F0FF" }}>
-                    {ing.macros?.protein ?? Math.round(macros.protein / ingredients.length)}g Proteína
-                  </p>
+
+                {/* RIGHT */}
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl font-black text-white tracking-tight"
+                    style={{ fontFamily: DS, fontStyle: "normal" }}>
+                    {amountDisplay}
+                  </span>
+                  <div className="text-[#808080] p-1 opacity-40 hover:opacity-100 transition-opacity">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="9"  cy="5"  r="1"/><circle cx="9"  cy="12" r="1"/><circle cx="9"  cy="19" r="1"/>
+                      <circle cx="15" cy="5"  r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* Swap node between rows */}
+              {/* Volt swap badge between rows */}
               {i < ingredients.length - 1 && (
-                <div className="flex flex-col items-center gap-0 py-1.5">
+                <div className="flex items-center justify-center py-0.5 -mt-1.5 z-10 relative">
                   <button
-                    onClick={() => setSwapOpen(p => p === i ? null : i)}
+                    onClick={() => setSwapDrawerIdx(i)}
                     className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all"
                     style={{
-                      background: swapOpen === i ? "rgba(206,255,0,0.15)" : "#CEFF00",
-                      border: swapOpen === i ? "2px solid #CEFF00" : "2px solid #070708",
-                      boxShadow: "0 0 14px rgba(206,255,0,0.32), 0 2px 8px rgba(0,0,0,0.5)",
+                      background: swapDrawerIdx === i ? "rgba(206,255,0,0.14)" : "#CEFF00",
+                      border: swapDrawerIdx === i ? "2px solid #CEFF00" : "2px solid #070708",
+                      boxShadow: "0 0 16px rgba(206,255,0,0.32), 0 2px 8px rgba(0,0,0,0.5)",
                     }}>
                     <ArrowLeftRight size={14} strokeWidth={2.5}
-                      style={{ color: swapOpen === i ? "#CEFF00" : "#000" }} />
+                      style={{ color: swapDrawerIdx === i ? "#CEFF00" : "#000" }} />
                   </button>
-                </div>
-              )}
-
-              {/* Inline equiv catalog */}
-              {swapOpen === i && (
-                <div className="rounded-2xl overflow-hidden mb-2"
-                  style={{ background: "rgba(20,20,20,0.96)", border: "1px solid rgba(206,255,0,0.14)", animation: "fadeSlideIn 0.18s ease" }}>
-                  <div className="px-4 pt-4 pb-3">
-                    <EquivCatalog
-                      ingredient={ing}
-                      selected={swaps[i] ?? null}
-                      onSelect={eq => { setSwaps(p => ({ ...p, [i]: eq })); if (!eq) setSwapOpen(null); }}
-                    />
-                  </div>
                 </div>
               )}
             </div>
@@ -889,57 +1014,39 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
         })}
       </div>
 
-      {/* ── TELEMETRY GRID ── */}
+      {/* ── STATS ROW ── */}
       <div className="flex gap-3 mb-4">
-        <div className="flex-1 rounded-2xl p-4 flex flex-col gap-2"
+        <div className="flex-1 rounded-2xl p-4 flex items-center gap-3"
           style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-          <Flame size={16} style={{ color: "#CEFF00" }} />
+          <Flame size={18} style={{ color: "#CEFF00" }} />
           <div>
-            <p className="font-black tabular-nums leading-none"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(26px,8vw,34px)", color: "#fff" }}>
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: "#fff" }}>
               {meal.calories}
             </p>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-1"
-              style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
+            <p style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080" }}>
               KCAL TOTAL
             </p>
           </div>
         </div>
-        <div className="flex-1 rounded-2xl p-4 flex flex-col gap-2"
+        <div className="flex-1 rounded-2xl p-4 flex items-center gap-3"
           style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-          <Dumbbell size={16} style={{ color: "#00F0FF" }} />
+          <Droplet size={18} style={{ color: "#00F0FF" }} />
           <div>
-            <p className="font-black tabular-nums leading-none"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(26px,8vw,34px)", color: "#fff" }}>
-              {nutriScore}
+            <p className="font-black tabular-nums"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, lineHeight: 1, color: "#fff" }}>
+              {waterMl}ml
             </p>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] mt-1"
-              style={{ fontFamily: DS, fontStyle: "normal", color: "#808080", lineHeight: 1.4 }}>
-              / 10{"\n"}SCORE NUTRICIONAL
+            <p style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080" }}>
+              HIDRATACIÓN
             </p>
           </div>
         </div>
       </div>
 
-      {/* ── HYDRATION MODULE ── */}
-      <div className="rounded-2xl p-4 mb-5"
-        style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.02)" }}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Droplet size={14} style={{ color: "#00F0FF" }} />
-            <p className="font-black uppercase text-white"
-              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13, letterSpacing: "0.08em" }}>
-              Hidratación
-            </p>
-          </div>
-          <p className="tabular-nums text-[11px] font-black"
-            style={{ fontFamily: DS, fontStyle: "normal", color: "#808080" }}>
-            {waterMl}ml
-            <span style={{ color: "rgba(255,255,255,0.18)" }}> / </span>
-            2.5L
-          </p>
-        </div>
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      {/* Hydration track */}
+      <div className="mb-5">
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.max(waterPct * 100, 2)}%`, background: "#CEFF00", boxShadow: "0 0 8px rgba(206,255,0,0.4)" }} />
         </div>
@@ -947,22 +1054,99 @@ function MealSheet({ meal, waterMl }: { meal: Meal; waterMl: number }) {
 
       {/* ── CTA BUTTON ── */}
       <button
-        onClick={() => setLogged(p => !p)}
+        onClick={() => { if (!confirmed) { setConfirmed(true); onConfirm?.(); } }}
         className="w-full py-5 rounded-2xl flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
         style={{
           fontFamily: DS, fontStyle: "normal", fontWeight: 900,
-          fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.12em",
+          fontSize: "clamp(15px,4.5vw,18px)", letterSpacing: "0.14em",
           textTransform: "uppercase",
-          background: logged ? "rgba(206,255,0,0.12)" : "#CEFF00",
-          color: logged ? "#CEFF00" : "#000",
-          border: logged ? "1px solid rgba(206,255,0,0.28)" : "none",
-          boxShadow: logged ? "none" : "0 0 28px rgba(206,255,0,0.22)",
+          background: confirmed ? "rgba(206,255,0,0.1)" : "#CEFF00",
+          color: confirmed ? "#CEFF00" : "#000",
+          border: confirmed ? "1px solid rgba(206,255,0,0.3)" : "none",
+          boxShadow: confirmed ? "none" : "0 0 32px rgba(206,255,0,0.25)",
         }}>
-        {logged
+        {confirmed
           ? <Check size={18} strokeWidth={3} />
           : <CheckCircle2 size={18} strokeWidth={2.5} />}
-        {logged ? "REGISTRADO" : `LOGUEAR ${meal.name.toUpperCase()}`}
+        {confirmed ? "COMIDA CONFIRMADA" : "CONFIRMAR COMIDA"}
       </button>
+
+      {/* ── SWAP DRAWER PORTAL ── */}
+      {swapDrawerIdx !== null && typeof document !== "undefined" && createPortal(
+        <>
+          {/* Scrim */}
+          <div
+            className="fixed inset-0 z-[70] bg-black/60"
+            style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", animation: "bsFadeIn 0.2s ease" }}
+            onClick={() => setSwapDrawerIdx(null)}
+          />
+          {/* Sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-[80] w-full overflow-y-auto"
+            style={{
+              background: "rgba(7,7,8,0.98)",
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderRadius: "32px 32px 0 0",
+              maxHeight: "85vh",
+              animation: "bsSlideUp 0.3s cubic-bezier(0.32,0.72,0,1)",
+              paddingBottom: "calc(24px + env(safe-area-inset-bottom,0px))",
+            }}>
+
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-[3px] rounded-full" style={{ background: "rgba(255,255,255,0.12)" }} />
+            </div>
+
+            <div className="px-6 pt-3 pb-6">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(16px,5vw,20px)", letterSpacing: "0.06em", color: "#fff" }}>
+                    SUSTITUCIÓN
+                  </p>
+                  <p className="text-[10px] font-mono tracking-widest uppercase mt-0.5" style={{ color: "#808080" }}>
+                    MOTOR DE CONVERSIÓN AUTOMÁTICA
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSwapDrawerIdx(null)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <X size={15} style={{ color: "rgba(255,255,255,0.5)" }} />
+                </button>
+              </div>
+
+              {/* Target ingredient pill */}
+              <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-white/[0.06] flex-shrink-0">
+                  <img src={getIngrImg(ingredients[swapDrawerIdx].icon)} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-mono tracking-widest uppercase mb-0.5" style={{ color: "#808080" }}>
+                    {lockedMacroType(swapDrawerIdx) === "protein" ? "PROTEÍNA" : "CARBOHIDRATO"} — BUSCANDO ALTERNATIVAS
+                  </p>
+                  <p className="font-bold uppercase truncate" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 15, color: "#fff" }}>
+                    {ingredients[swapDrawerIdx].name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Catalog */}
+              <EquivCatalog
+                ingredient={ingredients[swapDrawerIdx]}
+                macroType={lockedMacroType(swapDrawerIdx)}
+                selected={swaps[swapDrawerIdx] ?? null}
+                onSelect={eq => setSwaps(p => ({ ...p, [swapDrawerIdx!]: eq }))}
+                onConfirm={() => setSwapDrawerIdx(null)}
+              />
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
@@ -1668,6 +1852,617 @@ function ProgressForm({ onSaved }: { onSaved: () => void }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ELITE PRINT TEMPLATE — Athletic-grade export document
+   Free for ALL users regardless of membership tier.
+   Replaces the legacy flat table layouts entirely.
+══════════════════════════════════════════════════════════════ */
+
+const PT_NF = "'Barlow Condensed','Arial Narrow',Arial,sans-serif";
+const PT_MF = "'Courier New',Courier,monospace";
+
+function PrintDocHeader({ studentName, stage, stageNumber, sectionTitle }: {
+  studentName: string; stage: string; stageNumber: number; sectionTitle: string;
+}) {
+  return (
+    <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", borderBottom:"3px solid #000", paddingBottom:"14px", marginBottom:"18px" }}>
+      {/* Left: brand logo + subtitle + section badge */}
+      <div style={{ flex:1 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"7px", marginBottom:"4px" }}>
+          <span style={{ fontSize:"30px", lineHeight:1 }}>⚡</span>
+          <span style={{ fontFamily:PT_NF, fontWeight:900, fontStyle:"italic", fontSize:"44px", letterSpacing:"0.01em", lineHeight:1, color:"#000", textTransform:"uppercase" }}>
+            MYCOACH
+          </span>
+        </div>
+        <p style={{ fontFamily:PT_MF, fontSize:"7px", letterSpacing:"0.24em", color:"#888", marginBottom:"10px", textTransform:"uppercase" }}>
+          DISCIPLINA &nbsp;•&nbsp; CONSTANCIA &nbsp;•&nbsp; FE &nbsp;•&nbsp; ENFOQUE &nbsp;•&nbsp; RESULTADOS
+        </p>
+        <div style={{ display:"inline-flex", alignItems:"center", background:"#000", padding:"3px 12px 4px" }}>
+          <span style={{ fontFamily:PT_NF, fontWeight:900, fontSize:"9.5px", letterSpacing:"0.22em", textTransform:"uppercase", color:"#fff" }}>
+            {sectionTitle}
+          </span>
+        </div>
+      </div>
+      {/* Right: underlined data fields grid */}
+      <div style={{ display:"flex", flexDirection:"column", gap:"8px", minWidth:"210px" }}>
+        {([
+          { label:"ATLETA",   val: studentName },
+          { label:"OBJETIVO", val: stage },
+          { label:"NIVEL",    val: `ETAPA ${stageNumber}` },
+          { label:"COACH",    val: "" },
+        ] as { label: string; val: string }[]).map(({ label, val }) => (
+          <div key={label} style={{ display:"flex", alignItems:"baseline", gap:"6px", justifyContent:"flex-end" }}>
+            <span style={{ fontFamily:PT_MF, fontSize:"7px", letterSpacing:"0.18em", color:"#999", textTransform:"uppercase", flexShrink:0 }}>
+              {label}:
+            </span>
+            <span style={{ fontFamily:PT_NF, fontWeight:700, fontSize:"11.5px", borderBottom:"1px solid #000", minWidth:"128px", paddingBottom:"1px", display:"inline-block", color:"#000", letterSpacing:"0.03em" }}>
+              {val || " "}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PrintSummaryBar({ items }: { items: { label: string; value: string }[] }) {
+  return (
+    <div className="pt-summary-bar" style={{ display:"flex", gap:"18px", flexWrap:"wrap", marginBottom:"16px", padding:"8px 14px", background:"#f0f0f0", borderLeft:"4px solid #000" }}>
+      {items.map(({ label, value }) => (
+        <div key={label} style={{ textAlign:"center" }}>
+          <div style={{ fontFamily:PT_MF, fontSize:"6.5px", letterSpacing:"0.2em", color:"#888", textTransform:"uppercase", marginBottom:"2px" }}>{label}</div>
+          <div style={{ fontFamily:PT_NF, fontWeight:900, fontSize:"17px", color:"#000", lineHeight:1 }}>{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrintDayBadge({ dayLabel, sub, isFirst }: { dayLabel: string; sub?: string; isFirst?: boolean }) {
+  return (
+    <div className="pt-day-badge" style={{ display:"flex", alignItems:"center", gap:"10px", background:"#1a1a1a", padding:"7px 10px", marginTop: isFirst ? 0 : "14px", marginBottom:"1px" }}>
+      <span style={{ fontFamily:PT_NF, fontWeight:900, fontSize:"15px", letterSpacing:"0.12em", textTransform:"uppercase", color:"#fff", background:"#000", padding:"2px 9px 3px", lineHeight:"1.25", display:"inline-block" }}>
+        {dayLabel}
+      </span>
+      {sub && (
+        <span style={{ fontFamily:PT_NF, fontWeight:700, fontSize:"11px", letterSpacing:"0.08em", textTransform:"uppercase", color:"#ccc" }}>
+          {sub}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PrintColHeaders({ cols }: { cols: string[] }) {
+  return (
+    <div className="pt-col-headers" style={{ display:"grid", gridTemplateColumns:"90px 1fr 90px 54px 1fr 70px", background:"#111", padding:"4px 0" }}>
+      {cols.map((h, i) => (
+        <div key={i} style={{ fontFamily:PT_MF, fontSize:"6.5px", fontWeight:700, letterSpacing:"0.14em", textTransform:"uppercase", color:"#fff", padding:"0 6px", borderRight: i < cols.length - 1 ? "1px solid rgba(255,255,255,0.15)" : "none" }}>
+          {h}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PrintItemRow({ c1, c2, c3, c5, c6, alt }: {
+  c1: string; c2: string; c3: string; c5: string; c6: string; alt: boolean;
+}) {
+  const cell: React.CSSProperties = { padding:"5px 7px", borderRight:"1px solid #e0e0e0", display:"flex", alignItems:"center" };
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"90px 1fr 90px 54px 1fr 70px", background: alt ? "#f7f7f7" : "#fff", borderBottom:"1px solid #eaeaea", minHeight:"42px" }}>
+      <div style={cell}>
+        <span style={{ fontFamily:PT_NF, fontWeight:900, fontSize:"9.5px", letterSpacing:"0.04em", textTransform:"uppercase", color:"#000", whiteSpace:"pre-line", lineHeight:"1.25" }}>{c1}</span>
+      </div>
+      <div style={{ ...cell }}>
+        <span style={{ fontFamily:PT_NF, fontWeight:600, fontSize:"11px", color:"#000", letterSpacing:"0.01em" }}>{c2}</span>
+      </div>
+      <div style={cell}>
+        <span style={{ fontFamily:PT_MF, fontSize:"9px", fontWeight:700, color:"#000", letterSpacing:"0.03em", whiteSpace:"pre-line", lineHeight:"1.3" }}>{c3}</span>
+      </div>
+      <div style={{ ...cell, justifyContent:"center" }}>
+        <div style={{ width:"36px", height:"36px", border:"1.5px solid #ccc", borderRadius:"3px" }} />
+      </div>
+      <div style={cell}>
+        <span style={{ fontFamily:"Arial,sans-serif", fontSize:"8px", color:"#555", lineHeight:"1.4" }}>{c5}</span>
+      </div>
+      <div style={{ ...cell, borderRight:"none" }}>
+        <span style={{ fontFamily:PT_MF, fontSize:"9.5px", fontWeight:700, color:"#000", whiteSpace:"pre-line", lineHeight:"1.3" }}>{c6}</span>
+      </div>
+    </div>
+  );
+}
+
+function PrintDocFooter() {
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"18px", borderTop:"2px solid #000", paddingTop:"14px", marginTop:"22px" }}>
+      {/* Left: intensity legend + hydration */}
+      <div>
+        <div style={{ fontFamily:PT_MF, fontSize:"6.5px", letterSpacing:"0.2em", color:"#888", textTransform:"uppercase", marginBottom:"8px" }}>
+          LEYENDA DE INTENSIDAD
+        </div>
+        {([
+          { dots:"●○○", label:"Moderada", range:"60–70% 1RM" },
+          { dots:"●●○", label:"Alta",     range:"75–85% 1RM" },
+          { dots:"●●●", label:"Máxima",   range:"90%+ 1RM"  },
+        ] as { dots: string; label: string; range: string }[]).map(({ dots, label, range }) => (
+          <div key={label} style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"5px" }}>
+            <span style={{ fontFamily:PT_MF, fontSize:"11px", color:"#000", minWidth:"24px", letterSpacing:"0.05em" }}>{dots}</span>
+            <span style={{ fontFamily:PT_NF, fontWeight:700, fontSize:"9.5px", textTransform:"uppercase", color:"#000", minWidth:"52px" }}>{label}</span>
+            <span style={{ fontFamily:PT_MF, fontSize:"7.5px", color:"#777" }}>{range}</span>
+          </div>
+        ))}
+        <div style={{ marginTop:"10px", borderTop:"1px solid #ddd", paddingTop:"8px" }}>
+          <div style={{ fontFamily:PT_MF, fontSize:"6.5px", letterSpacing:"0.2em", color:"#888", textTransform:"uppercase", marginBottom:"5px" }}>HIDRATACIÓN</div>
+          {[
+            "2–4L de agua por sesión de entrenamiento",
+            "Electrolitos en sesiones de más de 60 min",
+            "No entrenes con déficit de hidratación",
+          ].map((note, i) => (
+            <div key={i} style={{ display:"flex", gap:"5px", marginBottom:"3px" }}>
+              <span style={{ fontFamily:PT_MF, fontSize:"7.5px", color:"#aaa", flexShrink:0 }}>✦</span>
+              <span style={{ fontFamily:"Arial,sans-serif", fontSize:"7.5px", color:"#555", lineHeight:"1.4" }}>{note}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Center: brand signature */}
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"5px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"5px" }}>
+          <span style={{ fontSize:"22px", lineHeight:1 }}>⚡</span>
+          <span style={{ fontFamily:PT_NF, fontWeight:900, fontStyle:"italic", fontSize:"30px", letterSpacing:"0.02em", color:"#000", textTransform:"uppercase", lineHeight:1 }}>
+            MYCOACH
+          </span>
+        </div>
+        <div style={{ fontFamily:PT_MF, fontSize:"6px", letterSpacing:"0.28em", color:"#aaa", textTransform:"uppercase", textAlign:"center" }}>
+          ELITE ATHLETIC SYSTEM
+        </div>
+      </div>
+      {/* Right: motivational quote card */}
+      <div className="pt-quote-card" style={{ background:"#000", padding:"16px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <p style={{ fontFamily:PT_NF, fontWeight:900, fontStyle:"italic", fontSize:"13.5px", letterSpacing:"0.03em", textTransform:"uppercase", lineHeight:"1.38", color:"#fff", textAlign:"center", margin:0 }}>
+          &ldquo;EL ÚNICO MAL ENTRENAMIENTO<br />ES EL QUE NO HICISTE.&rdquo;
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ElitePrintTemplate({ student, detail, meals }: {
+  student: Student; detail: Detail; meals: Meal[];
+}) {
+  const totalCals   = meals.reduce((s, m) => s + m.calories, 0) || detail.diet?.totalCalories || 2800;
+  const dietMacros  = detail.diet?.macros   ?? { protein:140, carbs:160, fat:50 };
+  const dietName    = detail.diet?.name     ?? "Plan Nutricional";
+  const routineDays = detail.routine?.days  ?? [];
+  const routineName = detail.routine?.name  ?? "Rutina de Entrenamiento";
+  const DAY_LBL     = ["LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO","DOMINGO"];
+
+  return (
+    <div className="print-only" style={{ fontFamily:"Arial,sans-serif", color:"#000", background:"#fff" }}>
+
+      {/* ══ SECTION 1: NUTRITION PLAN ══ */}
+      <div style={{ padding:"22px 26px 20px", boxSizing:"border-box" }}>
+        <PrintDocHeader
+          studentName={student.name}
+          stage={student.stage}
+          stageNumber={student.stageNumber}
+          sectionTitle={`Plan Nutricional — ${dietName}`}
+        />
+        <PrintSummaryBar items={[
+          { label:"Calorías Totales", value:`${totalCals} kcal` },
+          { label:"Proteína",         value:`${dietMacros.protein}g` },
+          { label:"Carbohidratos",    value:`${dietMacros.carbs}g`   },
+          { label:"Grasas",           value:`${dietMacros.fat}g`     },
+          { label:"Comidas / Día",    value:`${meals.length}`        },
+        ]} />
+
+        {meals.length > 0 ? (
+          <div>
+            <PrintDayBadge dayLabel="PLAN DIARIO" sub={dietName} isFirst />
+            <PrintColHeaders cols={["COMIDA · HORA","INGREDIENTE","MACROS","VISUAL","NOTAS DEL COACH","CALORÍAS"]} />
+            {meals.flatMap((meal, i) => {
+              const mac = meal.macros ?? { protein:0, carbs:0, fat:0 };
+              const rows = meal.ingredients?.length
+                ? meal.ingredients.map((ing: Ingredient) => {
+                    const mp = ing.macros?.protein ?? Math.round(mac.protein / (meal.ingredients?.length ?? 1));
+                    const mc = ing.macros?.carbs   ?? Math.round(mac.carbs   / (meal.ingredients?.length ?? 1));
+                    return {
+                      name: `★ ${ing.name}${ing.grams ? ` (${ing.grams}g)` : ""}`,
+                      macro: `P:${mp}g\nC:${mc}g`,
+                      cals:  `${ing.calories}\nkcal`,
+                    };
+                  })
+                : meal.items.map((s: string) => ({ name:`★ ${s}`, macro:"Ver plan", cals:"" }));
+
+              return rows.map((row, j) => (
+                <PrintItemRow
+                  key={`m${i}i${j}`}
+                  c1={j === 0 ? `${meal.name.toUpperCase()}\n${meal.time}` : ""}
+                  c2={row.name}
+                  c3={row.macro}
+                  c5={j === 0 ? `Total toma: ${meal.calories} kcal · P:${mac.protein}g · C:${mac.carbs}g · G:${mac.fat}g` : ""}
+                  c6={j === 0 ? `${meal.calories}\nkcal` : row.cals}
+                  alt={(i + j) % 2 === 1}
+                />
+              ));
+            })}
+          </div>
+        ) : (
+          <div style={{ padding:"24px", textAlign:"center", color:"#aaa", fontSize:"12px" }}>
+            Sin plan nutricional asignado por el coach.
+          </div>
+        )}
+
+        <PrintDocFooter />
+      </div>
+
+      {/* PAGE BREAK */}
+      <div style={{ pageBreakAfter:"always" as React.CSSProperties["pageBreakAfter"] }} />
+
+      {/* ══ SECTION 2: WORKOUT PLAN ══ */}
+      <div style={{ padding:"22px 26px 20px", boxSizing:"border-box" }}>
+        <PrintDocHeader
+          studentName={student.name}
+          stage={student.stage}
+          stageNumber={student.stageNumber}
+          sectionTitle={`Rutina — ${routineName}`}
+        />
+        <PrintSummaryBar items={[
+          { label:"Nombre",       value: routineName.length > 18 ? routineName.slice(0,17)+"…" : routineName },
+          { label:"Días/Semana",  value:`${detail.routine?.daysPerWeek ?? routineDays.length}` },
+          { label:"Objetivo",     value: student.stage },
+          { label:"Etapa",        value:`${student.stageNumber}` },
+        ]} />
+
+        {routineDays.length > 0 ? routineDays.map((rDay, di) => {
+          const dayLabel = DAY_LBL[di] ?? (rDay as { day?: string }).day ?? `DÍA ${di + 1}`;
+          return (
+            <div key={di}>
+              <PrintDayBadge
+                dayLabel={dayLabel}
+                sub={rDay.muscleGroup}
+                isFirst={di === 0}
+              />
+              <PrintColHeaders cols={["DÍA · GRUPO","EJERCICIO","SERIES × REPS","VISUAL","TÉCNICA · COMENTARIOS","DESCANSO"]} />
+              {rDay.exercises.map((ex, ei) => {
+                const ext = ex as Exercise & { rest?: string; weight?: string; tips?: string[] };
+                const c1  = ei === 0 ? `${dayLabel}\n${rDay.muscleGroup?.toUpperCase() ?? ""}` : "";
+                const c3  = `${ex.sets} × ${ex.reps}${ext.weight && ext.weight !== "—" ? `\n${ext.weight}` : ""}`;
+                const c5  = (ext.tips ?? [])[0]?.slice(0, 72) ?? "";
+                return (
+                  <PrintItemRow
+                    key={ei}
+                    c1={c1}
+                    c2={`★ ${ex.name}`}
+                    c3={c3}
+                    c5={c5}
+                    c6={ext.rest ?? "90s"}
+                    alt={ei % 2 === 1}
+                  />
+                );
+              })}
+            </div>
+          );
+        }) : (
+          <div style={{ padding:"24px", textAlign:"center", color:"#aaa", fontSize:"12px" }}>
+            Sin rutina de entrenamiento asignada por el coach.
+          </div>
+        )}
+
+        <PrintDocFooter />
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NOTIFICATION SYSTEM
+   Phase 1 · 3: floating toasts (MealToast, WorkoutToast)
+   Phase 2 · 4: full-screen milestone overlays
+══════════════════════════════════════════════════════════════ */
+
+function MealToast({ macros }: { macros: { protein: number; carbs: number; fat: number } }) {
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div style={{ position: "fixed", top: 20, left: 0, right: 0, zIndex: 9999, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ pointerEvents: "auto", background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.9)", padding: "14px 16px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "14px", maxWidth: "380px", width: "calc(100vw - 32px)", animation: "mc-toast-lifecycle 2s cubic-bezier(0.16,1,0.3,1) forwards" }}>
+        <div style={{ flexShrink: 0, position: "relative", width: 46, height: 46 }}>
+          <svg width="46" height="46" viewBox="0 0 46 46">
+            <polygon points="23,2 42,12 42,34 23,44 4,34 4,12" fill="#CEFF00"
+              style={{ filter: "drop-shadow(0 0 8px rgba(206,255,0,0.5))" }} />
+          </svg>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CheckCircle2 size={20} strokeWidth={3} style={{ color: "#000" }} />
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: DS, fontWeight: 900, fontSize: "17px", letterSpacing: "0.04em", textTransform: "uppercase", color: "#fff", lineHeight: 1.1, marginBottom: "2px" }}>MISIÓN CUMPLIDA</p>
+          <p style={{ fontFamily: "'Courier New',monospace", fontSize: "8.5px", letterSpacing: "0.18em", textTransform: "uppercase", color: "#CEFF00", marginBottom: "7px" }}>COMIDA REGISTRADA</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontFamily: "'Courier New',monospace", fontSize: "8px", color: "rgba(255,255,255,0.4)", letterSpacing: "0.07em" }}>
+              P: {macros.protein}g &nbsp;|&nbsp; C: {macros.carbs}g &nbsp;|&nbsp; G: {macros.fat}g
+            </span>
+            <span style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.25)", borderRadius: "6px", padding: "1px 7px", fontFamily: "'Courier New',monospace", fontSize: "7.5px", letterSpacing: "0.1em", color: "#CEFF00", fontWeight: 700 }}>100% OK</span>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function DietCompleteModal({ onClose, totalCals, macros }: {
+  onClose: () => void;
+  totalCals: number;
+  macros: { protein: number; carbs: number; fat: number };
+}) {
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const R = 80, CIRC = 2 * Math.PI * R;
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#070708", zIndex: 9998, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", textAlign: "center", padding: "32px 20px 48px" }}>
+      {/* Header */}
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "16px" }}>
+          <div style={{ height: 1, flex: 1, background: "linear-gradient(to right, transparent, #CEFF00)" }} />
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: "8.5px", letterSpacing: "0.22em", textTransform: "uppercase", color: "#CEFF00" }}>PROTOCOLO DIARIO</span>
+          <div style={{ height: 1, flex: 1, background: "linear-gradient(to left, transparent, #CEFF00)" }} />
+        </div>
+        <h1 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(28px,8vw,40px)", textTransform: "uppercase", letterSpacing: "0.02em", color: "#fff", lineHeight: 1, marginBottom: "8px" }}>
+          OBJETIVO DIARIO<br />ALCANZADO
+        </h1>
+      </div>
+      {/* Radial gauge at 100% */}
+      <div style={{ position: "relative", width: 200, height: 200, margin: "8px auto" }}>
+        <svg width={200} height={200} viewBox="0 0 200 200" style={{ transform: "rotate(-90deg)" }}>
+          <defs>
+            <linearGradient id="dcGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00F0FF" />
+              <stop offset="100%" stopColor="#CEFF00" />
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+          <circle cx="100" cy="100" r={R} fill="none" stroke="url(#dcGaugeGrad)" strokeWidth="10"
+            strokeLinecap="round" strokeDasharray={`${CIRC} 0`}
+            style={{ filter: "drop-shadow(0 0 8px rgba(206,255,0,0.6))" }} />
+        </svg>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "4px" }}>
+          <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "44px", color: "#fff", lineHeight: 1 }}>100%</span>
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: "7px", letterSpacing: "0.18em", color: "#CEFF00", textTransform: "uppercase" }}>STATUS: ELITE</span>
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: "6.5px", letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>PREMIUM SYNCHRONIZED</span>
+        </div>
+      </div>
+      {/* Summary */}
+      <p style={{ fontFamily: DS, fontSize: "15px", color: "rgba(255,255,255,0.55)", letterSpacing: "0.02em", maxWidth: 320, lineHeight: 1.5, margin: "12px auto" }}>
+        Has cumplido con tu protocolo nutricional al 100%.<br />Recuperación optimizada.
+      </p>
+      {/* Three telemetry rings */}
+      <div style={{ display: "flex", gap: "20px", justifyContent: "center", margin: "16px auto" }}>
+        {([
+          { value: `${(totalCals / 1000).toFixed(1)}k`, label: "KCAL", color: "#CEFF00", icon: false },
+          { value: `${macros.protein}g`,                 label: "PROT", color: "#00F0FF", icon: false },
+          { value: "",                                    label: "OK",   color: "#4ade80", icon: true  },
+        ] as { value: string; label: string; color: string; icon: boolean }[]).map((item, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", border: `2px solid ${item.color}`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 12px ${item.color}44` }}>
+              {item.icon
+                ? <CheckCircle2 size={24} strokeWidth={2} style={{ color: item.color }} />
+                : <span style={{ fontFamily: DS, fontWeight: 900, fontSize: "18px", color: item.color, lineHeight: 1 }}>{item.value}</span>
+              }
+            </div>
+            <span style={{ fontFamily: "'Courier New',monospace", fontSize: "7.5px", letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+      {/* Footer */}
+      <div style={{ width: "100%", maxWidth: 420, marginTop: "20px" }}>
+        <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(14px,4vw,18px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#CEFF00", lineHeight: 1.3, textShadow: "0 0 20px rgba(206,255,0,0.4)", marginBottom: "20px" }}>
+          TU CONSISTENCIA ES TU SUPERPODER.<br />MANTENTE EN LA MISIÓN.
+        </p>
+        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "14px 28px", fontFamily: DS, fontWeight: 900, fontSize: "14px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", margin: "0 auto" }}>
+          <X size={14} /> CONTINUAR
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function WorkoutToast() {
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div style={{ position: "fixed", top: 20, left: 0, right: 0, zIndex: 9999, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ pointerEvents: "auto", background: "rgba(0,15,20,0.96)", border: "1px solid rgba(0,240,255,0.15)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.9)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", padding: "14px 16px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "14px", maxWidth: "380px", width: "calc(100vw - 32px)", animation: "mc-toast-lifecycle 2s cubic-bezier(0.16,1,0.3,1) forwards" }}>
+        <div style={{ width: 44, height: 44, borderRadius: "12px", background: "rgba(0,240,255,0.08)", border: "1px solid rgba(0,240,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 12px rgba(0,240,255,0.2)" }}>
+          <Dumbbell size={20} strokeWidth={2} style={{ color: "#00F0FF" }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: DS, fontWeight: 900, fontSize: "17px", letterSpacing: "0.04em", textTransform: "uppercase", color: "#fff", lineHeight: 1.1, marginBottom: "2px" }}>MÓDULO COMPLETADO</p>
+          <p style={{ fontFamily: "'Courier New',monospace", fontSize: "8.5px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#00F0FF" }}>SERIE REGISTRADA CORRECTAMENTE</p>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// Count-up animation: interpolates 0 → target over `duration` ms with ease-out cubic.
+function useCountUp(target: number, duration = 1000): number {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf: number;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
+}
+
+function WorkoutCompleteModal({ onClose, durationStr, exerciseCount }: {
+  onClose: () => void;
+  durationStr: string;
+  exerciseCount: number;
+}) {
+  void exerciseCount; void durationStr;
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
+  const CARD: React.CSSProperties = {
+    background: "#111",
+    border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: "22px",
+    padding: "20px 16px",
+  };
+
+  // Progressive counters
+  const kcal      = useCountUp(840);
+  const intensity = useCountUp(94);
+
+  // VO2 bar animates from 0→72% on mount
+  const [barW, setBarW] = useState(0);
+  useEffect(() => { const t = setTimeout(() => setBarW(72), 80); return () => clearTimeout(t); }, []);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="animate-mc-overlay-in"
+      style={{
+        position: "fixed", inset: 0, background: "#070708",
+        zIndex: 9998, overflowY: "auto",
+      }}
+    >
+      <div style={{ maxWidth: 440, margin: "0 auto", padding: "28px 16px 0", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+
+        {/* ── HEADER ─────────────────────────────────────────────────── */}
+        <div className="animate-mc-slide-up-0" style={{ textAlign: "center", marginBottom: "24px" }}>
+          {/* Brand mark */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "16px" }}>
+            <Zap size={13} fill="#CEFF00" stroke="none" />
+            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "14px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#fff" }}>
+              MYCOACH
+            </span>
+          </div>
+
+          {/* Session badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)", borderRadius: "9999px", padding: "5px 16px", marginBottom: "16px" }}>
+            <span style={{ fontFamily: MONO, fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: "#f87171" }}>• RESUMEN DE SESIÓN</span>
+          </div>
+
+          {/* Massive title */}
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(44px,13vw,64px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#CEFF00", lineHeight: 0.86 }}>
+              ENTRENAMIENTO
+            </div>
+            <div style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(44px,13vw,64px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 0.86 }}>
+              FINALIZADO
+            </div>
+          </div>
+
+          {/* Volt badge */}
+          <div style={{ display: "inline-block", background: "#CEFF00", padding: "11px 28px", borderRadius: "14px", boxShadow: "0 0 32px rgba(206,255,0,0.4), 0 0 8px rgba(206,255,0,0.2)" }}>
+            <span style={{ fontFamily: DS, fontWeight: 900, fontSize: "19px", fontStyle: "italic", letterSpacing: "0.12em", textTransform: "uppercase", color: "#000" }}>
+              LÍMITE SUPERADO
+            </span>
+          </div>
+        </div>
+
+        {/* ── STATS BENTO (2-col) ─────────────────────────────────────── */}
+        <div className="animate-mc-slide-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+          {/* Calories */}
+          <div style={CARD}>
+            <Flame size={20} strokeWidth={1.5} style={{ color: "#CEFF00", marginBottom: "14px" }} />
+            <p style={{ fontFamily: MONO, fontSize: "7.5px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "6px" }}>CALORÍAS</p>
+            <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "48px", color: "#CEFF00", lineHeight: 1 }}>{kcal}</p>
+            <p style={{ fontFamily: MONO, fontSize: "7px", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginTop: "4px" }}>KCAL QUEMADAS</p>
+          </div>
+          {/* Intensity */}
+          <div style={CARD}>
+            <BarChart3 size={20} strokeWidth={1.5} style={{ color: "#00F0FF", marginBottom: "14px" }} />
+            <p style={{ fontFamily: MONO, fontSize: "7.5px", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "6px" }}>PICO</p>
+            <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "48px", color: "#00F0FF", lineHeight: 1 }}>{intensity}%</p>
+            <p style={{ fontFamily: MONO, fontSize: "7px", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginTop: "4px" }}>NIVEL INTENSIDAD</p>
+          </div>
+        </div>
+
+        {/* ── VO2 MAX BLOCK ───────────────────────────────────────────── */}
+        <div className="animate-mc-slide-up-2" style={{ ...CARD, border: "1px solid rgba(0,240,255,0.14)", marginBottom: "12px" }}>
+          <p style={{ fontFamily: MONO, fontSize: "7.5px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "12px" }}>
+            PROGRESIÓN VO2 MAX
+          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "52px", color: "#fff", lineHeight: 1 }}>54.2</p>
+            <div style={{ background: "rgba(52,211,153,0.09)", border: "1px solid rgba(52,211,153,0.28)", borderRadius: "12px", padding: "7px 14px", textAlign: "center" }}>
+              <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "15px", letterSpacing: "0.06em", color: "#34d399" }}>+2.4 INCREMENTO</span>
+            </div>
+          </div>
+          {/* Animated bar */}
+          <div style={{ height: "7px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", overflow: "hidden" }}>
+            <div style={{
+              height: "100%",
+              width: `${barW}%`,
+              background: "linear-gradient(90deg,#00F0FF,#CEFF00)",
+              borderRadius: "4px",
+              boxShadow: "0 0 10px rgba(0,240,255,0.55)",
+              transition: "width 1.1s cubic-bezier(0.16,1,0.3,1)",
+            }} />
+          </div>
+          <p style={{ fontFamily: MONO, fontSize: "7px", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)", marginTop: "8px" }}>
+            72% HACIA SIGUIENTE UMBRAL ÉLITE
+          </p>
+        </div>
+
+        {/* ── RECORD BADGES ───────────────────────────────────────────── */}
+        <div className="animate-mc-slide-up-3" style={{ marginBottom: "24px" }}>
+          <p style={{ fontFamily: MONO, fontSize: "7.5px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: "12px" }}>
+            🏆 INSIGNIAS DE RÉCORD
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+            {([
+              { label: "PESO\nBANCA",        delta: "+15 KG" },
+              { label: "PRESS\nINCLINADO",   delta: "+10 KG" },
+              { label: "SENTA-\nDILLA",      delta: "+5 KG"  },
+            ] as { label: string; delta: string }[]).map(({ label, delta }) => (
+              <div key={label} style={{ ...CARD, padding: "18px 10px", textAlign: "center" }}>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "26px", color: "#CEFF00", lineHeight: 1, marginBottom: "9px" }}>
+                  {delta}
+                </p>
+                <p style={{ fontFamily: MONO, fontSize: "7px", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Spacer so footer sticks to bottom */}
+        <div style={{ flex: 1, minHeight: "16px" }} />
+
+        {/* ── FOOTER CTA ──────────────────────────────────────────────── */}
+        <div className="animate-mc-slide-up-4" style={{ position: "sticky", bottom: 0, padding: "16px 0 40px", background: "linear-gradient(to bottom, rgba(7,7,8,0) 0%, #070708 38%)" }}>
+          <button
+            onClick={onClose}
+            className="w-full bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl text-center shadow-md"
+            style={{ fontFamily: DS, fontStyle: "italic", fontSize: "18px", letterSpacing: "0.14em", cursor: "pointer", border: "none", boxShadow: "0 0 36px rgba(206,255,0,0.3), 0 4px 16px rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+          >
+            CERRAR SESIÓN ✓
+          </button>
+        </div>
+
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    TAB: HOY
 ══════════════════════════════════════════════════════════════ */
 
@@ -1675,6 +2470,7 @@ function TabHoy({
   student, detail, meals, day,
   onMealOpen, onExerciseOpen,
   waterMl, onAddWater,
+  checkedMeals, onToggleMeal,
 }: {
   student: Student; detail: Detail; meals: Meal[];
   day: RoutineDay | undefined;
@@ -1682,14 +2478,11 @@ function TabHoy({
   onExerciseOpen: (e: Exercise & { muscleGroup?: string }) => void;
   waterMl: number;
   onAddWater: () => void;
+  checkedMeals: Set<number>;
+  onToggleMeal: (i: number) => void;
 }) {
   void detail; void day; void onExerciseOpen;
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
-  const [checkedMeals, setCheckedMeals] = useState<Set<number>>(new Set());
-
-  const toggleMeal = (i: number) => setCheckedMeals(s => {
-    const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n;
-  });
 
   const totalTarget   = meals.reduce((s, m) => s + m.calories, 0) || 2800;
   const totalConsumed = meals.reduce((s, m, i) => s + (checkedMeals.has(i) ? m.calories : 0), 0);
@@ -1718,9 +2511,34 @@ function TabHoy({
 
       {/* ── TODAY'S NUTRITION HEADER ── */}
       <div className="mb-4">
-        <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(24px,7.5vw,30px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 1 }}>
-          TODAY&apos;S NUTRITION
-        </h2>
+        <div className="flex items-center justify-between mb-1 no-print">
+          <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(24px,7.5vw,30px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 1 }}>
+            TODAY&apos;S NUTRITION
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const isPaper = document.body.dataset.print === "paper";
+                document.body.dataset.print = isPaper ? "" : "paper";
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>
+                MODO PAPEL
+              </span>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Printer size={12} style={{ color: "#808080" }} />
+              <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>
+                EXPORTAR
+              </span>
+            </button>
+          </div>
+        </div>
+
         <p className="text-[11px] mt-1" style={{ color: "#808080" }}>
           Fueling your discipline.{" "}
           <span style={{ color: "#fff", fontWeight: 600 }}>{remaining}</span> kcal remaining.
@@ -1804,7 +2622,7 @@ function TabHoy({
                       </div>
                     )}
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleMeal(i); }}
+                  <button onClick={(e) => { e.stopPropagation(); onToggleMeal(i); }}
                     className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 shrink-0"
                     style={{ background: isChecked ? "#CEFF00" : "rgba(0,0,0,0.68)", border: `1px solid ${isChecked ? "#CEFF00" : "rgba(255,255,255,0.18)"}`, backdropFilter: "blur(12px)" }}>
                     <Check size={14} strokeWidth={3} style={{ color: isChecked ? "#000" : "#fff" }} />
@@ -1870,41 +2688,367 @@ function TabProgreso({
   student: Student; detail: Detail; startWeight: number;
   onBadge: () => void;
 }) {
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
   const diff = +(student.currentWeight - startWeight).toFixed(1);
 
+  /* ── Historical check-in photo registry ── */
+  const VISUAL_LOG = [
+    { photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "FRONTAL"   },
+    { photo: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "POSTERIOR" },
+    { photo: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "FRONTAL"   },
+    { photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "LATERAL"   },
+    { photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "FRONTAL"   },
+    { photo: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "POSTERIOR" },
+  ];
+
+  /* ── State ── */
+  const [dayTab,          setDayTab]          = useState(2);
+  const [isGalleryOpen,   setIsGalleryOpen]   = useState(false);
+  const [isComparisonOpen,setIsComparisonOpen]= useState(false);
+  const [beforeIdx,       setBeforeIdx]       = useState(0);
+  const [afterIdx,        setAfterIdx]        = useState(VISUAL_LOG.length - 1);
+
+  /* ── Weight chart SVG math ── */
+  const history = detail.weightHistory;
+  const PW = 320, PH = 80, PAD = 10;
+  const weights = history.map(h => h.weight);
+  const minW = Math.min(...weights) - 0.8;
+  const maxW = Math.max(...weights) + 0.8;
+  const toY = (w: number) => PAD + (1 - (w - minW) / (maxW - minW)) * (PH - PAD * 2);
+  const toX = (i: number) => PAD + (i / Math.max(weights.length - 1, 1)) * (PW - PAD * 2);
+  const pts  = weights.map((w, i) => `${toX(i).toFixed(1)},${toY(w).toFixed(1)}`);
+  const linePath = `M ${pts.join(" L ")}`;
+  const areaPath = `${linePath} L ${toX(weights.length - 1)},${PH - PAD} L ${toX(0)},${PH - PAD} Z`;
+
+  /* ── Biometric cards ── */
+  const latest = detail.measurements[detail.measurements.length - 1];
+  const prev   = detail.measurements[detail.measurements.length - 2];
+  const bioCards = [
+    { label: "BRAZO",   curr: latest?.armR   ?? 28.5, base: prev?.armR   ?? 28,   unit: "cm", goodIfPos: true  },
+    { label: "CINTURA", curr: latest?.waist  ?? 68,   base: prev?.waist  ?? 71,   unit: "cm", goodIfPos: false },
+    { label: "PECHO",   curr: latest?.chest  ?? 88,   base: prev?.chest  ?? 89,   unit: "cm", goodIfPos: true  },
+    { label: "PIERNA",  curr: latest?.thighR ?? 55,   base: prev?.thighR ?? 55.5, unit: "cm", goodIfPos: true  },
+  ];
+
+  const DAY_TABS = ["LUN", "MAR", "MIÉ", "HOY"];
+
+  /* ── Gallery overlay: group by month ── */
+  const months = [...new Set(VISUAL_LOG.map(v => v.mes))];
+
+  /* ── Comparison slot helpers ── */
+  const cycleBefore = () => setBeforeIdx(i => (i + 1) % VISUAL_LOG.length);
+  const cycleAfter  = () => setAfterIdx(i  => (i + 1) % VISUAL_LOG.length);
+  const imgStyle: React.CSSProperties = { filter: "grayscale(0.45) brightness(0.82)" };
+
+  /* ── Shared photo card sub-render ── */
+  const PhotoCard = ({ entry, height = 300, width = 220 }: { entry: typeof VISUAL_LOG[0]; height?: number; width?: number }) => (
+    <div className="rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/[0.04]"
+      style={{ width, height }}>
+      <img src={entry.photo} alt={entry.angle}
+        className="absolute inset-0 w-full h-full object-cover object-center" style={imgStyle} />
+      <div className="absolute inset-0"
+        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 50%, transparent 72%)" }} />
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <p className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: "0.2em", color: "#CEFF00" }}>
+          {entry.mes}
+        </p>
+        <p className="font-black italic uppercase leading-none"
+          style={{ fontFamily: DS, fontSize: "clamp(20px,5.5vw,26px)", color: "#fff" }}>
+          {entry.angle}
+        </p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
-      <div className="pt-2 pb-1">
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#fff" }}>Progreso</h1>
-        <p className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Tu evolución en el tiempo</p>
+    <div className="w-full flex flex-col pb-24">
+
+      {/* ── 1. PERFORMANCE HEADER ── */}
+      <div className="pt-5 pb-6">
+        <p className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#CEFF00" }}>
+          PERFORMANCE INTELLIGENCE
+        </p>
+        <h1 className="font-black italic uppercase leading-none"
+          style={{ fontFamily: DS, fontSize: "clamp(30px,9vw,40px)", letterSpacing: "0.03em", color: "#fff" }}>
+          ANÁLISIS DE<br />RENDIMIENTO
+        </h1>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <StatCard label="Peso actual" value={student.currentWeight} unit="kg"
-          sub={diff !== 0 ? `${diff > 0 ? "+" : ""}${diff} kg desde inicio` : "Sin cambios"}
-          subColor={diff <= 0 ? "#34d399" : "#f87171"} icon={TrendingDown} accent="#34d399" />
-        <StatCard label="Racha" value={student.streak} unit="días" icon={Flame} accent="#fb923c" />
+      {/* ── 2. WEIGHT EVOLUTION BENTO ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>EVOLUCIÓN PESO</p>
+            <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(28px,8vw,36px)", color: "#fff" }}>
+              {student.currentWeight}
+              <span style={{ fontSize: "clamp(15px,4vw,18px)", color: "rgba(255,255,255,0.45)", marginLeft: 4 }}>KG</span>
+            </p>
+          </div>
+          <div className="px-3 py-1 rounded-full mt-1 flex-shrink-0"
+            style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.2)" }}>
+            <span className="font-mono font-bold text-xs" style={{ color: "#CEFF00" }}>
+              {diff > 0 ? "+" : ""}{diff}kg Total
+            </span>
+          </div>
+        </div>
+        <div className="w-full relative" style={{ height: 80 }}>
+          <svg viewBox={`0 0 ${PW} ${PH}`} preserveAspectRatio="none" className="w-full h-full" style={{ overflow: "visible" }}>
+            <defs>
+              <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#CEFF00" stopOpacity="0.2" />
+                <stop offset="60%"  stopColor="#CEFF00" stopOpacity="0.06" />
+                <stop offset="100%" stopColor="#CEFF00" stopOpacity="0" />
+              </linearGradient>
+              <filter id="chartGlow">
+                <feGaussianBlur stdDeviation="2.5" result="b" />
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d={areaPath} fill="url(#wGrad)" />
+            <path d={linePath} fill="none" stroke="#CEFF00" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" filter="url(#chartGlow)" />
+            <circle cx={toX(weights.length - 1)} cy={toY(weights[weights.length - 1])}
+              r="4" fill="#CEFF00" filter="url(#chartGlow)" />
+          </svg>
+        </div>
+        <div className="grid grid-cols-4 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {DAY_TABS.map((d, i) => (
+            <button key={d} onClick={() => setDayTab(i)} className="py-3 text-center"
+              style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+              <span className="font-black uppercase"
+                style={{ fontFamily: DS, fontStyle: "normal", fontSize: 11, letterSpacing: "0.1em",
+                  color: dayTab === i ? "#CEFF00" : "rgba(255,255,255,0.22)" }}>
+                {d}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Chart */}
-      <CardWrap>
-        <SectionHeader icon={TrendingUp} title="Evolución de peso" />
-        <WeightChart history={detail.weightHistory} />
-      </CardWrap>
+      {/* ── 3. BIOMETRIC MEASUREMENTS ── */}
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "#808080" }}>
+        MEDICIONES BIOMÉTRICAS
+      </p>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {bioCards.map(({ label, curr, base, unit, goodIfPos }) => {
+          const delta = +(curr - base).toFixed(1);
+          const isGood = goodIfPos ? delta >= 0 : delta <= 0;
+          const deltaColor = delta === 0 ? "#808080" : isGood ? "#4ade80" : "rgba(248,113,113,0.9)";
+          return (
+            <div key={label} className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between" style={{ minHeight: 108 }}>
+              <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#808080" }}>{label}</p>
+              <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(30px,8.5vw,38px)", color: "#fff" }}>
+                {curr}<span style={{ fontSize: "clamp(14px,4vw,17px)", color: "rgba(255,255,255,0.45)", marginLeft: 2 }}>{unit}</span>
+              </p>
+              <p className="font-bold text-[11px] mt-2 tabular-nums" style={{ color: deltaColor }}>
+                {delta >= 0 ? "+" : ""}{delta}cm
+              </p>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Log form */}
-      <CardWrap>
-        <SectionHeader icon={Weight} title="Registrar progreso de hoy" />
-        <ProgressForm onSaved={() => {}} />
-      </CardWrap>
+      {/* ── 4. VISUAL LOG CAROUSEL ── */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "#808080" }}>
+          REGISTRO VISUAL
+        </p>
+        <button
+          onClick={() => setIsGalleryOpen(true)}
+          className="active:opacity-70 transition-opacity"
+          style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 12, letterSpacing: "0.06em", color: "#CEFF00" }}>
+          Ver Todo
+        </button>
+      </div>
+      <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 mb-6"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+        {VISUAL_LOG.slice(0, 3).map((v, i) => (
+          <PhotoCard key={i} entry={v} height={300} width={220} />
+        ))}
+      </div>
 
-      {/* Badge */}
-      <button onClick={onBadge}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-75"
-        style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)" }}>
-        <Download size={14} strokeWidth={1.75} /> Descargar Insignia de Progreso
+      {/* ── 5. MASTER CTA ── */}
+      <button
+        onClick={() => setIsComparisonOpen(true)}
+        className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+        style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(14px,4vw,16px)",
+          letterSpacing: "0.14em", boxShadow: "0 0 32px rgba(206,255,0,0.15), 0 8px 20px rgba(0,0,0,0.3)" }}>
+        COMPARA TU EVOLUCIÓN
+        <Camera size={18} strokeWidth={2} />
       </button>
+
+      {/* ══════════════════════════════
+          GALLERY OVERLAY PORTAL
+      ══════════════════════════════ */}
+      {isGalleryOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[80] overflow-y-auto"
+          style={{ background: "rgba(7,7,8,0.98)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+
+          {/* Sticky header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4"
+            style={{ background: "rgba(7,7,8,0.95)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] mb-0.5" style={{ color: "#CEFF00" }}>
+                REGISTRO VISUAL
+              </p>
+              <p className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 18, color: "#fff", letterSpacing: "0.04em" }}>
+                HISTORIAL COMPLETO
+              </p>
+            </div>
+            <button
+              onClick={() => setIsGalleryOpen(false)}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <X size={15} style={{ color: "rgba(255,255,255,0.6)" }} />
+            </button>
+          </div>
+
+          {/* Content grouped by month */}
+          <div className="px-5 py-5 pb-10">
+            {months.map(mes => (
+              <div key={mes} className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-0.5 h-4 rounded-full flex-shrink-0" style={{ background: "#CEFF00" }} />
+                  <p className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14, letterSpacing: "0.08em", color: "#fff" }}>
+                    {mes}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {VISUAL_LOG.filter(v => v.mes === mes).map((v, i) => (
+                    <PhotoCard key={i} entry={v} height={200} width={undefined as unknown as number} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ══════════════════════════════
+          COMPARISON OVERLAY PORTAL
+      ══════════════════════════════ */}
+      {isComparisonOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[80] flex flex-col"
+          style={{ background: "#070708" }}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <button
+              onClick={() => setIsComparisonOpen(false)}
+              className="flex items-center gap-2 active:opacity-70 transition-opacity">
+              <ChevronLeft size={20} style={{ color: "#CEFF00" }} />
+              <span className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13, letterSpacing: "0.1em", color: "#CEFF00" }}>
+                VOLVER
+              </span>
+            </button>
+            <div className="text-center">
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: "#808080" }}>
+                COMPARATIVA VISUAL
+              </p>
+            </div>
+            <div style={{ width: 72 }} />
+          </div>
+
+          {/* Instruction */}
+          <div className="px-5 pt-4 pb-3 flex-shrink-0">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-center" style={{ color: "#808080" }}>
+              Toca cada tarjeta para cambiar el mes
+            </p>
+          </div>
+
+          {/* Split screen */}
+          <div className="flex-1 flex gap-3 px-4 pb-4 overflow-hidden" style={{ minHeight: 0 }}>
+
+            {/* ANTES slot */}
+            <button
+              onClick={cycleBefore}
+              className="flex-1 rounded-2xl overflow-hidden relative border active:scale-[0.97] transition-all"
+              style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+              <img src={VISUAL_LOG[beforeIdx].photo} alt="Antes"
+                className="absolute inset-0 w-full h-full object-cover object-center" style={imgStyle} />
+              <div className="absolute inset-0"
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.25) 55%, transparent 75%)" }} />
+              {/* Top label */}
+              <div className="absolute top-0 left-0 right-0 p-3">
+                <div className="inline-flex items-center px-2 py-1 rounded-lg"
+                  style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "#808080" }}>ANTES</span>
+                </div>
+              </div>
+              {/* Bottom content */}
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <p className="font-mono uppercase mb-0.5" style={{ fontSize: 8, letterSpacing: "0.2em", color: "#CEFF00" }}>
+                  {VISUAL_LOG[beforeIdx].mes}
+                </p>
+                <p className="font-black italic uppercase leading-none"
+                  style={{ fontFamily: DS, fontSize: "clamp(18px,5vw,22px)", color: "#fff" }}>
+                  {VISUAL_LOG[beforeIdx].angle}
+                </p>
+                {/* Cycle hint */}
+                <div className="flex items-center gap-1 mt-2">
+                  {VISUAL_LOG.map((_, i) => (
+                    <div key={i} className="h-0.5 rounded-full transition-all"
+                      style={{ background: i === beforeIdx ? "#CEFF00" : "rgba(255,255,255,0.2)", flex: i === beforeIdx ? 2 : 1 }} />
+                  ))}
+                </div>
+              </div>
+            </button>
+
+            {/* DESPUÉS slot */}
+            <button
+              onClick={cycleAfter}
+              className="flex-1 rounded-2xl overflow-hidden relative border active:scale-[0.97] transition-all"
+              style={{ borderColor: "rgba(206,255,0,0.2)" }}>
+              <img src={VISUAL_LOG[afterIdx].photo} alt="Después"
+                className="absolute inset-0 w-full h-full object-cover object-center" style={imgStyle} />
+              <div className="absolute inset-0"
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.25) 55%, transparent 75%)" }} />
+              {/* Top label */}
+              <div className="absolute top-0 left-0 right-0 p-3">
+                <div className="inline-flex items-center px-2 py-1 rounded-lg"
+                  style={{ background: "rgba(206,255,0,0.15)", border: "1px solid rgba(206,255,0,0.3)" }}>
+                  <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "#CEFF00" }}>DESPUÉS</span>
+                </div>
+              </div>
+              {/* Bottom content */}
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <p className="font-mono uppercase mb-0.5" style={{ fontSize: 8, letterSpacing: "0.2em", color: "#CEFF00" }}>
+                  {VISUAL_LOG[afterIdx].mes}
+                </p>
+                <p className="font-black italic uppercase leading-none"
+                  style={{ fontFamily: DS, fontSize: "clamp(18px,5vw,22px)", color: "#fff" }}>
+                  {VISUAL_LOG[afterIdx].angle}
+                </p>
+                <div className="flex items-center gap-1 mt-2">
+                  {VISUAL_LOG.map((_, i) => (
+                    <div key={i} className="h-0.5 rounded-full transition-all"
+                      style={{ background: i === afterIdx ? "#CEFF00" : "rgba(255,255,255,0.2)", flex: i === afterIdx ? 2 : 1 }} />
+                  ))}
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Weight delta footer */}
+          <div className="px-5 pb-6 flex-shrink-0">
+            <div className="rounded-2xl p-4 flex items-center justify-between"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="text-center flex-1">
+                <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>PESO INICIAL</p>
+                <p className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, color: "#fff" }}>{startWeight}<span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>kg</span></p>
+              </div>
+              <ArrowLeftRight size={16} style={{ color: "#CEFF00", flexShrink: 0 }} />
+              <div className="text-center flex-1">
+                <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#CEFF00" }}>PESO ACTUAL</p>
+                <p className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 22, color: "#CEFF00" }}>{student.currentWeight}<span style={{ fontSize: 12, color: "rgba(206,255,0,0.5)" }}>kg</span></p>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -1988,12 +3132,46 @@ function getIngrImg(icon?: string): string {
   return INGR_IMGS[icon ?? ""] ?? INGR_IMGS.beef;
 }
 
-function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
+/* ── Premium gate overlay ── */
+function PremiumGate() {
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  return (
+    <div className="w-full flex flex-col items-center justify-center py-20 px-6 text-center"
+      style={{ minHeight: 420 }}>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+        style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)" }}>
+        <Lock size={28} style={{ color: "#CEFF00" }} />
+      </div>
+      <p className="font-mono text-[9px] uppercase tracking-[0.22em] mb-2" style={{ color: "#808080" }}>
+        ACCESO RESTRINGIDO
+      </p>
+      <h2 className="font-black italic uppercase leading-tight mb-2"
+        style={{ fontFamily: DS, fontSize: "clamp(22px,6vw,28px)", color: "#fff", letterSpacing: "0.04em" }}>
+        SECCIÓN BLOQUEADA
+      </h2>
+      <p className="font-black uppercase mb-6"
+        style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(10px,3vw,12px)", letterSpacing: "0.12em", color: "#CEFF00" }}>
+        DISPONIBLE EN PLAN BERSERKER ⚡
+      </p>
+      <div className="w-full max-w-xs rounded-xl py-4 flex items-center justify-center gap-2"
+        style={{ background: "#CEFF00", boxShadow: "0 0 28px rgba(206,255,0,0.2)" }}>
+        <Zap size={16} fill="#000" stroke="none" />
+        <span className="font-black uppercase text-black"
+          style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14, letterSpacing: "0.12em" }}>
+          ACTUALIZAR PLAN
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier }: {
   day: RoutineDay | undefined;
   student: Student;
   waterMl: number;
   onAddWater: () => void;
   onFocusMode: (active: boolean) => void;
+  memberTier: "basic" | "berserker";
 }) {
   type WView = "lobby" | "focus" | "library";
   const [wView,        setWView]        = useState<WView>("lobby");
@@ -2060,15 +3238,34 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
 
   const startNextSet = () => { setRestOn(false); setRestDone(false); setRestSecs(90); };
 
+  const [workoutToast,    setWorkoutToast]    = useState(false);
+  const [workoutComplete, setWorkoutComplete] = useState(false);
+  const workoutToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSetComplete = () => {
-    const newSets = currentSet + 1;
+    if (currentSet >= totalSets) return;          // hard cap — never exceed target sets
+
+    const newSets  = currentSet + 1;
+    const isLast   = newSets >= totalSets;
+
     setDoneSets(d => ({ ...d, [activeExIdx]: newSets }));
-    if (newSets >= totalSets) {
+
+    // Toast fires on every set completion
+    setWorkoutToast(true);
+    if (workoutToastRef.current) clearTimeout(workoutToastRef.current);
+
+    if (isLast) {
+      // Final set: mark exercise done, then auto-return to lobby after toast
       setDoneEx(d => new Set([...d, activeExIdx]));
-      const next = exercises.findIndex((_, i) => i > activeExIdx && !doneEx.has(i));
-      if (next !== -1) setActiveExIdx(next);
+      workoutToastRef.current = setTimeout(() => {
+        setWorkoutToast(false);
+        switchView("lobby");
+      }, 2000);
+    } else {
+      // Non-final set: start rest timer, stay in focus view
+      startRest();
+      workoutToastRef.current = setTimeout(() => setWorkoutToast(false), 2000);
     }
-    startRest();
   };
 
   /* ─── LOBBY ─── */
@@ -2254,6 +3451,19 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
           <Search size={13} strokeWidth={2} /> BIBLIOTECA DE EJERCICIOS
         </button>
       </div>
+
+      {/* ── FINALIZAR — appears once all exercises are done ── */}
+      {doneEx.size >= totalEx && totalEx > 0 && (
+        <div className="mx-4 mt-3 mb-2">
+          <button
+            onClick={() => setWorkoutComplete(true)}
+            className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+            style={{ background: "#CEFF00", boxShadow: "0 0 32px rgba(206,255,0,0.3)", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "16px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#000", border: "none" }}>
+            <Zap size={16} fill="#000" stroke="none" />
+            FINALIZAR ENTRENAMIENTO
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -2289,7 +3499,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
               ? "REST FINISHED"
               : restOn
               ? `RESTING — SET ${currentSet} COMPLETED ✓`
-              : `${day?.muscleGroup ?? "FUERZA"} · SERIE ${currentSet + 1} DE ${totalSets}`}
+              : `${day?.muscleGroup ?? "FUERZA"} · SERIE ${Math.min(currentSet + 1, totalSets)} DE ${totalSets}`}
           </p>
           <h1 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(28px,8.5vw,40px)", lineHeight: 0.88, textTransform: "uppercase", letterSpacing: "-0.03em", color: "#fff" }}>
             {activeEx.name}
@@ -2430,7 +3640,8 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
             </div>
 
             <button onClick={handleSetComplete}
-              className="w-full py-5 rounded-3xl font-black uppercase flex items-center justify-center gap-3 cursor-pointer transition-all duration-300 active:scale-95"
+              disabled={currentSet >= totalSets}
+              className="w-full py-5 rounded-3xl font-black uppercase flex items-center justify-center gap-3 cursor-pointer transition-all duration-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ fontFamily: DS, fontStyle: "italic", letterSpacing: "0.12em", fontSize: "clamp(15px,5vw,20px)", background: "#CEFF00", color: "#000", boxShadow: "0 20px 40px rgba(206,255,0,0.32)" }}>
               <CheckCircle2 size={20} strokeWidth={2.5} /> ✓ SET COMPLETE
             </button>
@@ -2567,9 +3778,48 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode }: {
 
   return (
     <div style={{ opacity: animating ? 0 : 1, transform: animating ? "translateY(8px)" : "translateY(0)", transition: "opacity 0.16s ease, transform 0.16s ease" }}>
-      {wView === "lobby"   && LobbyView}
-      {wView === "focus"   && FocusView}
-      {wView === "library" && LibraryView}
+      {memberTier === "basic" ? (
+        <PremiumGate />
+      ) : (
+        <>
+          {/* Export button — lobby only */}
+          {wView === "lobby" && (
+            <div className="flex justify-end items-center gap-2 px-4 pb-2 no-print">
+              <button
+                onClick={() => {
+                  const isPaper = document.body.dataset.print === "paper";
+                  document.body.dataset.print = isPaper ? "" : "paper";
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>
+                  MODO PAPEL
+                </span>
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <Printer size={12} style={{ color: "#808080" }} />
+                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>
+                  EXPORTAR RUTINA
+                </span>
+              </button>
+            </div>
+          )}
+          {wView === "lobby"   && LobbyView}
+          {wView === "focus"   && FocusView}
+          {wView === "library" && LibraryView}
+        </>
+      )}
+      {workoutToast && <WorkoutToast />}
+      {workoutComplete && (
+        <WorkoutCompleteModal
+          onClose={() => setWorkoutComplete(false)}
+          durationStr={durationStr}
+          exerciseCount={exercises.length}
+        />
+      )}
     </div>
   );
 }
@@ -2689,121 +3939,1198 @@ function CancelSubscriptionSheet({
 function TabPerfil({ student, detail, onCancelRequest }: {
   student: Student; detail: Detail; onCancelRequest: () => void;
 }) {
-  const initials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
 
-  const infoRows = [
-    { label: "Correo", value: student.email ?? "—" },
-    { label: "Miembro desde", value: student.joinedDate ?? "—" },
-    { label: "Estado", value: student.paymentStatus ?? "Activo" },
-  ];
+  /* Rank derived from streak */
+  const rankTitle = student.streak >= 60 ? "LEYENDA"
+    : student.streak >= 30 ? "BESTIA"
+    : student.streak >= 14 ? "GUERRERO"
+    : "ATLETA";
+  const rankSub = student.streak >= 30 ? "ELITE" : student.streak >= 14 ? "PRO" : "NIVEL 1";
 
-  const bodyRows = [
-    { label: "Estatura", value: detail.height && detail.height > 0 ? `${detail.height} cm` : "—", icon: Ruler, accent: "#a78bfa" },
-    { label: "% Grasa corporal", value: detail.bodyFat && detail.bodyFat > 0 ? `${detail.bodyFat}%` : "—", icon: Droplet, accent: "#60a5fa" },
-    { label: "Peso actual", value: `${student.currentWeight} kg`, icon: TrendingDown, accent: "#34d399" },
-    { label: "Racha activa", value: `${student.streak} días`, icon: Flame, accent: "#fb923c" },
+  /* Subscription tier label */
+  const planLabel = student.stage === "Volumen" ? "Plan Berserker"
+    : student.stage === "Definición" ? "Plan Shredder"
+    : "Plan Performance";
+
+  /* Monthly progress: streak vs 30-day target */
+  const monthPct = Math.min(100, Math.round((student.streak / 30) * 100));
+
+  /* PR data (static display values) */
+  const PR_ITEMS = [
+    { label: "SQUAT",    value: "180", unit: "KG", accentColor: "#CEFF00" },
+    { label: "DEADLIFT", value: "220", unit: "KG", accentColor: "#00F0FF" },
+    { label: "BENCH",    value: "140", unit: "KG", accentColor: "#808080" },
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="pt-2 pb-1">
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#fff" }}>Perfil</h1>
-        <p className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Tu cuenta y datos físicos</p>
+    <div className="w-full flex flex-col pb-24">
+
+      {/* ── 1. HERO BANNER ── */}
+      <div className="w-full relative overflow-hidden mb-6"
+        style={{ height: 280, marginLeft: "-1rem", width: "calc(100% + 2rem)" }}>
+        <img
+          src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop&auto=format&q=80"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ filter: "grayscale(0.4) brightness(0.55)" }}
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(7,7,8,0.25) 0%, rgba(7,7,8,0.15) 40%, rgba(7,7,8,0.85) 85%, rgba(7,7,8,1) 100%)" }} />
+        {/* Identity tagline */}
+        <div className="absolute bottom-0 left-0 px-5 pb-5">
+          <p className="font-black uppercase leading-tight"
+            style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.02em" }}>
+            UNA SERIE MÁS,
+          </p>
+          <p className="font-black uppercase leading-tight"
+            style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.02em" }}>
+            UNA COMIDA MÁS.
+          </p>
+          <p className="font-black italic text-sm tracking-wide mt-1"
+            style={{ fontFamily: DS, color: "#CEFF00", letterSpacing: "0.06em" }}>
+            DISCIPLINA ABSOLUTA.
+          </p>
+        </div>
+        {/* Avatar chip top-right */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-2xl"
+          style={{ background: "rgba(7,7,8,0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
+            style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, border: "1.5px solid rgba(206,255,0,0.5)" }}>
+            {student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+          </div>
+          <div className="leading-tight">
+            <p className="font-black text-white truncate max-w-[110px]"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13 }}>
+              {student.name.split(" ")[0].toUpperCase()}
+            </p>
+            <p className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "#CEFF00" }}>
+              {student.stage} · E{student.stageNumber}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Avatar card */}
-      <CardWrap>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-[20px] font-semibold"
-            style={{ background: student.avatarColor ?? "rgba(255,255,255,0.08)", color: "#fff" }}>
-            {initials}
+      {/* ── 2. STREAK & RANK GRID ── */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Racha */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
+          style={{ minHeight: 110 }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
+              RACHA DE DÍAS
+            </p>
+            <Flame size={13} style={{ color: "#CEFF00", filter: "drop-shadow(0 0 4px rgba(206,255,0,0.5))" }} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-semibold tracking-tight truncate" style={{ color: "#fff" }}>{student.name}</p>
-            <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.32)" }}>{student.email ?? ""}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#34d399" }} />
-              <span className="text-[10px]" style={{ color: "#34d399" }}>Suscripción activa</span>
-            </div>
+          <p className="font-black italic leading-none"
+            style={{ fontFamily: DS, fontSize: "clamp(26px,7vw,32px)", color: "#CEFF00", letterSpacing: "0.02em" }}>
+            {student.streak}
+            <span style={{ fontSize: "clamp(14px,3.5vw,16px)", marginLeft: 4 }}>DÍAS</span>
+          </p>
+        </div>
+
+        {/* Rango */}
+        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
+          style={{ minHeight: 110 }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
+              RANGO
+            </p>
+            <Sparkles size={13} style={{ color: "#00F0FF", filter: "drop-shadow(0 0 4px rgba(0,240,255,0.45))" }} />
           </div>
-        </div>
-      </CardWrap>
-
-      {/* Body stats */}
-      <CardWrap>
-        <SectionHeader icon={User} title="Datos físicos" />
-        <div className="grid grid-cols-2 gap-2">
-          {bodyRows.map(({ label, value, icon: Icon, accent }) => (
-            <div key={label} className="rounded-2xl p-3.5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.2)" }}>{label}</span>
-                <Icon size={11} style={{ color: accent }} />
-              </div>
-              <p className="text-[20px] font-light" style={{ color: value === "—" ? "rgba(255,255,255,0.2)" : "#fff" }}>{value}</p>
-            </div>
-          ))}
-        </div>
-      </CardWrap>
-
-      {/* Account info */}
-      <CardWrap>
-        <SectionHeader icon={CreditCard} title="Cuenta" />
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.065)" }}>
-          {infoRows.map((row, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: i < infoRows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>{row.label}</span>
-              <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.72)" }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </CardWrap>
-
-      {/* Stage */}
-      <CardWrap>
-        <SectionHeader icon={Calendar} title="Plan activo" />
-        <div className="flex items-center justify-between">
           <div>
-            <p className="text-[15px] font-medium" style={{ color: "#fff" }}>{student.stage}</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>Etapa {student.stageNumber}</p>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.16)" }}>
-            <span className="text-[11px]" style={{ color: "#34d399" }}>En curso</span>
+            <p className="font-black uppercase leading-tight"
+              style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(20px,5.5vw,24px)", color: "#fff", letterSpacing: "0.03em" }}>
+              {rankTitle}
+            </p>
+            <p className="font-mono font-bold text-xs mt-0.5"
+              style={{ color: "#CEFF00", letterSpacing: "0.12em", filter: "drop-shadow(0 0 6px rgba(206,255,0,0.4))" }}>
+              {rankSub}
+            </p>
           </div>
         </div>
-      </CardWrap>
+      </div>
 
-      {/* Suscripción — solo visible cuando está activa */}
-      {(student.paymentStatus === "active" || student.paymentStatus === "grace_period") && (
-        <CardWrap>
-          <SectionHeader icon={CreditCard} title="Mi suscripción" />
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[14px] font-medium" style={{ color: "#fff" }}>Plan mensual</p>
-              <p className="text-[12px] mt-0.5" style={{ color: "#8E8E93" }}>$1,200 MXN / mes</p>
-            </div>
-            <div className="px-3 py-1.5 rounded-xl"
-              style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.13)" }}>
-              <span className="text-[11px]" style={{ color: "#34d399" }}>Activa</span>
-            </div>
+      {/* ── 3. PERSONAL RECORDS ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#808080" }}>
+            PERSONAL RECORDS
+          </p>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#CEFF00" }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
           </div>
+        </div>
+
+        {/* 3-col split */}
+        <div className="grid grid-cols-3">
+          {PR_ITEMS.map(({ label, value, unit, accentColor }, i) => (
+            <div key={label}
+              className="flex flex-col px-4 py-2"
+              style={{
+                borderLeft: `2px solid ${accentColor}`,
+                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                marginLeft: i > 0 ? 0 : undefined,
+              }}>
+              <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#808080" }}>
+                {label}
+              </p>
+              <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(22px,6vw,28px)", color: "#fff" }}>
+                {value}
+              </p>
+              <p className="font-mono text-[9px] uppercase tracking-widest mt-0.5" style={{ color: accentColor }}>
+                {unit}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 4. MURO DE HONOR ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: "#CEFF00", boxShadow: "0 0 8px rgba(206,255,0,0.5)" }} />
+        <h2 className="font-black italic uppercase tracking-wider"
+          style={{ fontFamily: DS, fontSize: "clamp(16px,5vw,20px)", color: "#fff" }}>
+          MURO DE HONOR
+        </h2>
+      </div>
+
+      {/* Row 1: Correo */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-3 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>CORREO</p>
+          <p className="font-bold text-white truncate" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            {student.email ?? "atleta@elite.com"}
+          </p>
+        </div>
+      </div>
+
+      {/* Row 2: Suscripción */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-3 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(206,255,0,0.07)", border: "1px solid rgba(206,255,0,0.14)" }}>
+          <Zap size={15} fill="#CEFF00" stroke="none" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>SUSCRIPCIÓN</p>
+          <p className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            {planLabel}
+          </p>
+        </div>
+        {(student.paymentStatus === "active" || student.paymentStatus === "grace_period") && (
           <button
             onClick={onCancelRequest}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] cursor-pointer transition-opacity hover:opacity-70"
-            style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.1)", color: "#f87171", minHeight: 46 }}
-          >
-            <X size={13} />
-            Cancelar suscripción
+            className="flex-shrink-0 px-2.5 py-1.5 rounded-xl text-[9px] font-mono uppercase tracking-wide"
+            style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.15)", color: "rgba(248,113,113,0.8)" }}>
+            Cancelar
           </button>
-        </CardWrap>
+        )}
+      </div>
+
+      {/* Row 3: Ajustes */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-6 border border-white/[0.02]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <Settings size={15} style={{ color: "rgba(255,255,255,0.5)" }} />
+        </div>
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#808080" }}>AJUSTES</p>
+          <p className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>
+            Preferencia de cuenta
+          </p>
+        </div>
+        <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.2)", marginLeft: "auto", flexShrink: 0 }} />
+      </div>
+
+      {/* ── 5. MONTHLY PROGRESS BAR ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 mb-6 border border-white/[0.02]">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#fff", letterSpacing: "0.04em" }}>
+            PROGRESO MENSUAL
+          </span>
+          <span className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#CEFF00" }}>
+            {monthPct}%
+          </span>
+          <span className="font-black uppercase" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(12px,3.5vw,14px)", color: "#fff", letterSpacing: "0.04em" }}>
+            COMPLETADO
+          </span>
+        </div>
+        <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="h-3 rounded-full transition-all duration-700"
+            style={{
+              width: `${monthPct}%`,
+              background: "linear-gradient(to right, rgba(206,255,0,0.5), #CEFF00)",
+              boxShadow: "0 0 10px rgba(206,255,0,0.35)",
+            }} />
+        </div>
+      </div>
+
+      {/* ── SIGN OUT ── */}
+      <button onClick={() => signOut({ callbackUrl: "/login" })}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl cursor-pointer transition-opacity hover:opacity-75"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.065)", color: "rgba(255,255,255,0.35)", fontSize: 13 }}>
+        <LogOut size={14} strokeWidth={1.5} />
+        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Cerrar Sesión
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TAB: COMUNIDAD — Elite Group Chat
+══════════════════════════════════════════════════════════════ */
+
+const MOCK_POSTS = [
+  {
+    id: 1,
+    author: "Carlos Ruiz",
+    avatarColor: "linear-gradient(135deg,#f97316,#ef4444)",
+    streak: 42,
+    stage: "Volumen",
+    time: "Hace 2h",
+    text: "PR de sentadilla hoy: 190kg × 3 reps. Semana 8 del programa y el cuerpo sigue adaptando. El sistema funciona 💪🔥",
+    likes: 18,
+    replies: [
+      { id: 101, author: "María López", avatarColor: "linear-gradient(135deg,#8b5cf6,#ec4899)", streak: 18, stage: "Definición", time: "Hace 1h", text: "¡Brutal Carlos! Eres la inspiración del grupo 🔥" },
+      { id: 102, author: "Pedro Sanz",  avatarColor: "linear-gradient(135deg,#06b6d4,#3b82f6)", streak: 6,  stage: "Mantenimiento", time: "Hace 45min", text: "Objetivo: alcanzarte antes de julio 💯" },
+    ],
+  },
+  {
+    id: 2,
+    author: "Ana Torres",
+    avatarColor: "linear-gradient(135deg,#10b981,#06b6d4)",
+    streak: 7,
+    stage: "Mantenimiento",
+    time: "Hace 4h",
+    text: "Primer check-in completo ✅ Resultado: -3cm de cintura en 6 semanas. El proceso no miente 📊",
+    likes: 31,
+    replies: [
+      { id: 201, author: "Carlos Ruiz", avatarColor: "linear-gradient(135deg,#f97316,#ef4444)", streak: 42, stage: "Volumen", time: "Hace 3h", text: "Así se hace Ana 🎯 Consistencia sobre todo." },
+    ],
+  },
+  {
+    id: 3,
+    author: "Pedro Sanz",
+    avatarColor: "linear-gradient(135deg,#06b6d4,#3b82f6)",
+    streak: 6,
+    stage: "Mantenimiento",
+    time: "Hace 6h",
+    text: "¿Alguien ha probado el protocolo 16/8 junto al plan de volumen? Cuéntenme resultados 👇",
+    likes: 9,
+    replies: [],
+  },
+];
+
+function getRank(streak: number, stage: string): string {
+  if (streak >= 60) return "LEYENDA ELITE";
+  if (streak >= 30) return "BESTIA ELITE";
+  if (stage === "Volumen") return "BERSERKER";
+  if (streak >= 14) return "GUERRERO PRO";
+  return "ATLETA INIT";
+}
+
+// ── SALAS: static activity feed data ─────────────────────────────────────
+const SALA_ACTIVITY_FEED = [
+  {
+    id: 101,
+    handle: "MARCUS_ELITE",
+    avatarColor: "linear-gradient(135deg,#CEFF00,#00F0FF)",
+    time: "Hace 12 min",
+    exercise: "Deadlift PR",
+    badge: "240KG",
+    img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80&auto=format",
+    likes: 24,
+    comments: 8,
+    comment: "Por fin superando los 240kg. La programación de Fells Team está dando frutos. ¡Vamos equipo!",
+  },
+  {
+    id: 102,
+    handle: "ANA_BERSERKER",
+    avatarColor: "linear-gradient(135deg,#f472b6,#a78bfa)",
+    time: "Hace 35 min",
+    exercise: "Sentadilla 5×5",
+    badge: "120KG",
+    img: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80&auto=format",
+    likes: 17,
+    comments: 5,
+    comment: "Semana 8 del programa. PR en sentadilla. La constancia está marcando la diferencia.",
+  },
+  {
+    id: 103,
+    handle: "COACH_FELLS",
+    avatarColor: "linear-gradient(135deg,#CEFF00,#a3e635)",
+    time: "Hace 1h",
+    exercise: "Press Banca",
+    badge: "180KG",
+    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80&auto=format",
+    likes: 41,
+    comments: 12,
+    comment: "El equipo está en otro nivel este mes. Números récord en 6 de 8 ejercicios clave. Sigan así.",
+  },
+];
+
+// ── SALAS: telemetry ribbon data ──────────────────────────────────────────
+type SalaMetric = { icon: React.ReactNode; label: string; value: string; sub: string; accent: string };
+const SALA_METRICS: SalaMetric[] = [
+  { icon: <Users    size={18} />, label: "MIEMBROS ACTIVOS", value: "42",   sub: "+3 ESTA SEMANA", accent: "#CEFF00" },
+  { icon: <Flame    size={18} />, label: "STREAK GRUPAL",    value: "18",   sub: "DÍAS",           accent: "#CEFF00" },
+  { icon: <Activity size={18} />, label: "ESFUERZO PROM.",   value: "92%",  sub: "INTENSIDAD",     accent: "#00F0FF" },
+  { icon: <MapPin   size={18} />, label: "KMs TOTALES",      value: "1.2K", sub: "ESTE MES",       accent: "#00F0FF" },
+];
+
+// ── Module-level static datasets ─────────────────────────────────────────
+const SALA_ROSTER = [
+  { id: 1, name: "MARCUS_ELITE",   rank: "BESTIA ELITE",  rnk: 1, streak: 42, online: true,  avatarColor: "linear-gradient(135deg,#CEFF00,#00F0FF)" },
+  { id: 2, name: "COACH_FELLS",    rank: "COMANDANTE",    rnk: 2, streak: 38, online: true,  avatarColor: "linear-gradient(135deg,#CEFF00,#a3e635)" },
+  { id: 3, name: "ANA_BERSERKER",  rank: "PREDADORA",     rnk: 3, streak: 31, online: false, avatarColor: "linear-gradient(135deg,#f472b6,#a78bfa)" },
+  { id: 4, name: "ALBERTO_Z",      rank: "TITÁN",         rnk: 4, streak: 28, online: true,  avatarColor: "linear-gradient(135deg,#60a5fa,#a78bfa)" },
+  { id: 5, name: "DIANA_FORCE",    rank: "GUERRERA PRO",  rnk: 5, streak: 21, online: false, avatarColor: "linear-gradient(135deg,#f87171,#fbbf24)" },
+  { id: 6, name: "CARLOS_POWER",   rank: "ATLETA INIT",   rnk: 6, streak: 14, online: true,  avatarColor: "linear-gradient(135deg,#34d399,#06b6d4)" },
+  { id: 7, name: "JORGE_REX",      rank: "GUERRERO PRO",  rnk: 7, streak: 19, online: false, avatarColor: "linear-gradient(135deg,#fb923c,#f43f5e)" },
+  { id: 8, name: "SARA_APEX",      rank: "BESTIA INIT",   rnk: 8, streak: 11, online: true,  avatarColor: "linear-gradient(135deg,#c084fc,#60a5fa)" },
+];
+
+const SALA_LEADERBOARD = [
+  { rank: 1, name: "MARCUS_ELITE",   pts: 4820, kcal: 4210, sets: 52, avatarColor: "linear-gradient(135deg,#CEFF00,#00F0FF)", isMe: false },
+  { rank: 2, name: "COACH_FELLS",    pts: 4650, kcal: 3980, sets: 48, avatarColor: "linear-gradient(135deg,#CEFF00,#a3e635)", isMe: false },
+  { rank: 3, name: "ANA_BERSERKER",  pts: 4100, kcal: 3650, sets: 44, avatarColor: "linear-gradient(135deg,#f472b6,#a78bfa)", isMe: false },
+  { rank: 4, name: "ALBERTO_Z",      pts: 3105, kcal: 3105, sets: 38, avatarColor: "linear-gradient(135deg,#60a5fa,#a78bfa)", isMe: true  },
+  { rank: 5, name: "DIANA_FORCE",    pts: 2890, kcal: 2780, sets: 32, avatarColor: "linear-gradient(135deg,#f87171,#fbbf24)", isMe: false },
+  { rank: 6, name: "CARLOS_POWER",   pts: 2540, kcal: 2410, sets: 28, avatarColor: "linear-gradient(135deg,#34d399,#06b6d4)", isMe: false },
+];
+
+const SALA_AVISOS = [
+  { id: 1, author: "COACH LUIS YÁÑEZ", time: "HACE 2 HORAS", pinned: true,
+    text: "¡ALERTA DE DESAFÍO! Mañana iniciamos el protocolo de superación de fuerza en Sentadilla. Aseguren sus macronutrientes esta noche. No hay espacio para debilidad.",
+    fire: 128, muscle: 94 },
+  { id: 2, author: "COACH ANA SILVA", time: "HACE 6 HORAS", pinned: false,
+    text: "Tutorial de Deadlift con carga máxima disponible en la biblioteca. Revisar técnica antes de la sesión del jueves.",
+    fire: 47, muscle: 33 },
+  { id: 3, author: "COACH LUIS YÁÑEZ", time: "HACE 1 DÍA", pinned: false,
+    text: "Récord colectivo roto esta semana: 312 sesiones completadas. El equipo está operando al máximo rendimiento.",
+    fire: 89, muscle: 61 },
+];
+
+function TabComunidad({ student }: { student: { name: string; streak: number; stage: string; avatarColor?: string } }) {
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
+
+  // ══ STATE MACHINE ════════════════════════════════════════════════════════
+  const [hasTeam,          setHasTeam]          = useState(false);
+  const [currentRoomView,  setCurrentRoomView]  = useState<"feed" | "leaderboard" | "members" | "avisos">("feed");
+
+  // keep below so hook order never changes regardless of hasTeam value:
+
+  // ── Feed / chat state (must stay at top regardless of view) ────────────
+  const [likedActivity,   setLikedActivity]   = useState<Set<number>>(new Set());
+  const [posts,           setPosts]           = useState(MOCK_POSTS);
+  const [postText,        setPostText]        = useState("");
+  const [likedPosts,      setLikedPosts]      = useState<Set<number>>(new Set());
+  const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
+  const [replyInputFor,   setReplyInputFor]   = useState<number | null>(null);
+  const [replyText,       setReplyText]       = useState("");
+  const [searchQuery,     setSearchQuery]     = useState("");
+  const [activityFeed,    setActivityFeed]    = useState(SALA_ACTIVITY_FEED);
+  const [commentOpen,     setCommentOpen]     = useState<Set<number>>(new Set());
+  const [totalStake,      setTotalStake]      = useState(50);
+  const [showPostModal,   setShowPostModal]   = useState(false);
+  const [newPostText,     setNewPostText]     = useState("");
+
+  const initials = (name: string) => name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
+  const handlePost = () => {
+    if (!postText.trim()) return;
+    setPosts(prev => [{
+      id: Date.now(), author: student.name,
+      avatarColor: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)",
+      streak: student.streak, stage: student.stage, time: "Ahora",
+      text: postText.trim(), likes: 0, replies: [],
+    }, ...prev]);
+    setPostText("");
+  };
+  const handleReply = (postId: number) => {
+    if (!replyText.trim()) return;
+    setPosts(prev => prev.map(p => p.id === postId
+      ? { ...p, replies: [...p.replies, { id: Date.now(), author: student.name,
+          avatarColor: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)",
+          streak: student.streak, stage: student.stage, time: "Ahora", text: replyText.trim() }] }
+      : p));
+    setReplyText(""); setReplyInputFor(null);
+  };
+  const toggleLike = (postId: number) => {
+    setLikedPosts(prev => {
+      const n = new Set(prev);
+      if (n.has(postId)) { n.delete(postId); setPosts(p => p.map(x => x.id === postId ? { ...x, likes: x.likes - 1 } : x)); }
+      else               { n.add(postId);    setPosts(p => p.map(x => x.id === postId ? { ...x, likes: x.likes + 1 } : x)); }
+      return n;
+    });
+  };
+  const toggleActivityLike = (id: number) => {
+    setLikedActivity(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const filteredRoster = SALA_ROSTER.filter(m =>
+    searchQuery === "" ||
+    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.rank.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Sub-nav tabs definition
+  const ROOM_TABS = [
+    { id: "feed"        as const, label: "FEED",    Icon: LayoutGrid },
+    { id: "leaderboard" as const, label: "RANKING", Icon: Trophy     },
+    { id: "members"     as const, label: "ROSTER",  Icon: Users      },
+    { id: "avisos"      as const, label: "AVISOS",  Icon: Bell       },
+  ];
+
+  // ══ GATE VIEW (early return — all hooks are above) ════════════════════════
+  if (!hasTeam) {
+    return (
+      <div className="w-full min-h-screen bg-[#070708] text-white flex flex-col items-center justify-center px-6 py-16">
+        {/* Shield emblem */}
+        <div style={{ width: 100, height: 100, borderRadius: 20, background: "rgba(206,255,0,0.04)", border: "1.5px solid rgba(206,255,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 28, boxShadow: "0 0 32px rgba(206,255,0,0.12), inset 0 0 20px rgba(206,255,0,0.03)" }}>
+          <Shield size={46} strokeWidth={1.2} style={{ color: "#CEFF00" }} />
+        </div>
+
+        <h1 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(28px,8vw,38px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", textAlign: "center", lineHeight: 0.9, marginBottom: 16 }}>
+          SIN SINDICATO<br />ACTIVO
+        </h1>
+        <p style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.04em", color: "#808080", textAlign: "center", lineHeight: 1.75, marginBottom: 40, maxWidth: 320 }}>
+          No perteneces a ninguna sala de entrenamiento. Únete a una comunidad de élite para sincronizar tu progreso o introduce un código táctico.
+        </p>
+
+        <div className="w-full flex flex-col gap-3" style={{ maxWidth: 340 }}>
+          <button onClick={() => setHasTeam(true)}
+            className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full"
+            style={{ fontFamily: DS, fontStyle: "italic", fontSize: 17, letterSpacing: "0.1em", cursor: "pointer", border: "none", boxShadow: "0 0 28px rgba(206,255,0,0.3), 0 4px 16px rgba(0,0,0,0.5)" }}>
+            [ UNIRSE A UNA SALA ⚡ ]
+          </button>
+          <button className="w-full py-4 rounded-xl"
+            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+            INGRESAR CÓDIGO PRIVADO
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ══ DASHBOARD SHELL (hasTeam === true) ════════════════════════════════════
+  return (
+    <div className="w-full min-h-screen bg-[#070708] text-white flex flex-col md:flex-row">
+
+      {/* ═══════════════════════════════════════════════════════════
+          LEFT SIDEBAR / MOBILE TOP STRIP
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-white/[0.06] backdrop-blur-md z-30 md:sticky md:top-0 md:h-screen md:overflow-y-auto"
+        style={{ background: "rgba(26,26,26,0.92)" }}>
+
+        {/* ── Desktop: logo block ── */}
+        <div className="hidden md:flex flex-col items-center gap-2 p-6 pb-2">
+          <div style={{ filter: "drop-shadow(0 0 14px rgba(206,255,0,0.25))" }}>
+            <svg width="46" height="46" viewBox="0 0 62 62" fill="none">
+              <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="1.6" fill="rgba(206,255,0,0.04)" />
+              <polygon points="31,12 50,31 31,50 12,31" stroke="rgba(206,255,0,0.22)" strokeWidth="0.8" fill="none" />
+              <text x="31" y="38" textAnchor="middle" fontFamily="'Barlow Condensed',sans-serif" fontWeight="900" fontStyle="italic" fontSize="23" fill="#CEFF00" letterSpacing="0.04em">F</text>
+            </svg>
+          </div>
+          <div className="text-center">
+            <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 15, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1 }}>FELLS TEAM PRO</p>
+            <p style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#00F0FF", marginTop: 4 }}>HIGH PERFORMANCE UNIT</p>
+          </div>
+          <div className="w-full h-px mt-3" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
+        {/* ── Mobile: horizontal strip header ── */}
+        <div className="flex md:hidden items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <svg width="28" height="28" viewBox="0 0 62 62" fill="none">
+              <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="1.8" fill="rgba(206,255,0,0.04)" />
+              <text x="31" y="39" textAnchor="middle" fontFamily="'Barlow Condensed',sans-serif" fontWeight="900" fontStyle="italic" fontSize="26" fill="#CEFF00">F</text>
+            </svg>
+            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 14, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>FELLS TEAM PRO</span>
+          </div>
+          <button onClick={() => setHasTeam(false)}
+            style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            SALIR ✕
+          </button>
+        </div>
+
+        {/* ── Nav items ── */}
+        <div className="flex flex-row md:flex-col gap-1 px-2 md:px-4 md:py-2 overflow-x-auto md:overflow-x-visible">
+          {ROOM_TABS.map(({ id, label, Icon }) => {
+            const active = currentRoomView === id;
+            return (
+              <button key={id} onClick={() => setCurrentRoomView(id)}
+                className="flex items-center gap-2.5 transition-all active:scale-95 flex-shrink-0"
+                style={{
+                  background: active ? "#CEFF00" : "transparent",
+                  borderRadius: 10,
+                  padding: "9px 12px",
+                  border: "none",
+                  cursor: "pointer",
+                  width: "100%",
+                  textAlign: "left",
+                }}>
+                <Icon size={15} style={{ color: active ? "#000" : "#808080", flexShrink: 0 }} />
+                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: active ? "#000" : "#808080", fontWeight: 900, whiteSpace: "nowrap" }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Desktop: exit at bottom ── */}
+        <div className="hidden md:flex flex-col mt-auto p-4 pt-6">
+          <div className="w-full h-px mb-4" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <button onClick={() => setHasTeam(false)}
+            className="flex items-center gap-2 active:opacity-60"
+            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+            <LogOut size={12} style={{ color: "#808080" }} />
+            SALIR DEL EQUIPO
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          MAIN CONTENT AREA
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="flex-1 overflow-y-auto pb-[90px]">
+
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: FEED
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "feed" && (
+        <div className="px-4 pt-5">
+          {/* Metrics ribbon */}
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none w-full mb-5">
+            {SALA_METRICS.map((m, i) => (
+              <div key={i} className="bg-[#1A1A1A] border border-white/[0.02] rounded-2xl p-4 flex-shrink-0 w-[132px] flex items-center gap-3 shadow-lg">
+                <div style={{ color: m.accent, flexShrink: 0 }}>{m.icon}</div>
+                <div className="min-w-0">
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 3, lineHeight: 1.3 }}>{m.label}</p>
+                  <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 26, color: m.accent, lineHeight: 1 }}>{m.value}</span>
+                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginTop: 2 }}>{m.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Feed header */}
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, letterSpacing: "0.04em", textTransform: "uppercase", color: "#fff", lineHeight: 1 }}>ACTIVITY FEED</h2>
+              <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 4 }}>Real-time performance telemetry from the field</p>
+            </div>
+            <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171" }}>LIVE</span>
+            </div>
+          </div>
+
+          {/* Activity cards — driven by activityFeed state */}
+          {activityFeed.map(item => {
+            const isLiked     = likedActivity.has(item.id);
+            const showComment = commentOpen.has(item.id);
+            return (
+              <div key={item.id} className="w-full bg-[#1A1A1A] rounded-[22px] p-5 mb-5 border border-white/[0.02] flex flex-col">
+                {/* Author row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: item.avatarColor, boxShadow: "0 0 0 2px #00F0FF, 0 0 14px rgba(0,240,255,0.28)" }}>
+                      <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#000" }}>{item.handle.slice(0, 2)}</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-white" style={{ fontSize: 14 }}>{item.handle}</p>
+                      <p style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{item.time} · {item.exercise}</p>
+                    </div>
+                  </div>
+                  <div style={{ background: "#CEFF00", borderRadius: 8, padding: "5px 10px", flexShrink: 0 }}>
+                    <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 11, letterSpacing: "0.08em", color: "#000" }}>{item.badge}</span>
+                  </div>
+                </div>
+
+                {/* Image */}
+                <div className="w-full rounded-2xl overflow-hidden mt-4 relative" style={{ maxHeight: 280 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.img} alt={item.exercise} className="w-full h-full object-cover" style={{ maxHeight: 280, display: "block" }} />
+                  <div className="absolute bottom-3 right-3" style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: 9999, padding: "4px 12px", border: "1px solid rgba(255,255,255,0.12)" }}>
+                    <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#fff" }}>BEAST MODE</span>
+                  </div>
+                </div>
+
+                {/* Caption */}
+                <p className="text-[13px] leading-relaxed mt-3" style={{ color: "rgba(255,255,255,0.78)" }}>
+                  <span className="font-bold text-white">{item.handle} </span>{item.comment}
+                </p>
+
+                {/* Social row — fully interactive */}
+                <div className="flex items-center gap-5 mt-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                  {/* Heart: increments like count in state */}
+                  <button onClick={() => {
+                    toggleActivityLike(item.id);
+                    setActivityFeed(prev => prev.map(f =>
+                      f.id === item.id ? { ...f, likes: isLiked ? f.likes - 1 : f.likes + 1 } : f
+                    ));
+                  }} className="flex items-center gap-1.5 active:scale-90 transition-transform">
+                    <Heart size={15} fill={isLiked ? "#CEFF00" : "none"} stroke={isLiked ? "#CEFF00" : "#808080"} />
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: isLiked ? "#CEFF00" : "#808080" }}>{item.likes}</span>
+                  </button>
+
+                  {/* Comment icon: toggles sub-panel */}
+                  <button onClick={() => setCommentOpen(prev => { const n = new Set(prev); n.has(item.id) ? n.delete(item.id) : n.add(item.id); return n; })}
+                    className="flex items-center gap-1.5 active:scale-90 transition-transform">
+                    <MessageSquare size={14} style={{ color: showComment ? "#00F0FF" : "#808080" }} />
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: showComment ? "#00F0FF" : "#808080" }}>{item.comments}</span>
+                  </button>
+                </div>
+
+                {/* Comment sub-panel */}
+                {showComment && (
+                  <div className="mt-3 rounded-xl p-3" style={{ background: "rgba(0,240,255,0.04)", border: "1px solid rgba(0,240,255,0.12)" }}>
+                    <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#00F0FF", marginBottom: 6 }}>COMENTARIOS</p>
+                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontStyle: "italic" }}>Sé el primero en comentar este logro.</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Text posts from community chat */}
+          <div className="space-y-4 mb-6">
+            {posts.map(post => {
+              const isLiked     = likedPosts.has(post.id);
+              const showReplies = expandedReplies.has(post.id);
+              const rank        = getRank(post.streak, post.stage);
+              return (
+                <div key={post.id} className="bg-[#1A1A1A] rounded-2xl border border-white/[0.02]" style={{ overflow: "hidden" }}>
+                  <div className="p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
+                        style={{ background: post.avatarColor, color: "#fff", fontFamily: DS, border: "1.5px solid rgba(255,255,255,0.1)" }}>
+                        {initials(post.author)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-[#CEFF00] text-black font-mono font-black text-[9px] px-2 py-0.5 rounded uppercase" style={{ letterSpacing: "0.06em" }}>{rank}</span>
+                          <span className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>{post.author}</span>
+                        </div>
+                        <p className="font-mono text-[9px] uppercase tracking-widest mt-0.5" style={{ color: "#808080" }}>Racha {post.streak}d · {post.time}</p>
+                      </div>
+                    </div>
+                    <p className="text-[13px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>{post.text}</p>
+                    <div className="flex items-center gap-4">
+                      <button onClick={() => toggleLike(post.id)} className="flex items-center gap-1.5 active:scale-90 transition-transform">
+                        <Heart size={14} fill={isLiked ? "#CEFF00" : "none"} stroke={isLiked ? "#CEFF00" : "rgba(255,255,255,0.3)"} />
+                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 11, color: isLiked ? "#CEFF00" : "rgba(255,255,255,0.35)" }}>{post.likes}</span>
+                      </button>
+                      <button onClick={() => setExpandedReplies(prev => { const n = new Set(prev); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })} className="flex items-center gap-1.5 active:opacity-60">
+                        <MessageSquare size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
+                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{post.replies.length} resp.</span>
+                      </button>
+                      <button onClick={() => setReplyInputFor(replyInputFor === post.id ? null : post.id)} className="ml-auto active:opacity-60">
+                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00" }}>Responder</span>
+                      </button>
+                    </div>
+                  </div>
+                  {showReplies && post.replies.length > 0 && (
+                    <div className="px-4 pb-3 space-y-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      {post.replies.map(r => {
+                        const rRank = getRank(r.streak, r.stage);
+                        return (
+                          <div key={r.id} className="flex gap-2.5 pt-3">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0"
+                              style={{ background: r.avatarColor, color: "#fff", fontFamily: DS, border: "1px solid rgba(255,255,255,0.1)" }}>
+                              {initials(r.author)}
+                            </div>
+                            <div className="flex-1 min-w-0 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className="bg-[#CEFF00] text-black font-mono font-black text-[8px] px-1.5 py-0.5 rounded uppercase" style={{ letterSpacing: "0.06em" }}>{rRank}</span>
+                                <span className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 12 }}>{r.author}</span>
+                                <span className="font-mono text-[9px]" style={{ color: "#808080" }}>{r.time}</span>
+                              </div>
+                              <p className="text-[12px] leading-snug" style={{ color: "rgba(255,255,255,0.78)" }}>{r.text}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {replyInputFor === post.id && (
+                    <div className="px-4 pb-4 flex gap-2.5 items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 mt-2"
+                        style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", color: "#000", fontFamily: DS }}>
+                        {initials(student.name)}
+                      </div>
+                      <input value={replyText} onChange={e => setReplyText(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") handleReply(post.id); }}
+                        placeholder="Escribe tu respuesta..." className="flex-1 bg-transparent outline-none mt-2"
+                        style={{ fontSize: 12, color: "#fff", paddingBottom: 4, borderBottom: "1px solid rgba(206,255,0,0.3)" }} autoFocus />
+                      <button onClick={() => handleReply(post.id)} className="mt-2 active:scale-90 transition-transform">
+                        <Send size={14} style={{ color: "#CEFF00" }} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* FAB — opens post modal */}
+          <button onClick={() => setShowPostModal(true)}
+            className="fixed right-6 bg-[#CEFF00] p-4 rounded-full z-40 active:scale-90 transition-transform"
+            style={{ bottom: 90, border: "none", cursor: "pointer", boxShadow: "0 0 24px rgba(206,255,0,0.4), 0 8px 24px rgba(0,0,0,0.6)" }}>
+            <Plus size={22} strokeWidth={3} style={{ color: "#000" }} />
+          </button>
+        </div>
       )}
 
-      {/* Sign out */}
-      <button onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] cursor-pointer transition-opacity hover:opacity-75"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.065)", color: "rgba(255,255,255,0.38)" }}>
-        <LogOut size={14} strokeWidth={1.5} /> Cerrar sesión
-      </button>
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: AVISOS
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "avisos" && (
+        <div className="px-4 pt-2">
+          {/* Section title */}
+          <div className="flex items-start justify-between mb-6">
+            <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
+              CANAL DE INSTRUCCIÓN<br />/ AVISOS
+            </h2>
+            <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171" }}>EN DIRECTO • 42 ACTIVOS</span>
+            </div>
+          </div>
+
+          {/* Pinned broadcast */}
+          <div className="rounded-2xl p-5 mb-5"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(239,68,68,0.35)", boxShadow: "0 0 15px rgba(239,68,68,0.15)" }}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontFamily: DS }}>CL</div>
+                <div>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>COACH LUIS YÁÑEZ</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>HACE 2 HORAS</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
+                style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <Pin size={11} style={{ color: "#f87171" }} />
+                <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171" }}>FIJADO</span>
+              </div>
+            </div>
+            <p className="text-[13px] leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.88)" }}>
+              ¡ALERTA DE DESAFÍO! Mañana iniciamos el protocolo de superación de fuerza en Sentadilla. Aseguren sus macronutrientes esta noche. No hay espacio para debilidad.
+            </p>
+            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>🔥 128</span>
+              <span style={{ width: 1, height: 12, background: "rgba(255,255,255,0.14)", display: "inline-block" }} />
+              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>💪 94</span>
+            </div>
+          </div>
+
+          {/* Historial */}
+          <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>HISTORIAL DE INSTRUCCIONES</p>
+          {SALA_AVISOS.filter(a => !a.pinned).map(aviso => (
+            <div key={aviso.id} className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 border border-white/[0.02]">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#00F0FF,#0ea5e9)", color: "#000", fontFamily: DS }}>
+                  {aviso.author.split(" ").slice(-2).map((w: string) => w[0]).join("").slice(0, 2)}
+                </div>
+                <div>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>{aviso.author}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{aviso.time}</p>
+                </div>
+              </div>
+              <p className="text-[12.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.78)" }}>{aviso.text}</p>
+              <div className="flex gap-3">
+                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>🔥 {aviso.fire}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>💪 {aviso.muscle}</span>
+              </div>
+            </div>
+          ))}
+
+          {/* Performance micro-grid */}
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            {([
+              { label: "RENDIMIENTO",  value: "+12%", accent: "#CEFF00" },
+              { label: "CONSISTENCIA", value: "98%",  accent: "#00F0FF" },
+            ] as { label: string; value: string; accent: string }[]).map(item => (
+              <div key={item.label} className="rounded-xl p-4 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>{item.label}</p>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 36, color: item.accent, lineHeight: 1 }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: LEADERBOARD + CHALLENGE ENGINE
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "leaderboard" && (
+        <div className="px-4 pt-5">
+          <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 28, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1, marginBottom: 4 }}>
+            RANKING DE SINDICATO
+          </h2>
+          <p style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#00F0FF", marginBottom: 18 }}>
+            SALA: TITANS_ELITE_04
+          </p>
+
+          {/* Podium */}
+          <div className="flex items-end gap-3 mb-5">
+            {([1, 0, 2] as number[]).map(idx => {
+              const m       = SALA_LEADERBOARD[idx];
+              const isFirst = idx === 0;
+              const h       = isFirst ? 176 : idx === 1 ? 138 : 116;
+              const ring    = isFirst ? "0 0 0 2.5px #CEFF00, 0 0 20px rgba(206,255,0,0.4)" : "0 0 0 1.5px rgba(255,255,255,0.12)";
+              const nc      = isFirst ? "#CEFF00" : idx === 1 ? "#00F0FF" : "#808080";
+              return (
+                <div key={m.rank} className="flex-1 flex flex-col items-center rounded-2xl pt-4 pb-3 gap-2"
+                  style={{ height: h, background: isFirst ? "rgba(206,255,0,0.04)" : "#1A1A1A", border: isFirst ? "1px solid rgba(206,255,0,0.25)" : "1px solid rgba(255,255,255,0.04)", boxShadow: isFirst ? "0 0 24px rgba(206,255,0,0.08)" : "none", justifyContent: "center" }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: m.avatarColor, boxShadow: ring }}>
+                    <span style={{ fontFamily: DS, fontWeight: 900, color: "#000", fontSize: 11 }}>{m.name.slice(0, 2)}</span>
+                  </div>
+                  <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 24, color: nc, lineHeight: 1 }}>#{m.rank}</span>
+                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", lineHeight: 1.4, paddingInline: 6 }}>{m.name}</p>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 13, color: nc }}>{m.pts.toLocaleString()}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Ranks 4-6 */}
+          <div className="space-y-3 mb-5">
+            {SALA_LEADERBOARD.slice(3).map(m => (
+              <div key={m.rank} className="relative rounded-2xl p-4 flex items-center gap-3"
+                style={{ background: m.isMe ? "rgba(206,255,0,0.04)" : "#1A1A1A", border: m.isMe ? "1.5px solid #CEFF00" : "1px solid rgba(255,255,255,0.04)" }}>
+                {m.isMe && (
+                  <div className="absolute -top-3 left-4 px-2 py-0.5 rounded"
+                    style={{ background: "#CEFF00", fontFamily: MONO, fontSize: 7.5, fontWeight: 900, letterSpacing: "0.18em", textTransform: "uppercase", color: "#000" }}>
+                    TU POSICIÓN
+                  </div>
+                )}
+                <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, color: m.isMe ? "#CEFF00" : "#808080", width: 28, flexShrink: 0 }}>#{m.rank}</span>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: m.avatarColor, boxShadow: m.isMe ? "0 0 0 1.5px #CEFF00" : "none" }}>
+                  <span style={{ color: "#000", fontSize: 10, fontWeight: 900, fontFamily: DS }}>{m.name.slice(0, 2)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: m.isMe ? "#CEFF00" : "#fff" }}>{m.name}</p>
+                  {m.isMe ? (
+                    <div className="mt-1">
+                      <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>{m.kcal.toLocaleString()} KCAL · {m.sets} SETS</p>
+                      <div className="flex gap-1 mt-1.5">
+                        {[1,1,1,1,0].map((v, i) => (
+                          <div key={i} className="h-1.5 flex-1 rounded-full" style={{ background: v ? "#CEFF00" : "rgba(255,255,255,0.1)" }} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>{m.pts.toLocaleString()} PTS</p>
+                  )}
+                </div>
+                <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 16, color: m.isMe ? "#CEFF00" : "#fff", flexShrink: 0 }}>{m.pts.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* ── LANZAR RETO / APUESTA TÁCTICA ENGINE ── */}
+          <div className="rounded-2xl p-5 mb-4"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(206,255,0,0.18)", boxShadow: "0 0 20px rgba(206,255,0,0.06)" }}>
+            <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 16 }}>
+              ⚡ APUESTA TÁCTICA · VS MARCUS_ELITE
+            </p>
+
+            {/* Stake display */}
+            <div className="flex items-end justify-center gap-2 mb-4">
+              <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 64, color: "#CEFF00", lineHeight: 1 }}>{totalStake}</span>
+              <span style={{ fontFamily: MONO, fontSize: 14, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>PTS</span>
+            </div>
+
+            {/* Quick-add buttons */}
+            <div className="flex gap-2 mb-4">
+              {([10, 50] as number[]).map(delta => (
+                <button key={delta} onClick={() => setTotalStake(s => Math.min(500, s + delta))}
+                  className="flex-1 py-2 rounded-xl active:scale-95 transition-transform"
+                  style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+                  +{delta}
+                </button>
+              ))}
+              <button onClick={() => setTotalStake(500)}
+                className="flex-1 py-2 rounded-xl active:scale-95 transition-transform"
+                style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+                MAX
+              </button>
+              <button onClick={() => setTotalStake(0)}
+                className="px-3 py-2 rounded-xl active:scale-95 transition-transform"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", fontWeight: 900 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Range slider */}
+            <div className="mb-5">
+              <input type="range" min={0} max={500} step={10}
+                value={totalStake}
+                onChange={e => setTotalStake(Number(e.target.value))}
+                className="w-full"
+                style={{ accentColor: "#CEFF00", cursor: "pointer", height: 4 }} />
+              <div className="flex justify-between mt-1">
+                <span style={{ fontFamily: MONO, fontSize: 8, color: "#808080" }}>0</span>
+                <span style={{ fontFamily: MONO, fontSize: 8, color: "#808080" }}>500 PTS MAX</span>
+              </div>
+            </div>
+
+            {/* Launch button */}
+            <button
+              onClick={() => {
+                alert("RETO ENVIADO CORRECTAMENTE AL ATLETA TARGET");
+                setTotalStake(50);
+              }}
+              className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              style={{ background: "#CEFF00", border: "none", cursor: "pointer", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase", color: "#000", boxShadow: "0 0 32px rgba(206,255,0,0.35)" }}>
+              <Zap size={18} fill="#000" stroke="none" />
+              LANZAR RETO [ ⚡ ]
+            </button>
+
+            <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", textAlign: "center", marginTop: 10 }}>
+              EL RANKING SE REINICIA EN 2 DÍAS, 14 HORAS
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: MEMBERS
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "members" && (
+        <div className="px-4 pt-5">
+          <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 24, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1, marginBottom: 4 }}>
+            ROSTER DE ATLETAS
+          </h2>
+          <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 14 }}>
+            42 REGISTRADOS
+          </p>
+
+          {/* Search bar */}
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-5" style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
+            <Search size={14} style={{ color: "#808080", flexShrink: 0 }} />
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar atleta o rango..."
+              className="flex-1 bg-transparent outline-none"
+              style={{ fontSize: 13, color: "#fff", fontFamily: "inherit" }} />
+            <SlidersHorizontal size={14} style={{ color: "#808080", flexShrink: 0 }} />
+          </div>
+
+          {/* 2-col grid */}
+          <div className="grid grid-cols-2 gap-4 w-full">
+            {filteredRoster.map(member => (
+              <div key={member.id} className="relative flex flex-col rounded-2xl overflow-hidden"
+                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded"
+                  style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>{member.rank}</span>
+                </div>
+                <div className="flex flex-col items-center pt-9 pb-3 px-3">
+                  <div className="relative mb-3">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-sm"
+                      style={{ background: member.avatarColor, fontFamily: DS, color: "#000" }}>
+                      {member.name.slice(0, 2)}
+                    </div>
+                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-[#1A1A1A]"
+                      style={{ background: member.online ? "#CEFF00" : "#808080", boxShadow: member.online ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
+                  </div>
+                  <p className="font-bold text-white text-center leading-tight" style={{ fontSize: 12 }}>{member.name}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", marginTop: 3, textAlign: "center" }}>
+                    {member.rank.split(" ")[0]} · RNK #{member.rnk.toString().padStart(2, "0")}
+                  </p>
+                </div>
+                <div className="flex" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                  <button className="flex-1 py-2.5 flex items-center justify-center active:opacity-60"
+                    style={{ background: "none", border: "none", borderRight: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
+                    <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>PERFIL</span>
+                  </button>
+                  <button onClick={() => alert(`RETO ENVIADO A ${member.name}`)}
+                    className="w-12 py-2.5 flex items-center justify-center active:scale-90 transition-transform"
+                    style={{ background: "none", border: "none", cursor: "pointer" }}>
+                    <Zap size={13} fill="#CEFF00" stroke="none" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {filteredRoster.length === 0 && (
+            <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", textAlign: "center", marginTop: 40 }}>SIN RESULTADOS</p>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: AVISOS
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "avisos" && (
+        <div className="px-4 pt-5">
+          <div className="flex items-start justify-between mb-6">
+            <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
+              CANAL DE INSTRUCCIÓN<br />/ AVISOS
+            </h2>
+            <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171" }}>EN DIRECTO • 42 ACTIVOS</span>
+            </div>
+          </div>
+
+          {/* Pinned broadcast */}
+          <div className="rounded-2xl p-5 mb-5"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(239,68,68,0.35)", boxShadow: "0 0 15px rgba(239,68,68,0.15)" }}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontFamily: DS }}>CL</div>
+                <div>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>COACH LUIS YÁÑEZ</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>HACE 2 HORAS</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
+                style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <Pin size={11} style={{ color: "#f87171" }} />
+                <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171" }}>FIJADO</span>
+              </div>
+            </div>
+            <p className="text-[13px] leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.88)" }}>
+              ¡ALERTA DE DESAFÍO! Mañana iniciamos el protocolo de superación de fuerza en Sentadilla. Aseguren sus macronutrientes esta noche. No hay espacio para debilidad.
+            </p>
+            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>🔥 128</span>
+              <span style={{ width: 1, height: 12, background: "rgba(255,255,255,0.14)", display: "inline-block" }} />
+              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>💪 94</span>
+            </div>
+          </div>
+
+          <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>HISTORIAL DE INSTRUCCIONES</p>
+          {SALA_AVISOS.filter(a => !a.pinned).map(aviso => (
+            <div key={aviso.id} className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 border border-white/[0.02]">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#00F0FF,#0ea5e9)", color: "#000", fontFamily: DS }}>
+                  {aviso.author.split(" ").slice(-2).map((w: string) => w[0]).join("").slice(0, 2)}
+                </div>
+                <div>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>{aviso.author}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{aviso.time}</p>
+                </div>
+              </div>
+              <p className="text-[12.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.78)" }}>{aviso.text}</p>
+              <div className="flex gap-3">
+                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>🔥 {aviso.fire}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>💪 {aviso.muscle}</span>
+              </div>
+            </div>
+          ))}
+
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            {([
+              { label: "RENDIMIENTO",  value: "+12%", accent: "#CEFF00" },
+              { label: "CONSISTENCIA", value: "98%",  accent: "#00F0FF" },
+            ] as { label: string; value: string; accent: string }[]).map(item => (
+              <div key={item.label} className="rounded-xl p-4 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>{item.label}</p>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 36, color: item.accent, lineHeight: 1 }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      </div>{/* end main content */}
+
+      {/* ═══════════════════════════════════════════════════════════
+          NEW POST MODAL (opened by FAB)
+      ═══════════════════════════════════════════════════════════ */}
+      {showPostModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowPostModal(false); setNewPostText(""); } }}>
+          <div className="w-full max-w-lg rounded-t-3xl p-6"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between mb-5">
+              <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                NUEVO POST
+              </h3>
+              <button onClick={() => { setShowPostModal(false); setNewPostText(""); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#808080" }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Composer */}
+            <div className="flex items-start gap-3 mb-5">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center font-black flex-shrink-0"
+                style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", color: "#000", fontFamily: DS }}>
+                {initials(student.name)}
+              </div>
+              <textarea value={newPostText} onChange={e => setNewPostText(e.target.value)}
+                placeholder="Comparte tu PR, entrenamiento o motivación..." rows={4} autoFocus
+                className="flex-1 bg-transparent resize-none outline-none"
+                style={{ fontSize: 14, color: "#fff", fontFamily: "inherit", lineHeight: 1.6, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 8 }} />
+            </div>
+
+            {/* Submit */}
+            <button
+              onClick={() => {
+                if (!newPostText.trim()) return;
+                setActivityFeed(prev => [{
+                  id: Date.now(),
+                  handle: student.name.toUpperCase().replace(/\s+/g, "_"),
+                  avatarColor: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)",
+                  time: "Ahora",
+                  exercise: "Nuevo Post",
+                  badge: "NEW",
+                  img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80&auto=format",
+                  likes: 0,
+                  comments: 0,
+                  comment: newPostText.trim(),
+                }, ...prev]);
+                setShowPostModal(false);
+                setNewPostText("");
+              }}
+              disabled={!newPostText.trim()}
+              className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              style={{
+                background: newPostText.trim() ? "#CEFF00" : "rgba(255,255,255,0.06)",
+                opacity: newPostText.trim() ? 1 : 0.5,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: DS,
+                fontStyle: "italic",
+                fontWeight: 900,
+                fontSize: 16,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: newPostText.trim() ? "#000" : "#808080",
+              }}>
+              <Send size={16} style={{ color: newPostText.trim() ? "#000" : "#808080" }} />
+              PUBLICAR POST
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -2813,10 +5140,11 @@ function TabPerfil({ student, detail, onCancelRequest }: {
 ══════════════════════════════════════════════════════════════ */
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
-  { id: "today",    label: "Dieta",    icon: Utensils },
-  { id: "progress", label: "Progreso", icon: TrendingUp },
-  { id: "squads",   label: "Workout",  icon: Dumbbell },
-  { id: "profile",  label: "Perfil",   icon: User },
+  { id: "today",     label: "Dieta",     icon: Utensils },
+  { id: "progress",  label: "Stats",     icon: TrendingUp },
+  { id: "squads",    label: "Workout",   icon: Dumbbell },
+  { id: "community", label: "Salas",     icon: MessageSquare },
+  { id: "profile",   label: "Perfil",    icon: User },
 ];
 
 function BottomNav({ active, onChange, onSignOut }: {
@@ -2883,9 +5211,14 @@ function GlobalHeader({ student }: { student: Student }) {
         <Zap size={14} fill="#CEFF00" stroke="none" />
         <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(16px,4.8vw,19px)", letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>MYCOACH</span>
       </div>
-      <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-black shrink-0"
-        style={{ background: student.avatarColor ?? "#CEFF00", border: "2px solid #CEFF00", color: "#000", fontFamily: DS, letterSpacing: "0.02em" }}>
-        {student.avatarInitials}
+      <div className="relative shrink-0">
+        {/* Outer glow ring */}
+        <div className="absolute inset-0 rounded-full"
+          style={{ boxShadow: "0 0 0 2px #070708, 0 0 0 4px #CEFF00, 0 0 18px rgba(206,255,0,0.35)", borderRadius: "50%" }} />
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-black relative z-10"
+          style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, letterSpacing: "0.02em", border: "2px solid rgba(206,255,0,0.6)" }}>
+          {student.avatarInitials}
+        </div>
       </div>
     </div>
   );
@@ -2914,9 +5247,50 @@ export default function PortalPage() {
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null);
   const [activeExercise, setActiveExercise] = useState<(Exercise & { muscleGroup?: string }) | null>(null);
 
-  // Shared hydration state (cross-tab)
-  const [waterMl, setWaterMl] = useState(0);
+  // Shared hydration state (cross-tab, localStorage-persisted)
+  const [waterMl, setWaterMl] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try { return Number(localStorage.getItem("mc:water_ml")) || 0; }
+    catch { return 0; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mc:water_ml", String(waterMl)); }
+    catch {}
+  }, [waterMl]);
   const addWater = () => setWaterMl(w => Math.min(w + 250, 4000));
+
+  // ── Meal check + notification chain ──────────────────────────────────────
+  // Lifted from TabHoy so the MealSheet confirm button can close itself and
+  // trigger the same toast/diet-complete flow as the checkbox path.
+  const [checkedMeals, setCheckedMeals] = useState<Set<number>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const v = localStorage.getItem("mc:meals_checked");
+      return v ? new Set(JSON.parse(v) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mc:meals_checked", JSON.stringify([...checkedMeals])); }
+    catch {}
+  }, [checkedMeals]);
+
+  const [mealToast,    setMealToast]    = useState<{ protein: number; carbs: number; fat: number } | null>(null);
+  const [dietComplete, setDietComplete] = useState(false);
+  const mealToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerMealChain = useCallback((
+    macros: { protein: number; carbs: number; fat: number },
+    nextCheckedCount: number,
+    totalMeals: number,
+  ) => {
+    setMealToast(macros);                                    // 2. deploy toast
+    if (mealToastRef.current) clearTimeout(mealToastRef.current);
+    mealToastRef.current = setTimeout(() => {
+      setMealToast(null);
+      if (nextCheckedCount >= totalMeals && totalMeals > 0) // 3. after toast, check 100%
+        setDietComplete(true);
+    }, 2000);
+  }, []);
 
   // Workout focus mode (hides global header during exercise focus view)
   const [workoutFocusMode, setWorkoutFocusMode] = useState(false);
@@ -3005,8 +5379,37 @@ export default function PortalPage() {
     })),
   }));
 
+  // ── Meal notification handlers (need meals in scope) ─────────────────────
+  const handleToggleMeal = (i: number) => {
+    setCheckedMeals(prev => {
+      const isAdding = !prev.has(i);
+      const n = new Set(prev); isAdding ? n.add(i) : n.delete(i);
+      if (isAdding) triggerMealChain(meals[i]?.macros ?? { protein: 32, carbs: 48, fat: 14 }, n.size, meals.length);
+      return n;
+    });
+  };
+
+  const handleSheetConfirm = () => {
+    if (!activeMeal) return;
+    const idx = meals.findIndex(m => m.name === activeMeal.name && m.time === activeMeal.time);
+    setActiveMeal(null);                                      // 1. close sheet immediately
+    if (idx < 0) return;
+    setCheckedMeals(prev => {
+      const alreadyDone = prev.has(idx);
+      const n = new Set(prev); n.add(idx);
+      const mac = meals[idx]?.macros ?? { protein: 32, carbs: 48, fat: 14 };
+      triggerMealChain(mac, n.size, meals.length);            // 2+3. toast → 100% check
+      return alreadyDone ? prev : n;
+    });
+  };
+
   return (
-    <div style={{ background: "#000", minHeight: "100vh" }}>
+    <>
+    {/* Elite Print Template — rendered outside the app shell so it is the ONLY
+        visible content when window.print() is called. Free for all users. */}
+    <ElitePrintTemplate student={student} detail={detail} meals={meals} />
+
+    <div className="print-app-shell" style={{ background: "#000", minHeight: "100vh" }}>
       <div className="w-full min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: "#070708" }}>
 
         {/* Global brand header — hidden during workout focus */}
@@ -3026,7 +5429,9 @@ export default function PortalPage() {
               onMealOpen={setActiveMeal}
               onExerciseOpen={setActiveExercise}
               waterMl={waterMl}
-              onAddWater={addWater} />
+              onAddWater={addWater}
+              checkedMeals={checkedMeals}
+              onToggleMeal={handleToggleMeal} />
           )}
           {activeTab === "progress" && (
             <TabProgreso student={student} detail={detail} startWeight={startWeight}
@@ -3036,7 +5441,11 @@ export default function PortalPage() {
             <TabWorkout day={day} student={student}
               waterMl={waterMl}
               onAddWater={addWater}
-              onFocusMode={setWorkoutFocusMode} />
+              onFocusMode={setWorkoutFocusMode}
+              memberTier={student.stageNumber >= 2 ? "berserker" : "basic"} />
+          )}
+          {activeTab === "community" && (
+            <TabComunidad student={student} />
           )}
           {activeTab === "profile" && (
             <TabPerfil student={student} detail={detail} onCancelRequest={openCancelSheet} />
@@ -3069,7 +5478,7 @@ export default function PortalPage() {
 
       {/* Sheets */}
       <BottomSheet open={!!activeMeal} onClose={() => setActiveMeal(null)}>
-        {activeMeal && <MealSheet meal={activeMeal} waterMl={waterMl} />}
+        {activeMeal && <MealSheet meal={activeMeal} waterMl={waterMl} onConfirm={handleSheetConfirm} />}
       </BottomSheet>
       <BottomSheet open={!!activeExercise} onClose={() => setActiveExercise(null)}>
         {activeExercise && <ExerciseSheet exercise={activeExercise} />}
@@ -3086,7 +5495,22 @@ export default function PortalPage() {
         />
       </BottomSheet>
 
+      {/* ── Meal notification overlays (portal-mounted, always above shell) ── */}
+      {mealToast && <MealToast macros={mealToast} />}
+      {dietComplete && (
+        <DietCompleteModal
+          onClose={() => setDietComplete(false)}
+          totalCals={meals.reduce((s, m, i) => s + (checkedMeals.has(i) ? m.calories : 0), 0)}
+          macros={{
+            protein: meals.reduce((s, m) => s + (m.macros?.protein ?? 0), 0),
+            carbs:   meals.reduce((s, m) => s + (m.macros?.carbs   ?? 0), 0),
+            fat:     meals.reduce((s, m) => s + (m.macros?.fat     ?? 0), 0),
+          }}
+        />
+      )}
+
       </div>{/* end viewport shell */}
     </div>
+    </>
   );
 }

@@ -269,6 +269,34 @@ input::placeholder {
   animation: panel-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
+/* ── Toast lifecycle: slide-in → hold → fade-out over exactly 2 s ── */
+@keyframes mc-toast-lifecycle {
+  0%   { opacity: 0; transform: translateY(-16px) scale(0.94); }
+  14%  { opacity: 1; transform: translateY(0)     scale(1);    }
+  78%  { opacity: 1; transform: translateY(0)     scale(1);    }
+  100% { opacity: 0; transform: translateY(-6px)  scale(0.97); }
+}
+
+/* ── WorkoutComplete overlay: full-screen fade-in ── */
+@keyframes mc-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-mc-overlay-in {
+  animation: mc-overlay-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── WorkoutComplete content blocks: staggered slide-up ── */
+@keyframes mc-slide-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.animate-mc-slide-up-0 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.06s both; }
+.animate-mc-slide-up-1 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.14s both; }
+.animate-mc-slide-up-2 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.22s both; }
+.animate-mc-slide-up-3 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.30s both; }
+.animate-mc-slide-up-4 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both; }
+
 /* ═══════════════════════════════════════════
    Mobile Bottom Navigation
    ═══════════════════════════════════════════ */
@@ -287,5 +315,66 @@ input::placeholder {
 @media (min-width: 768px) {
   .mobile-bottom-nav {
     display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Print & Export — Elite Athletic Template
+   Free for all users. Replaces legacy flat tables.
+   ═══════════════════════════════════════════ */
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* Hide the full app shell; show only the elite print template */
+  .print-app-shell {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+
+  /* Force background fills so dark badge/header/footer blocks render in PDF */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Strip noise */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Paper-mode override: activated by body[data-print="paper"] set via the
+     toggle button. Strips dark fills to pure black borders for ink economy. */
+  body[data-print="paper"] .pt-day-badge {
+    background: #e8e8e8 !important;
+  }
+  body[data-print="paper"] .pt-col-headers {
+    background: #333333 !important;
+  }
+  body[data-print="paper"] .pt-quote-card {
+    background: #fff !important;
+    color: #000 !important;
+    border: 2px solid #000 !important;
+  }
+  body[data-print="paper"] .pt-summary-bar {
+    background: #f0f0f0 !important;
+    border-left-color: #888 !important;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 12mm 14mm;
   }
 }
