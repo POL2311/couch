@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -87,6 +88,11 @@ model Student {
 
   dietJson    String @default("")
   routineJson String @default("")
+
+  prSquat       Float @default(0)
+  prDeadlift    Float @default(0)
+  prBench       Float @default(0)
+  walletBalance Float @default(0)
 
   weightHistory    WeightEntry[]
   measurements     Measurement[]

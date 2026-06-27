@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { addWaterLog, getTodayWaterTotal } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
+
 /**
  * Resolves the studentId for the request.
  * CLIENT  → always uses session.studentId
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
   const date = params.get("date") ?? new Date().toISOString().split("T")[0];
   const totalMl = await getTodayWaterTotal(studentId, date);
-  return NextResponse.json({ totalMl });
+  return NextResponse.json({ totalMl }, { headers: NO_STORE });
 }
 
 /**
@@ -56,5 +59,5 @@ export async function POST(request: NextRequest) {
   const date = b.date ?? new Date().toISOString().split("T")[0];
   await addWaterLog(studentId, amountMl, date);
   const totalMl = await getTodayWaterTotal(studentId, date);
-  return NextResponse.json({ totalMl }, { status: 201 });
+  return NextResponse.json({ totalMl }, { status: 201, headers: NO_STORE });
 }

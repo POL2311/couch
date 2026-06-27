@@ -24,6 +24,10 @@ export interface Student {
   streak: number;
   completionRate: number;
   coachId?: string;
+  prSquat?: number;
+  prDeadlift?: number;
+  prBench?: number;
+  walletBalance?: number;
 }
 
 export const MOCK_STUDENTS: Student[] = [

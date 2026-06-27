@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (user.role !== "COACH") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json();
   const { coachId, content, senderName } = body as { coachId: string; content: string; senderName: string };

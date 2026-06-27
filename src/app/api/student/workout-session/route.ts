@@ -7,6 +7,9 @@ import {
   getWorkoutSessions,
 } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
+
 /**
  * GET /api/student/workout-session
  *   ?date=YYYY-MM-DD  →  single session for that date (or null)
@@ -20,9 +23,9 @@ export async function GET(request: NextRequest) {
   const date = new URL(request.url).searchParams.get("date");
   if (date) {
     const session = await getWorkoutSession(user.studentId, date);
-    return NextResponse.json(session ?? null);
+    return NextResponse.json(session ?? null, { headers: NO_STORE });
   }
-  return NextResponse.json(await getWorkoutSessions(user.studentId));
+  return NextResponse.json(await getWorkoutSessions(user.studentId), { headers: NO_STORE });
 }
 
 /**
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
         completed: b.completed ?? undefined,
       });
 
-  return NextResponse.json(session, { status: 201 });
+  return NextResponse.json(session, { status: 201, headers: NO_STORE });
 }
 
 /**
@@ -80,5 +83,5 @@ export async function PATCH(request: NextRequest) {
     routineId: b.routineId ?? null,
     notes:     b.notes ?? null,
   });
-  return NextResponse.json(session);
+  return NextResponse.json(session, { headers: NO_STORE });
 }

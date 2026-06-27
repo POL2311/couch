@@ -107,6 +107,10 @@ function toStudent(s: any): Student & { scheduledChange?: ScheduledChange | null
     coachId: s.coachId ?? undefined,
     streak: s.streak,
     completionRate: s.completionRate,
+    prSquat: s.prSquat ?? 0,
+    prDeadlift: s.prDeadlift ?? 0,
+    prBench: s.prBench ?? 0,
+    walletBalance: s.walletBalance ?? 0,
     scheduledChange: s.scheduledChange
       ? {
           executionDate: s.scheduledChange.executionDate,
