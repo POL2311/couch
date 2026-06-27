@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 import {
@@ -17,7 +17,12 @@ import { Skeleton } from "@/components/skeleton";
 import { downloadBadge } from "@/lib/badge";
 import type { Student, StudentDetail, RoutineDay } from "@/lib/mock-data";
 
-type Detail = StudentDetail & { height?: number; bodyFat?: number; photoName?: string };
+type Detail = StudentDetail & {
+  height?: number;
+  bodyFat?: number;
+  photoName?: string;
+  photos?: { id: string; url: string; label: string; weight: number | null; createdAt: string }[];
+};
 type TabId = "today" | "progress" | "squads" | "profile" | "community";
 
 /* ══════════════════════════════════════════════════════════════
@@ -389,6 +394,17 @@ interface Equivalent {
 }
 
 const UP = (id: string) => `https://images.unsplash.com/photo-${id}?w=300&h=300&fit=crop&auto=format&q=80`;
+
+const WATER_TARGET_ML = 3000;
+
+// ── Cycle-date utilities (module-level so cycleDate() is usable outside PortalPage) ──
+const BASE_DATE_MS    = new Date("2026-06-25T00:00:00Z").getTime();
+const daysSinceBase   = () => Math.max(0, Math.floor((Date.now() - BASE_DATE_MS) / 86_400_000));
+const currentCycleWeek = () => Math.floor(daysSinceBase() / 7);
+const currentCycleDay  = () => (daysSinceBase() % 7) + 1;
+const cycleDate = (dayIdx: number) =>
+  new Date(BASE_DATE_MS + (currentCycleWeek() * 7 + dayIdx - 1) * 86_400_000)
+    .toISOString().split("T")[0];
 
 const EQUIV_CARBS: Equivalent[] = [
   { name: "Arroz blanco",    gramsPerCarb: 3.3,  calsPer100g: 130, fatPer100g: 0.3, icon: "rice",         photo: UP("1536304929831-ee1ca9d44906"), note: "Digestión rápida, post-entreno",  macroType:"carb" },
@@ -859,7 +875,7 @@ function MealSheet({ meal, waterMl, onConfirm }: { meal: Meal; waterMl: number; 
   const [confirmed, setConfirmed] = useState(false);
 
   const heroImg  = getFoodImg(meal.name);
-  const waterPct = Math.min(waterMl / 2500, 1);
+  const waterPct = Math.min(waterMl / WATER_TARGET_ML, 1);
 
   const H_MACROS = [
     { label: "PROT",  value: `${macros.protein}g`, color: "#00F0FF" },
@@ -1674,11 +1690,11 @@ function ExerciseFocusSection({ day, onExerciseOpen }: {
                 {day.muscleGroup ?? "EJERCICIO"} · GUÍA DE FORMA
               </span>
             </div>
-            {/* ● LIVE FORM TRACKING pill */}
+            {/* ● SEGUIMIENTO EN TIEMPO REAL pill */}
             <div className="absolute top-3 right-3 flex items-center gap-2 px-3 py-2 rounded-full"
               style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(206,255,0,0.35)", boxShadow: "0 0 16px rgba(206,255,0,0.12)" }}>
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#CEFF00", boxShadow: "0 0 6px rgba(206,255,0,0.8)" }} />
-              <span className="text-[9px] font-black uppercase tracking-[0.14em]" style={{ color: "#CEFF00" }}>LIVE FORM TRACKING</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.14em]" style={{ color: "#CEFF00" }}>SEGUIMIENTO EN TIEMPO REAL</span>
             </div>
           </div>
 
@@ -2311,7 +2327,6 @@ function WorkoutCompleteModal({ onClose, durationStr, exerciseCount }: {
   durationStr: string;
   exerciseCount: number;
 }) {
-  void exerciseCount; void durationStr;
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
   const MONO = "'Courier New',monospace";
   const CARD: React.CSSProperties = {
@@ -2321,9 +2336,9 @@ function WorkoutCompleteModal({ onClose, durationStr, exerciseCount }: {
     padding: "20px 16px",
   };
 
-  // Progressive counters
-  const kcal      = useCountUp(840);
-  const intensity = useCountUp(94);
+  // Progressive counters — kcal estimated at ~8 kcal/exercise, intensity fixed aesthetic
+  const kcal      = useCountUp(exerciseCount * 8);
+  const intensity = useCountUp(Math.min(60 + exerciseCount * 2, 99));
 
   // VO2 bar animates from 0→72% on mount
   const [barW, setBarW] = useState(0);
@@ -2452,7 +2467,7 @@ function WorkoutCompleteModal({ onClose, durationStr, exerciseCount }: {
             className="w-full bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl text-center shadow-md"
             style={{ fontFamily: DS, fontStyle: "italic", fontSize: "18px", letterSpacing: "0.14em", cursor: "pointer", border: "none", boxShadow: "0 0 36px rgba(206,255,0,0.3), 0 4px 16px rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
           >
-            CERRAR SESIÓN ✓
+            CERRAR RESUMEN
           </button>
         </div>
 
@@ -2471,6 +2486,7 @@ function TabHoy({
   onMealOpen, onExerciseOpen,
   waterMl, onAddWater,
   checkedMeals, onToggleMeal,
+  activeDayIndex, onAdvanceDay,
 }: {
   student: Student; detail: Detail; meals: Meal[];
   day: RoutineDay | undefined;
@@ -2480,15 +2496,19 @@ function TabHoy({
   onAddWater: () => void;
   checkedMeals: Set<number>;
   onToggleMeal: (i: number) => void;
+  activeDayIndex: number;
+  onAdvanceDay: (delta: number) => void;
 }) {
   void detail; void day; void onExerciseOpen;
-  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
 
   const totalTarget   = meals.reduce((s, m) => s + m.calories, 0) || 2800;
   const totalConsumed = meals.reduce((s, m, i) => s + (checkedMeals.has(i) ? m.calories : 0), 0);
   const caloricPct    = Math.min(totalConsumed / Math.max(totalTarget, 1), 1);
   const remaining     = Math.max(totalTarget - totalConsumed, 0);
-  const waterTarget   = 2500;
+  const waterTarget   = WATER_TARGET_ML;
+  const isDayPerfect  = meals.length > 0 && checkedMeals.size === meals.length;
 
   return (
     <div className="pb-4">
@@ -2509,24 +2529,32 @@ function TabHoy({
         </p>
       </div>
 
-      {/* ── TODAY'S NUTRITION HEADER ── */}
-      <div className="mb-4">
+      {/* ── NUTRICIÓN HEADER + DAY SWITCHER ── */}
+      <div
+        className={`mb-4 rounded-2xl px-3 pt-3 pb-2 border transition-all duration-500 ease-out${
+          isDayPerfect
+            ? " scale-[1.02] shadow-[0_0_30px_rgba(206,255,0,0.15)]"
+            : " border-transparent"
+        }`}
+        style={isDayPerfect ? { borderColor: "rgba(206,255,0,0.4)" } : undefined}>
         <div className="flex items-center justify-between mb-1 no-print">
-          <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(24px,7.5vw,30px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 1 }}>
-            TODAY&apos;S NUTRITION
-          </h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const isPaper = document.body.dataset.print === "paper";
-                document.body.dataset.print = isPaper ? "" : "paper";
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl active:opacity-70 transition-opacity"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>
-                MODO PAPEL
-              </span>
+          {/* Day carousel */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => onAdvanceDay(-1)} disabled={activeDayIndex <= 1}
+              className="w-8 h-8 flex items-center justify-center rounded-xl active:scale-90 transition-transform"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: activeDayIndex <= 1 ? "not-allowed" : "pointer", opacity: activeDayIndex <= 1 ? 0.3 : 1 }}>
+              <ChevronLeft size={14} style={{ color: "#fff" }} />
             </button>
+            <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(22px,6.5vw,28px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 1 }}>
+              DÍA {activeDayIndex} · NUTRICIÓN
+            </h2>
+            <button onClick={() => onAdvanceDay(+1)} disabled={activeDayIndex >= 7}
+              className="w-8 h-8 flex items-center justify-center rounded-xl active:scale-90 transition-transform"
+              style={{ background: activeDayIndex >= 7 ? "rgba(255,255,255,0.03)" : "rgba(206,255,0,0.08)", border: activeDayIndex >= 7 ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(206,255,0,0.25)", cursor: activeDayIndex >= 7 ? "not-allowed" : "pointer", opacity: activeDayIndex >= 7 ? 0.3 : 1 }}>
+              <ChevronRight size={14} style={{ color: activeDayIndex >= 7 ? "#808080" : "#CEFF00" }} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
@@ -2539,17 +2567,34 @@ function TabHoy({
           </div>
         </div>
 
-        <p className="text-[11px] mt-1" style={{ color: "#808080" }}>
-          Fueling your discipline.{" "}
-          <span style={{ color: "#fff", fontWeight: 600 }}>{remaining}</span> kcal remaining.
+        {isDayPerfect && (
+          <div className="mt-2 mb-1">
+            <span
+              className="animate-mc-hud-scan inline-flex items-center gap-1 font-mono font-black uppercase rounded-sm px-2.5 py-1"
+              style={{
+                background: "#CEFF00",
+                color: "#000",
+                fontSize: 8,
+                letterSpacing: "0.1em",
+                lineHeight: 1.2,
+                boxShadow: "0 0 18px rgba(206,255,0,0.5)",
+              }}>
+              ⚡ DÍA PERFECTO COMPLETE
+            </span>
+          </div>
+        )}
+
+        <p className="text-[11px] mt-1" style={{ color: "#808080", fontFamily: MONO }}>
+          Alimenta tu disciplina.{" "}
+          <span style={{ color: "#fff", fontWeight: 600 }}>{remaining}</span> kcal restantes.
         </p>
         <div className="mt-3">
           <div className="flex justify-between mb-1.5">
             <span className="text-[9px] font-black uppercase tracking-[0.14em]" style={{ color: "#808080" }}>
-              {totalConsumed} KCAL CONSUMED
+              {totalConsumed} KCAL CONSUMIDAS
             </span>
             <span className="text-[9px] font-black uppercase tracking-[0.14em]" style={{ color: "#808080" }}>
-              {totalTarget} KCAL GOAL
+              {totalTarget} KCAL OBJETIVO
             </span>
           </div>
           <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "#1A1A1A" }}>
@@ -2559,7 +2604,7 @@ function TabHoy({
         </div>
       </div>
 
-      {/* ── CONSISTENCY STREAK CARD ── */}
+      {/* ── RACHA DE CONSISTENCIA CARD ── */}
       <div className="rounded-3xl flex items-center gap-4 px-5 py-4 mb-5"
         style={{ background: "#CEFF00" }}>
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
@@ -2568,10 +2613,10 @@ function TabHoy({
         </div>
         <div>
           <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(18px,5.8vw,23px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#000", lineHeight: 1 }}>
-            DAY {student.streak} CONSISTENCY STREAK
+            DÍA {activeDayIndex} DE RACHA · {student.streak} DÍAS TOTALES
           </p>
           <p className="text-[9px] font-black uppercase tracking-[0.28em] mt-1" style={{ color: "rgba(0,0,0,0.42)", fontFamily: DS }}>
-            ACTIVE STREAK
+            RACHA ACTIVA · {new Date().toISOString().split("T")[0]}
           </p>
         </div>
       </div>
@@ -2650,7 +2695,7 @@ function TabHoy({
         style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center gap-2 mb-4">
           <Droplet size={14} strokeWidth={1.5} style={{ color: "#00F0FF" }} />
-          <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "14px", textTransform: "uppercase", letterSpacing: "0.14em", color: "#fff" }}>HYDRATION</span>
+          <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "14px", textTransform: "uppercase", letterSpacing: "0.14em", color: "#fff" }}>HIDRATACIÓN</span>
         </div>
         <div className="flex gap-2 mb-4">
           {Array.from({ length: 10 }).map((_, idx) => {
@@ -2664,7 +2709,7 @@ function TabHoy({
         <div className="flex items-center justify-between">
           <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "20px", color: "#fff" }}>
             {(waterMl / 1000).toFixed(1)}
-            <span style={{ fontSize: "13px", color: "#808080", marginLeft: 4 }}>/ 2.5 L</span>
+            <span style={{ fontSize: "13px", color: "#808080", marginLeft: 4 }}>/ 3.0 L</span>
           </p>
           <button onClick={onAddWater} disabled={waterMl >= waterTarget}
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl cursor-pointer active:scale-95 transition-all disabled:opacity-30"
@@ -2682,43 +2727,67 @@ function TabHoy({
    TAB: PROGRESO
 ══════════════════════════════════════════════════════════════ */
 
+type MealMacros = { protein: number; carbs: number; fat: number };
+
 function TabProgreso({
-  student, detail, startWeight, onBadge,
+  student, detail, startWeight, onBadge, prs, nutritionHistory, workoutHistory, checkedMeals, meals,
 }: {
-  student: Student; detail: Detail; startWeight: number;
+  student: Student;
+  detail: Detail;
+  startWeight: number;
   onBadge: () => void;
+  prs: { squat: number; deadlift: number; bench: number };
+  nutritionHistory: Record<number, Set<number>>;
+  workoutHistory: Record<number, string[]>;
+  checkedMeals: Set<number>;
+  meals: Array<{ name: string; macros?: MealMacros }>;
 }) {
   const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
   const diff = +(student.currentWeight - startWeight).toFixed(1);
 
-  /* ── Historical check-in photo registry ── */
-  const VISUAL_LOG = [
-    { photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "FRONTAL"   },
-    { photo: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "POSTERIOR" },
-    { photo: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "FRONTAL"   },
-    { photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "LATERAL"   },
-    { photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "FRONTAL"   },
-    { photo: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "POSTERIOR" },
-  ];
+  /* ── Historical check-in photo registry — live from DB, Unsplash fallback ── */
+  type PhotoEntry = { photo: string; mes: string; angle: string };
+  const VISUAL_LOG: PhotoEntry[] = (detail.photos ?? []).length > 0
+    ? (detail.photos ?? []).map(p => ({
+        photo: p.url,
+        mes: new Date(p.createdAt).toLocaleDateString("es-MX", { month: "long", year: "numeric" }).toUpperCase(),
+        angle: p.label || "FRONTAL",
+      }))
+    : [
+        { photo: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "FRONTAL"   },
+        { photo: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 1 · ENERO",  angle: "POSTERIOR" },
+        { photo: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "FRONTAL"   },
+        { photo: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 2 · MARZO",  angle: "LATERAL"   },
+        { photo: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "FRONTAL"   },
+        { photo: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "POSTERIOR" },
+      ];
 
   /* ── State ── */
   const [dayTab,          setDayTab]          = useState(2);
   const [isGalleryOpen,   setIsGalleryOpen]   = useState(false);
   const [isComparisonOpen,setIsComparisonOpen]= useState(false);
   const [beforeIdx,       setBeforeIdx]       = useState(0);
-  const [afterIdx,        setAfterIdx]        = useState(VISUAL_LOG.length - 1);
+  const [afterIdx,        setAfterIdx]        = useState(Math.max(0, VISUAL_LOG.length - 1));
+  const [barsReady,       setBarsReady]       = useState(false);
+  useEffect(() => { const t = setTimeout(() => setBarsReady(true), 120); return () => clearTimeout(t); }, []);
 
-  /* ── Weight chart SVG math ── */
+  /* ── Weight chart SVG math (inverted: weight drop = ascending success curve) ── */
   const history = detail.weightHistory;
   const PW = 320, PH = 80, PAD = 10;
   const weights = history.map(h => h.weight);
   const minW = Math.min(...weights) - 0.8;
   const maxW = Math.max(...weights) + 0.8;
-  const toY = (w: number) => PAD + (1 - (w - minW) / (maxW - minW)) * (PH - PAD * 2);
+  // Inverted Y: low weight (fat-loss success) → top of SVG (low Y); high weight → bottom (high Y).
+  // This maps a weight-loss timeline to an ascending left→right success curve.
+  const toY = (w: number) => PAD + ((w - minW) / Math.max(maxW - minW, 0.01)) * (PH - PAD * 2);
   const toX = (i: number) => PAD + (i / Math.max(weights.length - 1, 1)) * (PW - PAD * 2);
   const pts  = weights.map((w, i) => `${toX(i).toFixed(1)},${toY(w).toFixed(1)}`);
   const linePath = `M ${pts.join(" L ")}`;
+  // Area fills from the line DOWN to the bottom baseline — gradient (volt→transparent top-to-bottom)
+  // renders the volt glow directly beneath the ascending line, growing as weight drops.
   const areaPath = `${linePath} L ${toX(weights.length - 1)},${PH - PAD} L ${toX(0)},${PH - PAD} Z`;
+  const latestW = weights[weights.length - 1] ?? maxW;
 
   /* ── Biometric cards ── */
   const latest = detail.measurements[detail.measurements.length - 1];
@@ -2741,7 +2810,7 @@ function TabProgreso({
   const imgStyle: React.CSSProperties = { filter: "grayscale(0.45) brightness(0.82)" };
 
   /* ── Shared photo card sub-render ── */
-  const PhotoCard = ({ entry, height = 300, width = 220 }: { entry: typeof VISUAL_LOG[0]; height?: number; width?: number }) => (
+  const PhotoCard = ({ entry, height = 300, width = 220 }: { entry: PhotoEntry; height?: number; width?: number }) => (
     <div className="rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/[0.04]"
       style={{ width, height }}>
       <img src={entry.photo} alt={entry.angle}
@@ -2774,20 +2843,29 @@ function TabProgreso({
         </h1>
       </div>
 
-      {/* ── 2. WEIGHT EVOLUTION BENTO ── */}
+      {/* ── 2. WEIGHT SUCCESS CURVE BENTO ── */}
       <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>EVOLUCIÓN PESO</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>PROGRESO HACIA LA META</p>
             <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "normal", fontSize: "clamp(28px,8vw,36px)", color: "#fff" }}>
               {student.currentWeight}
               <span style={{ fontSize: "clamp(15px,4vw,18px)", color: "rgba(255,255,255,0.45)", marginLeft: 4 }}>KG</span>
             </p>
+            <p className="font-mono text-[8.5px] uppercase tracking-widest mt-0.5" style={{ color: "#808080" }}>
+              Eficiencia de Quema ↑
+            </p>
           </div>
-          <div className="px-3 py-1 rounded-full mt-1 flex-shrink-0"
-            style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.2)" }}>
-            <span className="font-mono font-bold text-xs" style={{ color: "#CEFF00" }}>
-              {diff > 0 ? "+" : ""}{diff}kg Total
+          <div className="flex flex-col items-end gap-1.5 mt-1">
+            <div className="px-3 py-1.5 rounded-full flex-shrink-0"
+              style={{ background: "#CEFF00", boxShadow: "0 0 14px rgba(206,255,0,0.35)" }}>
+              <span className="font-mono font-bold text-xs" style={{ color: "#000", letterSpacing: "0.06em" }}>
+                {diff < 0 ? `-${Math.abs(diff)}` : diff > 0 ? `+${diff}` : `${diff}`}kg TOTAL
+              </span>
+            </div>
+            <span className="font-mono text-[7.5px] uppercase tracking-widest"
+              style={{ color: diff < 0 ? "#CEFF00" : diff > 0 ? "#f87171" : "#808080" }}>
+              {diff < 0 ? "▼ PÉRDIDA ACTIVA" : diff > 0 ? "▲ GANANCIA" : "— SIN CAMBIO"}
             </span>
           </div>
         </div>
@@ -2795,8 +2873,8 @@ function TabProgreso({
           <svg viewBox={`0 0 ${PW} ${PH}`} preserveAspectRatio="none" className="w-full h-full" style={{ overflow: "visible" }}>
             <defs>
               <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#CEFF00" stopOpacity="0.2" />
-                <stop offset="60%"  stopColor="#CEFF00" stopOpacity="0.06" />
+                <stop offset="0%"   stopColor="#CEFF00" stopOpacity="0.25" />
+                <stop offset="60%"  stopColor="#CEFF00" stopOpacity="0.08" />
                 <stop offset="100%" stopColor="#CEFF00" stopOpacity="0" />
               </linearGradient>
               <filter id="chartGlow">
@@ -2807,7 +2885,7 @@ function TabProgreso({
             <path d={areaPath} fill="url(#wGrad)" />
             <path d={linePath} fill="none" stroke="#CEFF00" strokeWidth="2"
               strokeLinecap="round" strokeLinejoin="round" filter="url(#chartGlow)" />
-            <circle cx={toX(weights.length - 1)} cy={toY(weights[weights.length - 1])}
+            <circle cx={toX(weights.length - 1)} cy={toY(latestW)}
               r="4" fill="#CEFF00" filter="url(#chartGlow)" />
           </svg>
         </div>
@@ -2847,6 +2925,177 @@ function TabProgreso({
           );
         })}
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          ANALYTICS SECTION — Chart 1: Macro Distribution Radar
+      ══════════════════════════════════════════════════════════════ */}
+      {(() => {
+        const todayProtein = [...checkedMeals].reduce((s, idx) => s + (meals[idx]?.macros?.protein ?? 0), 0);
+        const todayCarbs   = [...checkedMeals].reduce((s, idx) => s + (meals[idx]?.macros?.carbs   ?? 0), 0);
+        const todayFat     = [...checkedMeals].reduce((s, idx) => s + (meals[idx]?.macros?.fat     ?? 0), 0);
+        const tgtP = Math.max(1, meals.reduce((s, m) => s + (m.macros?.protein ?? 0), 0));
+        const tgtC = Math.max(1, meals.reduce((s, m) => s + (m.macros?.carbs   ?? 0), 0));
+        const tgtF = Math.max(1, meals.reduce((s, m) => s + (m.macros?.fat     ?? 0), 0));
+        const CX = 100, CY = 108, R = 72;
+        const radarPt = (axisIdx: number, frac: number) => {
+          const angle = -Math.PI / 2 + (2 * Math.PI / 3) * axisIdx;
+          return `${(CX + R * frac * Math.cos(angle)).toFixed(2)},${(CY + R * frac * Math.sin(angle)).toFixed(2)}`;
+        };
+        const fracs = [Math.min(todayProtein / tgtP, 1), Math.min(todayCarbs / tgtC, 1), Math.min(todayFat / tgtF, 1)];
+        const consumed = fracs.map((f, i) => radarPt(i, Math.max(f, 0.04))).join(" ");
+        const target   = [0, 1, 2].map(i => radarPt(i, 1)).join(" ");
+        const gridPts  = (f: number) => [0, 1, 2].map(i => radarPt(i, f)).join(" ");
+        const axisEnd  = (i: number) => { const [x, y] = radarPt(i, 1).split(","); return { x: parseFloat(x), y: parseFloat(y) }; };
+        const legend = [
+          { label: "PROTEÍNA", val: todayProtein, tgt: tgtP, color: "#CEFF00" },
+          { label: "CARBS",    val: todayCarbs,   tgt: tgtC, color: "#00F0FF" },
+          { label: "GRASA",    val: todayFat,     tgt: tgtF, color: "#808080" },
+        ];
+        return (
+          <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02]">
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <p className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#CEFF00", marginBottom: 4 }}>DISTRIBUCIÓN MACRO HOY</p>
+                <h2 className="font-black italic uppercase leading-none" style={{ fontFamily: DS, fontSize: 18, color: "#fff" }}>ANÁLISIS DE INGESTA</h2>
+              </div>
+              <div className="text-right pt-1">
+                <p className="font-mono" style={{ fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>TOTAL</p>
+                <p className="font-black" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 24, color: "#CEFF00", lineHeight: 1 }}>
+                  {todayProtein * 4 + todayCarbs * 4 + todayFat * 9}<span style={{ fontSize: 10, color: "#808080" }}>kcal</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center mt-2">
+              <svg width="200" height="216" viewBox="0 0 200 216">
+                <defs>
+                  <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#CEFF00" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#CEFF00" stopOpacity="0.06" />
+                  </radialGradient>
+                </defs>
+                {[0.25, 0.5, 0.75, 1].map(f => (
+                  <polygon key={f} points={gridPts(f)} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                ))}
+                {[0, 1, 2].map(i => { const e = axisEnd(i); return (
+                  <line key={i} x1={CX} y1={CY} x2={e.x} y2={e.y} stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+                ); })}
+                <polygon points={target}   fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
+                <polygon points={consumed} fill="url(#radarFill)" stroke="#CEFF00" strokeWidth="2" strokeLinejoin="round" />
+                <text x={CX}         y={CY - R - 10} textAnchor="middle" fill="#808080" fontFamily={MONO} fontSize="7.5" letterSpacing="1.5">PROTEÍNA</text>
+                <text x={CX + R * 0.5 + 22} y={CY + R * 0.866 + 10} textAnchor="middle" fill="#808080" fontFamily={MONO} fontSize="7.5" letterSpacing="1.5">CARBS</text>
+                <text x={CX - R * 0.5 - 22} y={CY + R * 0.866 + 10} textAnchor="middle" fill="#808080" fontFamily={MONO} fontSize="7.5" letterSpacing="1.5">GRASA</text>
+                {fracs.map((f, i) => { const e = axisEnd(i); return (
+                  <circle key={i} cx={CX + R * Math.max(f, 0.04) * Math.cos(-Math.PI / 2 + (2 * Math.PI / 3) * i)} cy={CY + R * Math.max(f, 0.04) * Math.sin(-Math.PI / 2 + (2 * Math.PI / 3) * i)} r="3.5" fill="#CEFF00" opacity={f > 0 ? 1 : 0.2} />
+                ); })}
+              </svg>
+            </div>
+            <div className="flex justify-around mt-1">
+              {legend.map(l => (
+                <div key={l.label} className="text-center">
+                  <div className="w-1.5 h-1.5 rounded-full mx-auto mb-1" style={{ background: l.color }} />
+                  <p className="font-mono" style={{ fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>{l.label}</p>
+                  <p className="font-mono" style={{ fontSize: 9, color: l.color }}>{l.val}g<span style={{ color: "#404040" }}>/{l.tgt}g</span></p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Chart 2: 7-Day Caloric Core Timeline ── */}
+      {(() => {
+        const dayKcal = (d: number) => {
+          const checked = nutritionHistory[d] ?? new Set<number>();
+          return [...checked].reduce((sum, idx) => {
+            const m = meals[idx]; if (!m) return sum;
+            return sum + (m.macros?.protein ?? 0) * 4 + (m.macros?.carbs ?? 0) * 4 + (m.macros?.fat ?? 0) * 9;
+          }, 0);
+        };
+        const dayBurn = (d: number) => 1800 + (workoutHistory[d] ?? []).length * 60;
+        const data = Array.from({ length: 7 }, (_, i) => ({ d: i + 1, intake: dayKcal(i + 1), burn: dayBurn(i + 1) }));
+        const allVals = data.flatMap(d => [d.intake, d.burn]);
+        const minV = Math.max(0, Math.min(...allVals) - 150);
+        const maxV = Math.max(...allVals) + 150;
+        const CW = 288, CH = 72, CP = 12;
+        const toX = (i: number) => CP + (i / 6) * (CW - CP * 2);
+        const toY = (v: number) => CP + (1 - (v - minV) / Math.max(maxV - minV, 1)) * (CH - CP * 2);
+        const intakePath = "M " + data.map((d, i) => `${toX(i).toFixed(1)},${toY(d.intake).toFixed(1)}`).join(" L ");
+        const burnPath   = "M " + data.map((d, i) => `${toX(i).toFixed(1)},${toY(d.burn).toFixed(1)}`).join(" L ");
+        const DAY_LABELS = ["L","M","X","J","V","S","D"];
+        const todayIdx = currentCycleDay() - 1;
+        return (
+          <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02]">
+            <p className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#808080" }}>CICLO 7 DÍAS</p>
+            <h2 className="font-black italic uppercase leading-none mb-4" style={{ fontFamily: DS, fontSize: 18, color: "#fff" }}>KCAL CORE TIMELINE</h2>
+            <div className="flex items-center gap-5 mb-3">
+              <div className="flex items-center gap-1.5">
+                <div style={{ width: 18, height: 2, borderRadius: 1, background: "#CEFF00" }} />
+                <span className="font-mono" style={{ fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>INGESTA</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <svg width="18" height="2"><line x1="0" y1="1" x2="18" y2="1" stroke="#00F0FF" strokeWidth="2" strokeDasharray="4,2.5" /></svg>
+                <span className="font-mono" style={{ fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>GASTO EST.</span>
+              </div>
+            </div>
+            <svg width="100%" viewBox={`0 0 ${CW + CP * 2} ${CH + CP * 2}`} style={{ overflow: "visible" }}>
+              {[0.25, 0.5, 0.75].map(f => (
+                <line key={f} x1={CP} y1={toY(minV + f * (maxV - minV))} x2={CW + CP} y2={toY(minV + f * (maxV - minV))}
+                  stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+              ))}
+              <path d={intakePath} fill="none" stroke="#CEFF00" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={burnPath}   fill="none" stroke="#00F0FF" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="5,3" />
+              {data.map((d, i) => (
+                <g key={d.d}>
+                  <circle cx={toX(i)} cy={toY(d.intake)} r={i === todayIdx ? 4.5 : 2.5}
+                    fill={d.intake > 0 ? "#CEFF00" : "#1A1A1A"} stroke="#CEFF00" strokeWidth="1.5" />
+                </g>
+              ))}
+            </svg>
+            <div className="flex justify-between" style={{ paddingInline: CP + 2 }}>
+              {DAY_LABELS.map((l, i) => (
+                <span key={i} className="font-mono" style={{ fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: i === todayIdx ? "#CEFF00" : "#808080" }}>{l}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Chart 3: Strength Max Bars ── */}
+      {(() => {
+        const maxPR = Math.max(prs.squat || 1, prs.deadlift || 1, prs.bench || 1, 1);
+        const prBars = [
+          { label: "SQUAT",    kg: prs.squat,    color: "#CEFF00",              shadow: "rgba(206,255,0,0.35)"  },
+          { label: "DEADLIFT", kg: prs.deadlift, color: "#00F0FF",              shadow: "rgba(0,240,255,0.35)"  },
+          { label: "BENCH",    kg: prs.bench,    color: "rgba(255,255,255,0.75)", shadow: "transparent"           },
+        ];
+        return (
+          <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02]">
+            <p className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#808080" }}>REGISTROS PERSONALES</p>
+            <h2 className="font-black italic uppercase leading-none mb-5" style={{ fontFamily: DS, fontSize: 18, color: "#fff" }}>MAX STRENGTH SCAN</h2>
+            <div className="flex flex-col gap-4">
+              {prBars.map(bar => (
+                <div key={bar.label}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono" style={{ fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080" }}>{bar.label}</span>
+                    <span className="font-mono font-black" style={{ fontSize: 14, color: bar.color }}>
+                      {bar.kg > 0 ? `${bar.kg} kg` : "—"}
+                    </span>
+                  </div>
+                  <div className="rounded-full overflow-hidden" style={{ height: 6, background: "rgba(255,255,255,0.06)" }}>
+                    <div className="h-full rounded-full"
+                      style={{
+                        width: barsReady && maxPR > 0 ? `${Math.round((bar.kg / maxPR) * 100)}%` : "0%",
+                        background: bar.color,
+                        boxShadow: `0 0 10px ${bar.shadow}`,
+                        transition: "width 0.7s cubic-bezier(0.22,1,0.36,1)",
+                      }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── 4. VISUAL LOG CAROUSEL ── */}
       <div className="flex items-center justify-between mb-3">
@@ -3165,13 +3414,17 @@ function PremiumGate() {
   );
 }
 
-function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier }: {
+function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier, prs, onNewPR, activeDayIndex, onLogExercise }: {
   day: RoutineDay | undefined;
   student: Student;
   waterMl: number;
   onAddWater: () => void;
   onFocusMode: (active: boolean) => void;
   memberTier: "basic" | "berserker";
+  prs: { squat: number; deadlift: number; bench: number };
+  onNewPR: (lift: "squat" | "deadlift" | "bench", kg: number) => void;
+  activeDayIndex: number;
+  onLogExercise: (dayIdx: number, exerciseName: string) => void;
 }) {
   type WView = "lobby" | "focus" | "library";
   const [wView,        setWView]        = useState<WView>("lobby");
@@ -3196,7 +3449,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   const targetReps  = activeEx ? parseInt(String(activeEx.reps)) || 10 : 10;
   const totalSets   = activeEx?.sets ?? 4;
   const currentSet  = doneSets[activeExIdx] ?? 0;
-  const waterTarget = 4000;
+  const waterTarget = WATER_TARGET_ML;
   const waterPct    = waterMl / waterTarget;
   const waterR      = 40;
   const waterCirc   = 2 * Math.PI * waterR;
@@ -3242,27 +3495,43 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   const [workoutComplete, setWorkoutComplete] = useState(false);
   const workoutToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSetComplete = () => {
-    if (currentSet >= totalSets) return;          // hard cap — never exceed target sets
+  // Detect if exercise name maps to a trackable PR lift
+  const detectLift = (name: string): "squat" | "deadlift" | "bench" | null => {
+    const n = name.toLowerCase();
+    if (n.includes("squat") || n.includes("sentadilla")) return "squat";
+    if (n.includes("deadlift") || n.includes("peso muerto")) return "deadlift";
+    if (n.includes("bench") || n.includes("press de banca") || n.includes("pecho")) return "bench";
+    return null;
+  };
 
-    const newSets  = currentSet + 1;
-    const isLast   = newSets >= totalSets;
+  const handleSetComplete = () => {
+    if (currentSet >= totalSets) return;
+
+    const newSets = currentSet + 1;
+    const isLast  = newSets >= totalSets;
 
     setDoneSets(d => ({ ...d, [activeExIdx]: newSets }));
 
-    // Toast fires on every set completion
+    // PR check: fire on every set if weight logged and exercise is a tracked lift
+    if (focusWeight > 0 && activeEx) {
+      const lift = detectLift(activeEx.name);
+      if (lift && focusWeight > prs[lift]) {
+        onNewPR(lift, focusWeight);
+      }
+    }
+
     setWorkoutToast(true);
     if (workoutToastRef.current) clearTimeout(workoutToastRef.current);
 
     if (isLast) {
-      // Final set: mark exercise done, then auto-return to lobby after toast
       setDoneEx(d => new Set([...d, activeExIdx]));
+      // Log completed exercise to workout history
+      if (activeEx) onLogExercise(activeDayIndex, activeEx.name);
       workoutToastRef.current = setTimeout(() => {
         setWorkoutToast(false);
         switchView("lobby");
       }, 2000);
     } else {
-      // Non-final set: start rest timer, stay in focus view
       startRest();
       workoutToastRef.current = setTimeout(() => setWorkoutToast(false), 2000);
     }
@@ -3284,7 +3553,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
         <p className="text-[11px] mt-2" style={{ color: "#fff" }}>{day?.label ?? "Rutina de hoy"} · Sesión activa</p>
       </div>
 
-      {/* ── OVERALL PROGRESS BAR ── */}
+      {/* ── PROGRESO GENERAL BAR ── */}
       <div className="px-5 mb-4">
         <div className="flex justify-between mb-1.5">
           <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: "#fff" }}>{doneEx.size}/{totalEx} COMPLETADOS</span>
@@ -3401,7 +3670,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] mb-0.5" style={{ color: "#fff" }}>HIDRATACIÓN TÁCTICA</p>
             <p className="text-[22px] font-black tabular-nums" style={{ color: "#00F0FF" }}>
-              {(waterMl / 1000).toFixed(1)}<span className="text-[13px] font-normal ml-1" style={{ color: "rgba(0,240,255,0.5)" }}>/ 4.0 L</span>
+              {(waterMl / 1000).toFixed(1)}<span className="text-[13px] font-normal ml-1" style={{ color: "rgba(0,240,255,0.5)" }}>/ 3.0 L</span>
             </p>
           </div>
           <div className="relative" style={{ width: 88, height: 88 }}>
@@ -3422,8 +3691,8 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
           </div>
         </div>
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-          {Array.from({ length: 8 }).map((_, idx) => {
-            const filled = waterMl >= (idx + 1) * 500;
+          {Array.from({ length: 12 }).map((_, idx) => {
+            const filled = waterMl >= (idx + 1) * 250;
             return (
               <div key={idx} className="w-9 h-14 rounded-xl flex items-end justify-center overflow-hidden shrink-0 transition-all duration-300"
                 style={{ background: filled ? "rgba(0,240,255,0.1)" : "rgba(255,255,255,0.03)", border: `1px solid ${filled ? "rgba(0,240,255,0.28)" : "rgba(255,255,255,0.05)"}` }}>
@@ -3591,11 +3860,11 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
                 </div>
                 <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: "#fff" }}>Watch Form Check</span>
               </div>
-              {/* LIVE FORM TRACKING — top right */}
+              {/* SEGUIMIENTO EN TIEMPO REAL — top right */}
               <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full"
                 style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(16px)", border: "1px solid rgba(206,255,0,0.38)", boxShadow: "0 0 16px rgba(206,255,0,0.1)" }}>
                 <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#CEFF00", boxShadow: "0 0 6px rgba(206,255,0,0.9)" }} />
-                <span className="text-[8.5px] font-black uppercase tracking-wider" style={{ color: "#CEFF00" }}>LIVE FORM TRACKING</span>
+                <span className="text-[8.5px] font-black uppercase tracking-wider" style={{ color: "#CEFF00" }}>SEGUIMIENTO EN TIEMPO REAL</span>
               </div>
             </div>
 
@@ -3677,7 +3946,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
               <p className="text-[17px] font-black tabular-nums" style={{ fontFamily: DS, fontStyle: "italic", color: "#fff" }}>{durationStr}</p>
             </div>
             <div className="text-right">
-              <p className="text-[8px] font-black uppercase tracking-[0.18em] mb-0.5" style={{ color: "#fff" }}>OVERALL PROGRESS</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.18em] mb-0.5" style={{ color: "#fff" }}>PROGRESO GENERAL</p>
               <p className="text-[17px] font-black" style={{ fontFamily: DS, fontStyle: "italic", color: "#CEFF00" }}>{overallPct}%</p>
             </div>
           </div>
@@ -3778,40 +4047,25 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
 
   return (
     <div style={{ opacity: animating ? 0 : 1, transform: animating ? "translateY(8px)" : "translateY(0)", transition: "opacity 0.16s ease, transform 0.16s ease" }}>
-      {memberTier === "basic" ? (
-        <PremiumGate />
-      ) : (
-        <>
-          {/* Export button — lobby only */}
-          {wView === "lobby" && (
-            <div className="flex justify-end items-center gap-2 px-4 pb-2 no-print">
-              <button
-                onClick={() => {
-                  const isPaper = document.body.dataset.print === "paper";
-                  document.body.dataset.print = isPaper ? "" : "paper";
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl active:opacity-70 transition-opacity"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>
-                  MODO PAPEL
-                </span>
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <Printer size={12} style={{ color: "#808080" }} />
-                <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>
-                  EXPORTAR RUTINA
-                </span>
-              </button>
-            </div>
-          )}
-          {wView === "lobby"   && LobbyView}
-          {wView === "focus"   && FocusView}
-          {wView === "library" && LibraryView}
-        </>
-      )}
+      <>
+        {/* Export button — lobby only */}
+        {wView === "lobby" && (
+          <div className="flex justify-end items-center gap-2 px-4 pb-2 no-print">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl active:opacity-70 transition-opacity"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Printer size={12} style={{ color: "#808080" }} />
+              <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>
+                EXPORTAR RUTINA
+              </span>
+            </button>
+          </div>
+        )}
+        {wView === "lobby"   && LobbyView}
+        {wView === "focus"   && FocusView}
+        {wView === "library" && LibraryView}
+      </>
       {workoutToast && <WorkoutToast />}
       {workoutComplete && (
         <WorkoutCompleteModal
@@ -3936,10 +4190,32 @@ function CancelSubscriptionSheet({
    TAB: PERFIL
 ══════════════════════════════════════════════════════════════ */
 
-function TabPerfil({ student, detail, onCancelRequest }: {
-  student: Student; detail: Detail; onCancelRequest: () => void;
+function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workoutHistory, activeDayIndex, prs, walletBalance }: {
+  student: Student;
+  detail: Detail;
+  onCancelRequest: () => void;
+  nutritionHistory: Record<number, Set<number>>;
+  workoutHistory: Record<number, string[]>;
+  activeDayIndex: number;
+  prs: { squat: number; deadlift: number; bench: number };
+  walletBalance: number;
 }) {
-  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
+
+  const [showSettings,      setShowSettings]      = useState(false);
+  const [notifWorkout,      setNotifWorkout]      = useState(true);
+  const [notifNutrition,    setNotifNutrition]    = useState(true);
+  const [notifCommunity,    setNotifCommunity]    = useState(false);
+  const [settingsSaved,     setSettingsSaved]     = useState(false);
+  const [showRankDrawer,    setShowRankDrawer]    = useState(false);
+  const settingsSavedRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const anyOpen = showRankDrawer || showSettings;
+    document.body.style.overflow = anyOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [showRankDrawer, showSettings]);
 
   /* Rank derived from streak */
   const rankTitle = student.streak >= 60 ? "LEYENDA"
@@ -3958,9 +4234,9 @@ function TabPerfil({ student, detail, onCancelRequest }: {
 
   /* PR data (static display values) */
   const PR_ITEMS = [
-    { label: "SQUAT",    value: "180", unit: "KG", accentColor: "#CEFF00" },
-    { label: "DEADLIFT", value: "220", unit: "KG", accentColor: "#00F0FF" },
-    { label: "BENCH",    value: "140", unit: "KG", accentColor: "#808080" },
+    { label: "SQUAT",    value: prs.squat > 0    ? String(prs.squat)    : "—", unit: prs.squat    > 0 ? "KG" : "SIN LOG", accentColor: "#CEFF00" },
+    { label: "DEADLIFT", value: prs.deadlift > 0 ? String(prs.deadlift) : "—", unit: prs.deadlift > 0 ? "KG" : "SIN LOG", accentColor: "#00F0FF" },
+    { label: "BENCH",    value: prs.bench > 0    ? String(prs.bench)    : "—", unit: prs.bench    > 0 ? "KG" : "SIN LOG", accentColor: "#808080" },
   ];
 
   return (
@@ -4014,28 +4290,84 @@ function TabPerfil({ student, detail, onCancelRequest }: {
 
       {/* ── 2. STREAK & RANK GRID ── */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        {/* Racha */}
-        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
-          style={{ minHeight: 110 }}>
+        {/* Racha — streak matrix card (spans full width) */}
+        <div className="col-span-2 bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col">
+          {/* Header row */}
           <div className="flex items-center justify-between mb-3">
             <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
               RACHA DE DÍAS
             </p>
-            <Flame size={13} style={{ color: "#CEFF00", filter: "drop-shadow(0 0 4px rgba(206,255,0,0.5))" }} />
+            <div className="flex items-center gap-2">
+              <p className="font-black italic leading-none"
+                style={{ fontFamily: DS, fontSize: "clamp(20px,5vw,26px)", color: "#CEFF00", letterSpacing: "0.02em" }}>
+                {student.streak}
+                <span style={{ fontSize: "clamp(11px,3vw,13px)", marginLeft: 3, fontStyle: "normal" }}>DÍAS</span>
+              </p>
+              <Flame size={13} style={{ color: "#CEFF00", filter: "drop-shadow(0 0 4px rgba(206,255,0,0.5))" }} />
+            </div>
           </div>
-          <p className="font-black italic leading-none"
-            style={{ fontFamily: DS, fontSize: "clamp(26px,7vw,32px)", color: "#CEFF00", letterSpacing: "0.02em" }}>
-            {student.streak}
-            <span style={{ fontSize: "clamp(14px,3.5vw,16px)", marginLeft: 4 }}>DÍAS</span>
-          </p>
+          {/* 7-day GitHub-style matrix */}
+          <div className="w-full flex justify-between items-center gap-2 mt-1 bg-[#070708]/50 p-3 rounded-xl border border-white/[0.02]">
+            {[1,2,3,4,5,6,7].map(dayId => {
+              const done    = (nutritionHistory[dayId]?.size ?? 0) > 0 || (workoutHistory[dayId]?.length ?? 0) > 0;
+              const isToday = dayId === activeDayIndex;
+              return (
+                <div key={dayId} className="flex flex-col items-center"
+                  style={{ flex: "1 1 0", minWidth: 0 }}>
+                  <span className="font-mono uppercase text-center mb-1.5"
+                    style={{ fontSize: 9, color: "#808080", letterSpacing: "0.08em", lineHeight: 1 }}>
+                    D{dayId}
+                  </span>
+                  {done ? (
+                    <div
+                      className={`rounded-full flex items-center justify-center font-black font-mono${isToday ? " animate-pulse" : ""}`}
+                      style={{
+                        width: 28, height: 28,
+                        background: "#CEFF00",
+                        color: "#000",
+                        fontSize: 10,
+                        letterSpacing: "-0.05em",
+                        boxShadow: isToday
+                          ? "0 0 15px rgba(206,255,0,0.25), 0 0 0 2px #00F0FF"
+                          : "0 0 15px rgba(206,255,0,0.25)",
+                        border: isToday ? "2px solid #00F0FF" : "1px solid #CEFF00",
+                        flexShrink: 0,
+                        animation: "mc-hud-scan 0.3s cubic-bezier(0.16,1,0.3,1) both",
+                        animationDelay: `${(dayId - 1) * 55}ms`,
+                      }}>
+                      ✓
+                    </div>
+                  ) : (
+                    <div
+                      className={`rounded-full flex items-center justify-center font-mono${isToday ? " animate-pulse" : ""}`}
+                      style={{
+                        width: 28, height: 28,
+                        background: "rgba(26,26,26,0.4)",
+                        color: "#808080",
+                        fontSize: 10,
+                        letterSpacing: "-0.05em",
+                        boxShadow: isToday ? "0 0 0 2px #00F0FF" : "none",
+                        border: isToday ? "2px solid #00F0FF" : "1px solid rgba(255,255,255,0.08)",
+                        flexShrink: 0,
+                        animation: "mc-overlay-in 0.3s ease both",
+                        animationDelay: `${(dayId - 1) * 55}ms`,
+                      }}>
+                      {dayId}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Rango */}
-        <div className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between"
-          style={{ minHeight: 110 }}>
+        {/* Rango — tappable card → Jerarquía drawer */}
+        <button onClick={() => setShowRankDrawer(true)}
+          className="col-span-2 bg-[#1A1A1A] rounded-2xl p-4 border border-white/[0.02] flex flex-col justify-between text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.97]"
+          style={{ minHeight: 110, cursor: "pointer", transition: "all 0.3s ease" }}>
           <div className="flex items-center justify-between mb-3">
             <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#808080" }}>
-              RANGO
+              RANGO · ATLETA
             </p>
             <Sparkles size={13} style={{ color: "#00F0FF", filter: "drop-shadow(0 0 4px rgba(0,240,255,0.45))" }} />
           </div>
@@ -4048,16 +4380,36 @@ function TabPerfil({ student, detail, onCancelRequest }: {
               style={{ color: "#CEFF00", letterSpacing: "0.12em", filter: "drop-shadow(0 0 6px rgba(206,255,0,0.4))" }}>
               {rankSub}
             </p>
+            <p className="font-mono text-[7.5px] uppercase tracking-widest mt-1.5 flex items-center gap-1" style={{ color: "#808080" }}>
+              VER JERARQUÍA <ChevronRight size={8} />
+            </p>
           </div>
+        </button>
+      </div>
+
+      {/* ── 2.5 BILLETERA TÁCTICA ── */}
+      <div className="w-full bg-[#1A1A1A] rounded-2xl px-5 py-4 mb-4 flex items-center justify-between border border-white/[0.02]">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: "#808080" }}>BILLETERA TÁCTICA</p>
+          <p className="font-black leading-none" style={{ fontFamily: DS, fontStyle: "italic", fontSize: "clamp(22px,6vw,28px)", color: "#CEFF00", letterSpacing: "0.02em" }}>
+            ${walletBalance.toLocaleString()}
+            <span style={{ fontSize: 11, marginLeft: 4, fontStyle: "normal", color: "#808080" }}>USD</span>
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.25)" }}>
+            <Trophy size={15} style={{ color: "#CEFF00" }} />
+          </div>
+          <p className="font-mono text-[7px] uppercase tracking-widest" style={{ color: "#808080" }}>ESCROW</p>
         </div>
       </div>
 
-      {/* ── 3. PERSONAL RECORDS ── */}
+      {/* ── 3. RÉCORDS PERSONALES ── */}
       <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02] flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#808080" }}>
-            PERSONAL RECORDS
+            RÉCORDS PERSONALES
           </p>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#CEFF00" }} />
@@ -4137,7 +4489,9 @@ function TabPerfil({ student, detail, onCancelRequest }: {
       </div>
 
       {/* Row 3: Ajustes */}
-      <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-6 border border-white/[0.02]">
+      <button onClick={() => setShowSettings(true)}
+        className="w-full bg-[#1A1A1A] rounded-2xl p-4 flex items-center gap-4 mb-6 border border-white/[0.02] active:opacity-70 transition-opacity text-left"
+        style={{ cursor: "pointer" }}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <Settings size={15} style={{ color: "rgba(255,255,255,0.5)" }} />
@@ -4149,7 +4503,81 @@ function TabPerfil({ student, detail, onCancelRequest }: {
           </p>
         </div>
         <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.2)", marginLeft: "auto", flexShrink: 0 }} />
-      </div>
+      </button>
+
+      {/* ── Account Settings Overlay ── */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-[#070708]/95 backdrop-blur-md z-50 flex flex-col overflow-y-auto"
+          style={{ animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-8 pb-4 flex-shrink-0"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.05em", color: "#fff" }}>
+              PREFERENCIAS
+            </p>
+            <button onClick={() => setShowSettings(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-90 transition-transform"
+              style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.25)", cursor: "pointer" }}>
+              <X size={12} style={{ color: "#CEFF00" }} />
+              <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>CERRAR</span>
+            </button>
+          </div>
+
+          <div className="flex-1 px-5 py-6 space-y-4">
+
+            {/* Notifications section */}
+            <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>🔔 NOTIFICACIONES</p>
+            {[
+              { label: "Recordatorios de Entrenamiento", sub: "Push al inicio de tu sesión programada", val: notifWorkout,   set: setNotifWorkout   },
+              { label: "Alertas de Nutrición",           sub: "Recordatorio de comidas y macros",       val: notifNutrition, set: setNotifNutrition },
+              { label: "Actividad de Comunidad",         sub: "Nuevos posts y retos del equipo",        val: notifCommunity, set: setNotifCommunity },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between p-4 rounded-xl"
+                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="flex-1 min-w-0 mr-4">
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: "#fff" }}>{item.label}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{item.sub}</p>
+                </div>
+                <button onClick={() => item.set(v => !v)}
+                  className="flex-shrink-0 w-11 h-6 rounded-full relative active:scale-90 transition-transform"
+                  style={{ background: item.val ? "#CEFF00" : "rgba(255,255,255,0.08)", border: "none", cursor: "pointer", transition: "background 0.2s ease" }}>
+                  <div className="absolute top-0.5 rounded-full w-5 h-5 transition-all duration-200"
+                    style={{ background: item.val ? "#000" : "rgba(255,255,255,0.3)", left: item.val ? "calc(100% - 22px)" : "2px" }} />
+                </button>
+              </div>
+            ))}
+
+            <div className="h-px my-2" style={{ background: "rgba(255,255,255,0.04)" }} />
+
+            {/* Account info (static read-only) */}
+            <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>👤 CUENTA</p>
+            {[
+              { label: "NOMBRE",   value: student.name },
+              { label: "EMAIL",    value: "configurado en perfil" },
+              { label: "PLAN",     value: student.stage === "Volumen" ? "Plan Berserker" : "Plan Performance" },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between px-4 py-3 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>{row.label}</span>
+                <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: "#fff" }}>{row.value}</span>
+              </div>
+            ))}
+
+            {/* Save button */}
+            <button
+              onClick={() => {
+                setSettingsSaved(true);
+                if (settingsSavedRef.current) clearTimeout(settingsSavedRef.current);
+                settingsSavedRef.current = setTimeout(() => { setSettingsSaved(false); setShowSettings(false); }, 1600);
+              }}
+              className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all mt-4"
+              style={{ background: settingsSaved ? "rgba(206,255,0,0.12)" : "#CEFF00", border: settingsSaved ? "1.5px solid #CEFF00" : "none", cursor: "pointer", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase", color: settingsSaved ? "#CEFF00" : "#000", boxShadow: "0 0 28px rgba(206,255,0,0.25)" }}>
+              {settingsSaved ? "✓ PREFERENCIAS GUARDADAS" : "GUARDAR CAMBIOS"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 5. MONTHLY PROGRESS BAR ── */}
       <div className="w-full bg-[#1A1A1A] rounded-2xl p-4 mb-6 border border-white/[0.02]">
@@ -4183,6 +4611,123 @@ function TabPerfil({ student, detail, onCancelRequest }: {
           Cerrar Sesión
         </span>
       </button>
+
+      {/* ── JERARQUÍA Y RANGOS DRAWER — portal-mounted to escape layout stacking ── */}
+      {showRankDrawer && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-[#070708]/98 z-[70] flex flex-col overflow-y-auto pb-16"
+          style={{ animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-8 pb-4 flex-shrink-0"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div>
+              <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 6 }}>🏅 SISTEMA DE RANGO</p>
+              <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.05em", color: "#fff", lineHeight: 1 }}>
+                JERARQUÍA Y<br />RANGOS DE PODER
+              </p>
+            </div>
+            <button onClick={() => setShowRankDrawer(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-90 transition-transform flex-shrink-0 self-start mt-1"
+              style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.25)", cursor: "pointer" }}>
+              <X size={12} style={{ color: "#CEFF00" }} />
+              <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>CERRAR</span>
+            </button>
+          </div>
+
+          {/* Rank list */}
+          <div className="px-5 py-5 space-y-3">
+            {[
+              {
+                level: 1, title: "ATLETA INIT", sub: "NIVEL 1", icon: "⬡",
+                active: true,
+                desc: "RANGO ACTUAL",
+                progress: "Estás a 150 XP o 3 entrenamientos perfectos de subir de nivel.",
+                accentColor: "#CEFF00",
+                borderColor: "rgba(206,255,0,0.4)",
+              },
+              {
+                level: 2, title: "GUERRERO PRO", sub: "NIVEL 2", icon: "◈",
+                active: false, desc: "BLOQUEADO", progress: "Completa 14 días de racha continua.",
+                accentColor: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.06)",
+              },
+              {
+                level: 3, title: "TITÁN", sub: "NIVEL 3", icon: "◆",
+                active: false, desc: "BLOQUEADO", progress: "Alcanza 30 días de racha y 5 PRs.",
+                accentColor: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.06)",
+              },
+              {
+                level: 4, title: "COMANDANTE", sub: "NIVEL 4", icon: "✦",
+                active: false, desc: "BLOQUEADO", progress: "Mantén el 90% de asistencia por 2 meses.",
+                accentColor: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.06)",
+              },
+              {
+                level: 5, title: "PREDADOR", sub: "NIVEL 5", icon: "⬢",
+                active: false, desc: "BLOQUEADO", progress: "60 días de racha y liderazgo de equipo.",
+                accentColor: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.06)",
+              },
+              {
+                level: 6, title: "BESTIA ÉLITE", sub: "NIVEL MÁXIMO", icon: "★",
+                active: false, desc: "RANGO SUPREMO",
+                progress: "Liderazgo de sala activo · Credenciales de equipo elite.",
+                accentColor: "#CEFF00", borderColor: "rgba(206,255,0,0.2)",
+                voltTheme: true,
+              },
+            ].map(rank => (
+              <div key={rank.level}
+                className="rounded-2xl p-5 flex items-start gap-4"
+                style={{
+                  background: rank.active
+                    ? "rgba(206,255,0,0.06)"
+                    : rank.voltTheme
+                    ? "rgba(206,255,0,0.03)"
+                    : "rgba(255,255,255,0.02)",
+                  border: `1.5px solid ${rank.borderColor}`,
+                  opacity: rank.active || rank.voltTheme ? 1 : 0.55,
+                }}>
+                {/* Badge icon */}
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: rank.active
+                      ? "rgba(206,255,0,0.1)"
+                      : rank.voltTheme
+                      ? "rgba(206,255,0,0.04)"
+                      : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${rank.borderColor}`,
+                  }}>
+                  <span style={{ fontSize: 20, color: rank.accentColor, lineHeight: 1 }}>{rank.icon}</span>
+                </div>
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p style={{ fontFamily: DS, fontWeight: 900, fontSize: "clamp(17px,5vw,20px)", textTransform: "uppercase", color: rank.active ? "#fff" : rank.voltTheme ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.4)", lineHeight: 1, letterSpacing: "0.03em" }}>
+                      {rank.title}
+                    </p>
+                    {rank.active && (
+                      <span className="px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: "#CEFF00", fontFamily: MONO, fontSize: 7, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#000" }}>
+                        ACTIVO
+                      </span>
+                    )}
+                    {rank.voltTheme && !rank.active && (
+                      <span className="px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ border: "1px solid rgba(206,255,0,0.3)", fontFamily: MONO, fontSize: 7, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(206,255,0,0.6)" }}>
+                        ELITE
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: rank.active ? rank.accentColor : "rgba(255,255,255,0.2)", marginBottom: 6 }}>
+                    {rank.sub} · {rank.desc}
+                  </p>
+                  <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.04em", color: "rgba(255,255,255,0.35)", lineHeight: 1.55 }}>
+                    {rank.progress}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 }
@@ -4191,46 +4736,6 @@ function TabPerfil({ student, detail, onCancelRequest }: {
    TAB: COMUNIDAD — Elite Group Chat
 ══════════════════════════════════════════════════════════════ */
 
-const MOCK_POSTS = [
-  {
-    id: 1,
-    author: "Carlos Ruiz",
-    avatarColor: "linear-gradient(135deg,#f97316,#ef4444)",
-    streak: 42,
-    stage: "Volumen",
-    time: "Hace 2h",
-    text: "PR de sentadilla hoy: 190kg × 3 reps. Semana 8 del programa y el cuerpo sigue adaptando. El sistema funciona 💪🔥",
-    likes: 18,
-    replies: [
-      { id: 101, author: "María López", avatarColor: "linear-gradient(135deg,#8b5cf6,#ec4899)", streak: 18, stage: "Definición", time: "Hace 1h", text: "¡Brutal Carlos! Eres la inspiración del grupo 🔥" },
-      { id: 102, author: "Pedro Sanz",  avatarColor: "linear-gradient(135deg,#06b6d4,#3b82f6)", streak: 6,  stage: "Mantenimiento", time: "Hace 45min", text: "Objetivo: alcanzarte antes de julio 💯" },
-    ],
-  },
-  {
-    id: 2,
-    author: "Ana Torres",
-    avatarColor: "linear-gradient(135deg,#10b981,#06b6d4)",
-    streak: 7,
-    stage: "Mantenimiento",
-    time: "Hace 4h",
-    text: "Primer check-in completo ✅ Resultado: -3cm de cintura en 6 semanas. El proceso no miente 📊",
-    likes: 31,
-    replies: [
-      { id: 201, author: "Carlos Ruiz", avatarColor: "linear-gradient(135deg,#f97316,#ef4444)", streak: 42, stage: "Volumen", time: "Hace 3h", text: "Así se hace Ana 🎯 Consistencia sobre todo." },
-    ],
-  },
-  {
-    id: 3,
-    author: "Pedro Sanz",
-    avatarColor: "linear-gradient(135deg,#06b6d4,#3b82f6)",
-    streak: 6,
-    stage: "Mantenimiento",
-    time: "Hace 6h",
-    text: "¿Alguien ha probado el protocolo 16/8 junto al plan de volumen? Cuéntenme resultados 👇",
-    likes: 9,
-    replies: [],
-  },
-];
 
 function getRank(streak: number, stage: string): string {
   if (streak >= 60) return "LEYENDA ELITE";
@@ -4290,15 +4795,15 @@ const SALA_METRICS: SalaMetric[] = [
 ];
 
 // ── Module-level static datasets ─────────────────────────────────────────
-const SALA_ROSTER = [
-  { id: 1, name: "MARCUS_ELITE",   rank: "BESTIA ELITE",  rnk: 1, streak: 42, online: true,  avatarColor: "linear-gradient(135deg,#CEFF00,#00F0FF)" },
-  { id: 2, name: "COACH_FELLS",    rank: "COMANDANTE",    rnk: 2, streak: 38, online: true,  avatarColor: "linear-gradient(135deg,#CEFF00,#a3e635)" },
-  { id: 3, name: "ANA_BERSERKER",  rank: "PREDADORA",     rnk: 3, streak: 31, online: false, avatarColor: "linear-gradient(135deg,#f472b6,#a78bfa)" },
-  { id: 4, name: "ALBERTO_Z",      rank: "TITÁN",         rnk: 4, streak: 28, online: true,  avatarColor: "linear-gradient(135deg,#60a5fa,#a78bfa)" },
-  { id: 5, name: "DIANA_FORCE",    rank: "GUERRERA PRO",  rnk: 5, streak: 21, online: false, avatarColor: "linear-gradient(135deg,#f87171,#fbbf24)" },
-  { id: 6, name: "CARLOS_POWER",   rank: "ATLETA INIT",   rnk: 6, streak: 14, online: true,  avatarColor: "linear-gradient(135deg,#34d399,#06b6d4)" },
-  { id: 7, name: "JORGE_REX",      rank: "GUERRERO PRO",  rnk: 7, streak: 19, online: false, avatarColor: "linear-gradient(135deg,#fb923c,#f43f5e)" },
-  { id: 8, name: "SARA_APEX",      rank: "BESTIA INIT",   rnk: 8, streak: 11, online: true,  avatarColor: "linear-gradient(135deg,#c084fc,#60a5fa)" },
+const SALA_ROSTER: RosterMember[] = [
+  { id: 1, name: "MARCUS_ELITE",  avatarInitials: "ME", avatarBgColor: "linear-gradient(135deg,#CEFF00,#00F0FF)", rankBadgeTitle: "BESTIA ELITE",  rnk: 1, rachaActiveDays: 42, isOnline: true,  isMe: false, pts: 4820, kcal: 4210, sets: 52, prs: { maxDeadlift: 220, maxSquat: 185, benchPress: 150, kcalRecord: 6200 } },
+  { id: 2, name: "COACH_FELLS",   avatarInitials: "CF", avatarBgColor: "linear-gradient(135deg,#CEFF00,#a3e635)", rankBadgeTitle: "COMANDANTE",    rnk: 2, rachaActiveDays: 38, isOnline: true,  isMe: false, pts: 4650, kcal: 3980, sets: 48, prs: { maxDeadlift: 210, maxSquat: 175, benchPress: 140, kcalRecord: 5900 } },
+  { id: 3, name: "ANA_BERSERKER", avatarInitials: "AB", avatarBgColor: "linear-gradient(135deg,#f472b6,#a78bfa)", rankBadgeTitle: "PREDADORA",     rnk: 3, rachaActiveDays: 31, isOnline: false, isMe: false, pts: 4100, kcal: 3650, sets: 44, prs: { maxDeadlift: 165, maxSquat: 140, benchPress: 95,  kcalRecord: 4800 } },
+  { id: 4, name: "ALBERTO_Z",     avatarInitials: "AZ", avatarBgColor: "linear-gradient(135deg,#60a5fa,#a78bfa)", rankBadgeTitle: "TITÁN",         rnk: 4, rachaActiveDays: 28, isOnline: true,  isMe: true,  pts: 3105, kcal: 3105, sets: 38, prs: { maxDeadlift: 180, maxSquat: 155, benchPress: 120, kcalRecord: 5840 } },
+  { id: 5, name: "DIANA_FORCE",   avatarInitials: "DF", avatarBgColor: "linear-gradient(135deg,#f87171,#fbbf24)", rankBadgeTitle: "GUERRERA PRO",  rnk: 5, rachaActiveDays: 21, isOnline: false, isMe: false, pts: 2890, kcal: 2780, sets: 32, prs: { maxDeadlift: 145, maxSquat: 125, benchPress: 85,  kcalRecord: 4200 } },
+  { id: 6, name: "CARLOS_POWER",  avatarInitials: "CP", avatarBgColor: "linear-gradient(135deg,#34d399,#06b6d4)", rankBadgeTitle: "ATLETA INIT",   rnk: 6, rachaActiveDays: 14, isOnline: true,  isMe: false, pts: 2540, kcal: 2410, sets: 28, prs: { maxDeadlift: 130, maxSquat: 110, benchPress: 80,  kcalRecord: 3900 } },
+  { id: 7, name: "JORGE_REX",     avatarInitials: "JR", avatarBgColor: "linear-gradient(135deg,#fb923c,#f43f5e)", rankBadgeTitle: "GUERRERO PRO",  rnk: 7, rachaActiveDays: 19, isOnline: false, isMe: false, pts: 2200, kcal: 2100, sets: 24, prs: { maxDeadlift: 155, maxSquat: 130, benchPress: 100, kcalRecord: 4100 } },
+  { id: 8, name: "SARA_APEX",     avatarInitials: "SA", avatarBgColor: "linear-gradient(135deg,#c084fc,#60a5fa)", rankBadgeTitle: "BESTIA INIT",   rnk: 8, rachaActiveDays: 11, isOnline: true,  isMe: false, pts: 1980, kcal: 1850, sets: 20, prs: { maxDeadlift: 120, maxSquat: 100, benchPress: 72,  kcalRecord: 3600 } },
 ];
 
 const SALA_LEADERBOARD = [
@@ -4322,73 +4827,256 @@ const SALA_AVISOS = [
     fire: 89, muscle: 61 },
 ];
 
-function TabComunidad({ student }: { student: { name: string; streak: number; stage: string; avatarColor?: string } }) {
+type RosterMember = {
+  id: number;
+  name: string;
+  avatarInitials: string;
+  avatarBgColor: string;
+  rankBadgeTitle: string;
+  rnk: number;
+  rachaActiveDays: number;
+  isOnline: boolean;
+  isMe: boolean;
+  pts: number;
+  kcal: number;
+  sets: number;
+  prs: { maxDeadlift: number; maxSquat: number; benchPress: number; kcalRecord: number };
+};
+
+type LiveStake = {
+  id: number;
+  opponent: string;
+  opponentColor: string;
+  modality: string;
+  pool: number;
+  myScore: number;
+  rivalScore: number;
+  myMax: number;
+  rivalMax: number;
+  status: "PENDIENTE" | "EN COMBATE TÁCTICO";
+};
+
+const CHALLENGE_MODALITIES = [
+  { id: "DEADLIFT",    label: "MAX DEADLIFT",  sub: "1RM MÁXIMO KG", emoji: "🏋️" },
+  { id: "CONSISTENCY", label: "CONSISTENCIA",  sub: "% SESIONES",    emoji: "📊" },
+  { id: "KCAL",        label: "KCAL GOAL",     sub: "CAL TOTALES",   emoji: "🔥" },
+] as const;
+
+function TabComunidad({
+  student,
+  broadcastMessages,
+  setBroadcastMessages,
+  walletBalance,
+  onClaimPrize,
+  onLaunchDebit,
+  nutritionTotal,
+  streakCompletedDays,
+  workoutHistory,
+  currentRoomView,
+  setCurrentRoomView,
+  selectedActiveChallenge,
+  setSelectedActiveChallenge,
+  searchQuery,
+  setSearchQuery,
+  showRosterFilter,
+  setShowRosterFilter,
+  filterRank,
+  setFilterRank,
+  filterOnline,
+  setFilterOnline,
+  filterStreakMin,
+  setFilterStreakMin,
+  isCoach,
+  coachId,
+}: {
+  student: { name: string; streak: number; stage: string; avatarColor?: string };
+  broadcastMessages: string[];
+  setBroadcastMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  walletBalance: number;
+  onClaimPrize: (amount: number) => Promise<void>;
+  onLaunchDebit: (amount: number) => Promise<boolean>;
+  nutritionTotal: number;
+  streakCompletedDays: number;
+  workoutHistory: Record<number, string[]>;
+  currentRoomView: "feed" | "leaderboard" | "retos" | "members" | "avisos";
+  setCurrentRoomView: React.Dispatch<React.SetStateAction<"feed" | "leaderboard" | "retos" | "members" | "avisos">>;
+  selectedActiveChallenge: LiveStake | null;
+  setSelectedActiveChallenge: React.Dispatch<React.SetStateAction<LiveStake | null>>;
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  showRosterFilter: boolean;
+  setShowRosterFilter: React.Dispatch<React.SetStateAction<boolean>>;
+  filterRank: string | null;
+  setFilterRank: React.Dispatch<React.SetStateAction<string | null>>;
+  filterOnline: boolean;
+  setFilterOnline: React.Dispatch<React.SetStateAction<boolean>>;
+  filterStreakMin: number;
+  setFilterStreakMin: React.Dispatch<React.SetStateAction<number>>;
+  isCoach: boolean;
+  coachId: string | null;
+}) {
   const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
   const MONO = "'Courier New',monospace";
+  const [newBroadcastMsg, setNewBroadcastMsg] = useState("");
+
+  // ── Server-fetched coach notices ─────────────────────────────────────────
+  type ServerNotice = { id: string; senderName: string; role: string; content: string; createdAt: string };
+  const [serverNotices, setServerNotices] = useState<ServerNotice[]>([]);
+  useEffect(() => {
+    if (currentRoomView !== "avisos" || !coachId) return;
+    fetch(`/api/community/messages?coachId=${coachId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((msgs: ServerNotice[]) => {
+        if (Array.isArray(msgs)) setServerNotices(msgs.filter(m => m.role === "COACH"));
+      })
+      .catch(() => {});
+  }, [currentRoomView, coachId]);
 
   // ══ STATE MACHINE ════════════════════════════════════════════════════════
   const [hasTeam,          setHasTeam]          = useState(false);
-  const [currentRoomView,  setCurrentRoomView]  = useState<"feed" | "leaderboard" | "members" | "avisos">("feed");
-
+  const [showCodeModal,    setShowCodeModal]    = useState(false);
+  const [codeInput,        setCodeInput]        = useState("");
+  const [codeError,        setCodeError]        = useState(false);
+  const [codeSuccess,      setCodeSuccess]      = useState(false);
   // keep below so hook order never changes regardless of hasTeam value:
 
-  // ── Feed / chat state (must stay at top regardless of view) ────────────
+  // ── Feed / activity state ─────────────────────────────────────────────
   const [likedActivity,   setLikedActivity]   = useState<Set<number>>(new Set());
-  const [posts,           setPosts]           = useState(MOCK_POSTS);
-  const [postText,        setPostText]        = useState("");
-  const [likedPosts,      setLikedPosts]      = useState<Set<number>>(new Set());
-  const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
-  const [replyInputFor,   setReplyInputFor]   = useState<number | null>(null);
-  const [replyText,       setReplyText]       = useState("");
-  const [searchQuery,     setSearchQuery]     = useState("");
   const [activityFeed,    setActivityFeed]    = useState(SALA_ACTIVITY_FEED);
   const [commentOpen,     setCommentOpen]     = useState<Set<number>>(new Set());
-  const [totalStake,      setTotalStake]      = useState(50);
   const [showPostModal,   setShowPostModal]   = useState(false);
   const [newPostText,     setNewPostText]     = useState("");
+  // ── Challenge builder state ────────────────────────────────────────────
+  const [selectedAthlete,   setSelectedAthlete]   = useState("");
+  const [challengeModality, setChallengeModality] = useState("");
+  const [stakeAmount,       setStakeAmount]       = useState(50);
+  const [liveStakes,        setLiveStakes]        = useState<LiveStake[]>(() => [
+    { id: 1, opponent: "MARCUS_ELITE",  opponentColor: "linear-gradient(135deg,#CEFF00,#00F0FF)", modality: "KCAL GOAL",   pool: 1000, myScore: 0, rivalScore: 4210, myMax: 5000, rivalMax: 5000, status: "EN COMBATE TÁCTICO" },
+    { id: 2, opponent: "ANA_BERSERKER", opponentColor: "linear-gradient(135deg,#f472b6,#a78bfa)", modality: "CONSISTENCY", pool: 200,  myScore: 0, rivalScore: 31,   myMax: 7,    rivalMax: 7,    status: "PENDIENTE"        },
+  ]);
+  const [challengeToast,          setChallengeToast]          = useState(false);
+  const [challengeToastMsg,       setChallengeToastMsg]       = useState("");
+  const challengeToastRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const claimInFlight      = useRef(false);
+  const rivalAcceptTimers  = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const [showModalityPicker,    setShowModalityPicker]    = useState(false);
+  const [useCustomChallenge,    setUseCustomChallenge]    = useState(false);
+  const [customChallengeText,   setCustomChallengeText]   = useState("");
+  const [rosterMembers,         setRosterMembers]         = useState<RosterMember[]>(SALA_ROSTER);
+  const [selectedRosterProfile, setSelectedRosterProfile] = useState<RosterMember | null>(null);
+  const [showClaimModal,        setShowClaimModal]        = useState(false);
+  const [claimedPool,           setClaimedPool]           = useState(0);
+  const [infoToast,             setInfoToast]             = useState(false);
+  const [infoToastMsg,          setInfoToastMsg]          = useState("");
+  const infoToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fireInfoToast = (msg: string) => {
+    setInfoToastMsg(msg);
+    setInfoToast(true);
+    if (infoToastRef.current) clearTimeout(infoToastRef.current);
+    infoToastRef.current = setTimeout(() => setInfoToast(false), 2400);
+  };
+
+  // Computed canLaunch: requires solvency (half-stake must be <= wallet) + valid target + modality
+  const canLaunch = selectedAthlete !== "" && stakeAmount <= walletBalance && (
+    useCustomChallenge ? customChallengeText.trim().length > 0 : challengeModality !== ""
+  );
+
+  const launchChallenge = async () => {
+    const finalModality = useCustomChallenge
+      ? customChallengeText.trim().toUpperCase()
+      : challengeModality;
+    if (!selectedAthlete || !finalModality) return;
+    const ok = await onLaunchDebit(stakeAmount);
+    if (!ok) return;
+    const rival = rosterMembers.find(m => m.name === selectedAthlete) ?? rosterMembers[0];
+    const newStake: LiveStake = {
+      id: Date.now(),
+      opponent: selectedAthlete,
+      opponentColor: rival.avatarBgColor,
+      modality: finalModality,
+      pool: stakeAmount * 2,
+      myScore: 0,
+      rivalScore: 0,
+      myMax: stakeAmount * 2,
+      rivalMax: stakeAmount * 2,
+      status: "PENDIENTE",
+    };
+    setLiveStakes(prev => [newStake, ...prev]);
+    setSelectedAthlete("");
+    setChallengeModality("");
+    setCustomChallengeText("");
+    setUseCustomChallenge(false);
+    setStakeAmount(50);
+    setChallengeToastMsg("DESAFÍO TÁCTICO LANZADO • ESPERANDO APROBACIÓN");
+    setChallengeToast(true);
+    if (challengeToastRef.current) clearTimeout(challengeToastRef.current);
+    challengeToastRef.current = setTimeout(() => setChallengeToast(false), 2200);
+  };
+
+  // Rival acceptance simulator: PENDIENTE → EN COMBATE TÁCTICO after 3500ms
+  useEffect(() => {
+    liveStakes.forEach(stake => {
+      if (stake.status === "PENDIENTE" && !rivalAcceptTimers.current[stake.id]) {
+        rivalAcceptTimers.current[stake.id] = setTimeout(() => {
+          setLiveStakes(prev =>
+            prev.map(s => s.id === stake.id ? { ...s, status: "EN COMBATE TÁCTICO" } : s)
+          );
+          delete rivalAcceptTimers.current[stake.id];
+          setChallengeToastMsg("⚔️ ¡EL RIVAL ACEPTÓ TU DESAFÍO — COMBATE INICIADO!");
+          setChallengeToast(true);
+          if (challengeToastRef.current) clearTimeout(challengeToastRef.current);
+          challengeToastRef.current = setTimeout(() => setChallengeToast(false), 3000);
+        }, 3500);
+      }
+      if (stake.status !== "PENDIENTE" && rivalAcceptTimers.current[stake.id]) {
+        clearTimeout(rivalAcceptTimers.current[stake.id]);
+        delete rivalAcceptTimers.current[stake.id];
+      }
+    });
+    // Purge timers for removed stakes
+    const activeIds = new Set(liveStakes.map(s => s.id));
+    Object.keys(rivalAcceptTimers.current).forEach(k => {
+      const n = Number(k);
+      if (!activeIds.has(n)) { clearTimeout(rivalAcceptTimers.current[n]); delete rivalAcceptTimers.current[n]; }
+    });
+  }, [liveStakes]);
+
+  // Scroll lock: freeze body scroll when any modal is open
+  useEffect(() => {
+    const anyOpen = showModalityPicker || showCodeModal || showPostModal || showClaimModal;
+    document.body.style.overflow = anyOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [showModalityPicker, showCodeModal, showPostModal, showClaimModal]);
+
+  // Scores-tick: bind live user data to matching stakes
+  const totalWorkoutExercises = Object.values(workoutHistory).reduce((sum, arr) => sum + arr.length, 0);
+  useEffect(() => {
+    setLiveStakes(prev => prev.map(stake => {
+      if (stake.status !== "EN COMBATE TÁCTICO") return stake;
+      if (stake.modality === "KCAL GOAL")   return { ...stake, myScore: nutritionTotal };
+      if (stake.modality === "CONSISTENCY") return { ...stake, myScore: streakCompletedDays };
+      // Custom modality: use total logged exercise count as proxy score
+      return { ...stake, myScore: totalWorkoutExercises };
+    }));
+  }, [nutritionTotal, streakCompletedDays, totalWorkoutExercises]);
 
   const initials = (name: string) => name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
-  const handlePost = () => {
-    if (!postText.trim()) return;
-    setPosts(prev => [{
-      id: Date.now(), author: student.name,
-      avatarColor: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)",
-      streak: student.streak, stage: student.stage, time: "Ahora",
-      text: postText.trim(), likes: 0, replies: [],
-    }, ...prev]);
-    setPostText("");
-  };
-  const handleReply = (postId: number) => {
-    if (!replyText.trim()) return;
-    setPosts(prev => prev.map(p => p.id === postId
-      ? { ...p, replies: [...p.replies, { id: Date.now(), author: student.name,
-          avatarColor: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)",
-          streak: student.streak, stage: student.stage, time: "Ahora", text: replyText.trim() }] }
-      : p));
-    setReplyText(""); setReplyInputFor(null);
-  };
-  const toggleLike = (postId: number) => {
-    setLikedPosts(prev => {
-      const n = new Set(prev);
-      if (n.has(postId)) { n.delete(postId); setPosts(p => p.map(x => x.id === postId ? { ...x, likes: x.likes - 1 } : x)); }
-      else               { n.add(postId);    setPosts(p => p.map(x => x.id === postId ? { ...x, likes: x.likes + 1 } : x)); }
-      return n;
-    });
-  };
   const toggleActivityLike = (id: number) => {
     setLikedActivity(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
-  const filteredRoster = SALA_ROSTER.filter(m =>
-    searchQuery === "" ||
-    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.rank.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const activeFilterCount = (filterRank !== null ? 1 : 0) + (filterOnline ? 1 : 0) + (filterStreakMin > 0 ? 1 : 0);
+  const filteredRoster = rosterMembers
+    .filter(m => searchQuery === "" || m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.rankBadgeTitle.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(m => !filterOnline || m.isOnline)
+    .filter(m => filterRank === null || m.rankBadgeTitle.toUpperCase().includes(filterRank))
+    .filter(m => m.rachaActiveDays >= filterStreakMin);
 
   // Sub-nav tabs definition
   const ROOM_TABS = [
     { id: "feed"        as const, label: "FEED",    Icon: LayoutGrid },
     { id: "leaderboard" as const, label: "RANKING", Icon: Trophy     },
+    { id: "retos"       as const, label: "RETOS",   Icon: Zap        },
     { id: "members"     as const, label: "ROSTER",  Icon: Users      },
     { id: "avisos"      as const, label: "AVISOS",  Icon: Bell       },
   ];
@@ -4396,6 +5084,7 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
   // ══ GATE VIEW (early return — all hooks are above) ════════════════════════
   if (!hasTeam) {
     return (
+      <>
       <div className="w-full min-h-screen bg-[#070708] text-white flex flex-col items-center justify-center px-6 py-16">
         {/* Shield emblem */}
         <div style={{ width: 100, height: 100, borderRadius: 20, background: "rgba(206,255,0,0.04)", border: "1.5px solid rgba(206,255,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 28, boxShadow: "0 0 32px rgba(206,255,0,0.12), inset 0 0 20px rgba(206,255,0,0.03)" }}>
@@ -4411,16 +5100,107 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
 
         <div className="w-full flex flex-col gap-3" style={{ maxWidth: 340 }}>
           <button onClick={() => setHasTeam(true)}
-            className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full"
+            className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full active:scale-95 transition-transform"
             style={{ fontFamily: DS, fontStyle: "italic", fontSize: 17, letterSpacing: "0.1em", cursor: "pointer", border: "none", boxShadow: "0 0 28px rgba(206,255,0,0.3), 0 4px 16px rgba(0,0,0,0.5)" }}>
             [ UNIRSE A UNA SALA ⚡ ]
           </button>
-          <button className="w-full py-4 rounded-xl"
+          <button onClick={() => { setShowCodeModal(true); setCodeInput(""); setCodeError(false); setCodeSuccess(false); }}
+            className="w-full py-4 rounded-xl active:opacity-70 transition-opacity"
             style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
             INGRESAR CÓDIGO PRIVADO
           </button>
         </div>
       </div>
+
+      {/* ── Private Code Modal ── */}
+      {showCodeModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-6"
+          style={{ background: "rgba(7,7,8,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", animation: "mc-overlay-in 0.2s ease both" }}>
+          <div className="w-full max-w-sm rounded-[28px] flex flex-col overflow-hidden"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)", animation: "float-up 0.28s cubic-bezier(0.16,1,0.3,1) both" }}>
+            {/* Header */}
+            <div className="px-6 pt-6 pb-5 flex items-start justify-between"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 6 }}>🔐 ACCESO TÁCTICO</p>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
+                  CÓDIGO PRIVADO
+                </p>
+              </div>
+              <button onClick={() => setShowCodeModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition-transform mt-1"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+                <X size={13} style={{ color: "#808080" }} />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5">
+              <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.06em", color: "#808080", lineHeight: 1.65, marginBottom: 20 }}>
+                Ingresa la clave alfanumérica de acceso corporativo que tu coach te entregó para unirte a la sala.
+              </p>
+              <input
+                type="text"
+                value={codeInput}
+                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(false); }}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    if (codeInput.trim() === "FELLS2026") {
+                      setCodeSuccess(true);
+                      setTimeout(() => { setShowCodeModal(false); setHasTeam(true); }, 1200);
+                    } else {
+                      setCodeError(true);
+                    }
+                  }
+                }}
+                placeholder="XXXXXX0000"
+                maxLength={12}
+                className="w-full rounded-xl px-4 py-3.5 text-center outline-none transition-all"
+                style={{
+                  fontFamily: MONO, fontSize: 18, fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase",
+                  background: "rgba(255,255,255,0.04)",
+                  border: `1.5px solid ${codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "rgba(255,255,255,0.1)"}`,
+                  color: codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "#fff",
+                  caretColor: "#CEFF00",
+                }}
+              />
+              {codeError && (
+                <p className="text-center mt-2" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#f87171" }}>
+                  ✕ CÓDIGO INVÁLIDO · ACCESO DENEGADO
+                </p>
+              )}
+              {codeSuccess && (
+                <p className="text-center mt-2" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
+                  ⚡ VERIFICADO · ACCESO CONCEDIDO
+                </p>
+              )}
+            </div>
+            {/* CTA */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => {
+                  if (codeInput.trim() === "FELLS2026") {
+                    setCodeSuccess(true);
+                    setTimeout(() => { setShowCodeModal(false); setHasTeam(true); }, 1200);
+                  } else {
+                    setCodeError(true);
+                  }
+                }}
+                className="w-full py-3.5 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                style={{
+                  background: codeSuccess ? "rgba(206,255,0,0.12)" : "#CEFF00",
+                  border: codeSuccess ? "1.5px solid #CEFF00" : "none",
+                  cursor: "pointer",
+                  fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 17, letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: codeSuccess ? "#CEFF00" : "#000",
+                  boxShadow: codeSuccess ? "none" : "0 0 24px rgba(206,255,0,0.3)",
+                }}>
+                {codeSuccess ? "⚡ ACCESO CONCEDIDO" : "VERIFICAR CÓDIGO"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -4429,13 +5209,54 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
     <div className="w-full min-h-screen bg-[#070708] text-white flex flex-col md:flex-row">
 
       {/* ═══════════════════════════════════════════════════════════
-          LEFT SIDEBAR / MOBILE TOP STRIP
+          MOBILE STICKY TOP NAV TRACK (hidden on md+)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-white/[0.06] backdrop-blur-md z-30 md:sticky md:top-0 md:h-screen md:overflow-y-auto"
-        style={{ background: "rgba(26,26,26,0.92)" }}>
+      <div className="md:hidden w-full sticky top-0 z-40 flex flex-col"
+        style={{ background: "rgba(26,26,26,0.97)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {/* Team header row */}
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <svg width="22" height="22" viewBox="0 0 62 62" fill="none">
+              <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="2" fill="rgba(206,255,0,0.04)" />
+              <text x="31" y="40" textAnchor="middle" fontFamily="'Barlow Condensed',sans-serif" fontWeight="900" fontStyle="italic" fontSize="28" fill="#CEFF00">F</text>
+            </svg>
+            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 13, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>FELLS TEAM PRO</span>
+          </div>
+          <button onClick={() => setHasTeam(false)}
+            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}>
+            SALIR ✕
+          </button>
+        </div>
+        {/* Horizontal pill scroll track */}
+        <div className="flex flex-row items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none px-3 pb-2.5">
+          {ROOM_TABS.map(({ id, label, Icon }) => {
+            const active = currentRoomView === id;
+            return (
+              <button key={id} onClick={() => setCurrentRoomView(id)}
+                className="flex items-center gap-1.5 flex-shrink-0 active:scale-[0.94] active:opacity-90 transition-all duration-150 ease-out"
+                style={{
+                  background: active ? "#CEFF00" : "rgba(255,255,255,0.05)",
+                  border: active ? "none" : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 9999,
+                  padding: "6px 14px",
+                  cursor: "pointer",
+                }}>
+                <Icon size={12} style={{ color: active ? "#000" : "#808080", flexShrink: 0 }} />
+                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: active ? "#000" : "#808080", fontWeight: 900 }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* ── Desktop: logo block ── */}
-        <div className="hidden md:flex flex-col items-center gap-2 p-6 pb-2">
+      {/* ═══════════════════════════════════════════════════════════
+          DESKTOP LEFT SIDEBAR (hidden on mobile)
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="hidden md:flex md:flex-col md:w-64 flex-shrink-0 border-r border-white/[0.06] sticky top-0 h-screen overflow-y-auto z-30"
+        style={{ background: "rgba(26,26,26,0.96)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+
+        {/* Logo block */}
+        <div className="flex flex-col items-center gap-2 p-6 pb-4">
           <div style={{ filter: "drop-shadow(0 0 14px rgba(206,255,0,0.25))" }}>
             <svg width="46" height="46" viewBox="0 0 62 62" fill="none">
               <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="1.6" fill="rgba(206,255,0,0.04)" />
@@ -4450,46 +5271,29 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
           <div className="w-full h-px mt-3" style={{ background: "rgba(255,255,255,0.06)" }} />
         </div>
 
-        {/* ── Mobile: horizontal strip header ── */}
-        <div className="flex md:hidden items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <svg width="28" height="28" viewBox="0 0 62 62" fill="none">
-              <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="1.8" fill="rgba(206,255,0,0.04)" />
-              <text x="31" y="39" textAnchor="middle" fontFamily="'Barlow Condensed',sans-serif" fontWeight="900" fontStyle="italic" fontSize="26" fill="#CEFF00">F</text>
-            </svg>
-            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 14, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>FELLS TEAM PRO</span>
-          </div>
-          <button onClick={() => setHasTeam(false)}
-            style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-            SALIR ✕
-          </button>
-        </div>
-
-        {/* ── Nav items ── */}
-        <div className="flex flex-row md:flex-col gap-1 px-2 md:px-4 md:py-2 overflow-x-auto md:overflow-x-visible">
+        {/* Nav items */}
+        <div className="flex flex-col gap-1 px-4 py-1">
           {ROOM_TABS.map(({ id, label, Icon }) => {
             const active = currentRoomView === id;
             return (
               <button key={id} onClick={() => setCurrentRoomView(id)}
-                className="flex items-center gap-2.5 transition-all active:scale-95 flex-shrink-0"
+                className="flex items-center gap-2.5 w-full text-left active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out"
                 style={{
                   background: active ? "#CEFF00" : "transparent",
                   borderRadius: 10,
                   padding: "9px 12px",
                   border: "none",
                   cursor: "pointer",
-                  width: "100%",
-                  textAlign: "left",
                 }}>
                 <Icon size={15} style={{ color: active ? "#000" : "#808080", flexShrink: 0 }} />
-                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: active ? "#000" : "#808080", fontWeight: 900, whiteSpace: "nowrap" }}>{label}</span>
+                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: active ? "#000" : "#808080", fontWeight: 900 }}>{label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* ── Desktop: exit at bottom ── */}
-        <div className="hidden md:flex flex-col mt-auto p-4 pt-6">
+        {/* Exit at bottom */}
+        <div className="flex flex-col mt-auto p-4 pt-6">
           <div className="w-full h-px mb-4" style={{ background: "rgba(255,255,255,0.06)" }} />
           <button onClick={() => setHasTeam(false)}
             className="flex items-center gap-2 active:opacity-60"
@@ -4509,7 +5313,7 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
           VIEW: FEED
       ════════════════════════════════════════════════════════════ */}
       {currentRoomView === "feed" && (
-        <div className="px-4 pt-5">
+        <div className="px-4 pt-5 animate-mc-room-view-in">
           {/* Metrics ribbon */}
           <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none w-full mb-5">
             {SALA_METRICS.map((m, i) => (
@@ -4527,11 +5331,11 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
           {/* Feed header */}
           <div className="flex items-start justify-between mb-5">
             <div>
-              <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, letterSpacing: "0.04em", textTransform: "uppercase", color: "#fff", lineHeight: 1 }}>ACTIVITY FEED</h2>
+              <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, letterSpacing: "0.04em", textTransform: "uppercase", color: "#fff", lineHeight: 1 }}>STREAM DE ACTIVIDAD</h2>
               <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 4 }}>Real-time performance telemetry from the field</p>
             </div>
             <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#f87171" }} />
               <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171" }}>LIVE</span>
             </div>
           </div>
@@ -4605,90 +5409,10 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
             );
           })}
 
-          {/* Text posts from community chat */}
-          <div className="space-y-4 mb-6">
-            {posts.map(post => {
-              const isLiked     = likedPosts.has(post.id);
-              const showReplies = expandedReplies.has(post.id);
-              const rank        = getRank(post.streak, post.stage);
-              return (
-                <div key={post.id} className="bg-[#1A1A1A] rounded-2xl border border-white/[0.02]" style={{ overflow: "hidden" }}>
-                  <div className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
-                        style={{ background: post.avatarColor, color: "#fff", fontFamily: DS, border: "1.5px solid rgba(255,255,255,0.1)" }}>
-                        {initials(post.author)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-[#CEFF00] text-black font-mono font-black text-[9px] px-2 py-0.5 rounded uppercase" style={{ letterSpacing: "0.06em" }}>{rank}</span>
-                          <span className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 14 }}>{post.author}</span>
-                        </div>
-                        <p className="font-mono text-[9px] uppercase tracking-widest mt-0.5" style={{ color: "#808080" }}>Racha {post.streak}d · {post.time}</p>
-                      </div>
-                    </div>
-                    <p className="text-[13px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>{post.text}</p>
-                    <div className="flex items-center gap-4">
-                      <button onClick={() => toggleLike(post.id)} className="flex items-center gap-1.5 active:scale-90 transition-transform">
-                        <Heart size={14} fill={isLiked ? "#CEFF00" : "none"} stroke={isLiked ? "#CEFF00" : "rgba(255,255,255,0.3)"} />
-                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 11, color: isLiked ? "#CEFF00" : "rgba(255,255,255,0.35)" }}>{post.likes}</span>
-                      </button>
-                      <button onClick={() => setExpandedReplies(prev => { const n = new Set(prev); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })} className="flex items-center gap-1.5 active:opacity-60">
-                        <MessageSquare size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
-                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{post.replies.length} resp.</span>
-                      </button>
-                      <button onClick={() => setReplyInputFor(replyInputFor === post.id ? null : post.id)} className="ml-auto active:opacity-60">
-                        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00" }}>Responder</span>
-                      </button>
-                    </div>
-                  </div>
-                  {showReplies && post.replies.length > 0 && (
-                    <div className="px-4 pb-3 space-y-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                      {post.replies.map(r => {
-                        const rRank = getRank(r.streak, r.stage);
-                        return (
-                          <div key={r.id} className="flex gap-2.5 pt-3">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0"
-                              style={{ background: r.avatarColor, color: "#fff", fontFamily: DS, border: "1px solid rgba(255,255,255,0.1)" }}>
-                              {initials(r.author)}
-                            </div>
-                            <div className="flex-1 min-w-0 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}>
-                              <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="bg-[#CEFF00] text-black font-mono font-black text-[8px] px-1.5 py-0.5 rounded uppercase" style={{ letterSpacing: "0.06em" }}>{rRank}</span>
-                                <span className="font-bold text-white" style={{ fontFamily: DS, fontStyle: "normal", fontSize: 12 }}>{r.author}</span>
-                                <span className="font-mono text-[9px]" style={{ color: "#808080" }}>{r.time}</span>
-                              </div>
-                              <p className="text-[12px] leading-snug" style={{ color: "rgba(255,255,255,0.78)" }}>{r.text}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {replyInputFor === post.id && (
-                    <div className="px-4 pb-4 flex gap-2.5 items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 mt-2"
-                        style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", color: "#000", fontFamily: DS }}>
-                        {initials(student.name)}
-                      </div>
-                      <input value={replyText} onChange={e => setReplyText(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter") handleReply(post.id); }}
-                        placeholder="Escribe tu respuesta..." className="flex-1 bg-transparent outline-none mt-2"
-                        style={{ fontSize: 12, color: "#fff", paddingBottom: 4, borderBottom: "1px solid rgba(206,255,0,0.3)" }} autoFocus />
-                      <button onClick={() => handleReply(post.id)} className="mt-2 active:scale-90 transition-transform">
-                        <Send size={14} style={{ color: "#CEFF00" }} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
           {/* FAB — opens post modal */}
           <button onClick={() => setShowPostModal(true)}
-            className="fixed right-6 bg-[#CEFF00] p-4 rounded-full z-40 active:scale-90 transition-transform"
-            style={{ bottom: 90, border: "none", cursor: "pointer", boxShadow: "0 0 24px rgba(206,255,0,0.4), 0 8px 24px rgba(0,0,0,0.6)" }}>
+            className="fixed bottom-24 right-6 z-40 w-14 h-14 bg-[#CEFF00] text-black rounded-full flex items-center justify-center font-black text-2xl shadow-lg shadow-[#CEFF00]/10 cursor-pointer animate-fade-in active:scale-90 transition-transform"
+            style={{ border: "none" }}>
             <Plus size={22} strokeWidth={3} style={{ color: "#000" }} />
           </button>
         </div>
@@ -4698,15 +5422,15 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
           VIEW: AVISOS
       ════════════════════════════════════════════════════════════ */}
       {currentRoomView === "avisos" && (
-        <div className="px-4 pt-2">
+        <div className="px-4 pt-2 animate-mc-room-view-in">
           {/* Section title */}
           <div className="flex items-start justify-between mb-6">
             <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
               CANAL DE INSTRUCCIÓN<br />/ AVISOS
             </h2>
             <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171" }}>EN DIRECTO • 42 ACTIVOS</span>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#f87171" }} />
+              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171" }}>EN DIRECTO • {rosterMembers.length} ACTIVOS</span>
             </div>
           </div>
 
@@ -4740,7 +5464,14 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
 
           {/* Historial */}
           <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>HISTORIAL DE INSTRUCCIONES</p>
-          {SALA_AVISOS.filter(a => !a.pinned).map(aviso => (
+          {coachId && serverNotices.length === 0 && (
+            <div className="rounded-xl p-5 mb-4 text-center" style={{ background: "rgba(26,26,26,0.5)", border: "1px solid rgba(255,255,255,0.04)" }}>
+              <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>
+                // SIN INSTRUCCIONES DEL COACH
+              </p>
+            </div>
+          )}
+          {!coachId && SALA_AVISOS.filter(a => !a.pinned).map(aviso => (
             <div key={aviso.id} className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 border border-white/[0.02]">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
@@ -4759,9 +5490,26 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
               </div>
             </div>
           ))}
+          {serverNotices.map(n => (
+            <div key={n.id} className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 border border-white/[0.02]">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg,#00F0FF,#0ea5e9)", color: "#000", fontFamily: DS }}>
+                  {n.senderName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>{n.senderName.toUpperCase()}</p>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>
+                    {new Date(n.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[12.5px] leading-relaxed" style={{ color: "rgba(255,255,255,0.78)" }}>{n.content}</p>
+            </div>
+          ))}
 
           {/* Performance micro-grid */}
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="grid grid-cols-2 gap-3 mt-2 mb-6">
             {([
               { label: "RENDIMIENTO",  value: "+12%", accent: "#CEFF00" },
               { label: "CONSISTENCIA", value: "98%",  accent: "#00F0FF" },
@@ -4772,14 +5520,83 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
               </div>
             ))}
           </div>
+
+          {/* ── GESTIÓN DE EMISIÓN DEL COACH (Broadcast Configurator — COACH only) ── */}
+          {isCoach && <div className="rounded-xl overflow-hidden mb-4"
+            style={{ background: "rgba(26,26,26,0.7)", border: "1px solid rgba(206,255,0,0.12)" }}>
+            {/* Config header */}
+            <div className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+              <div className="flex items-center gap-2">
+                <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.24em", textTransform: "uppercase", color: "rgba(206,255,0,0.45)" }}>⚡ GESTIÓN DE EMISIÓN</span>
+              </div>
+              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                {broadcastMessages.length} ACTIVOS
+              </span>
+            </div>
+            {/* Current messages */}
+            <div className="px-4 pt-3 pb-2 space-y-1.5">
+              {broadcastMessages.length === 0 && (
+                <p style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", padding: "8px 0" }}>
+                  // SIN MENSAJES ACTIVOS
+                </p>
+              )}
+              {broadcastMessages.map((msg, i) => (
+                <div key={i} className="flex items-start gap-2.5 px-3 py-2.5"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 900, color: i === 0 ? "#CEFF00" : "rgba(255,255,255,0.25)", flexShrink: 0, marginTop: 1 }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p className="flex-1 min-w-0" style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.04em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", lineHeight: 1.55, wordBreak: "break-word" }}>
+                    {msg}
+                  </p>
+                  <button onClick={() => setBroadcastMessages(prev => prev.filter((_, j) => j !== i))}
+                    className="flex-shrink-0 active:opacity-40 transition-opacity"
+                    style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px" }}>
+                    <X size={10} style={{ color: "rgba(248,113,113,0.5)" }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Borderless HUD input + monolithic EMITIR button */}
+            <div className="flex flex-col gap-0 px-4 pb-4 pt-2">
+              <input
+                type="text"
+                value={newBroadcastMsg}
+                onChange={e => setNewBroadcastMsg(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newBroadcastMsg.trim()) {
+                    setBroadcastMessages(prev => [...prev, newBroadcastMsg.trim().toUpperCase()]);
+                    setNewBroadcastMsg("");
+                  }
+                }}
+                placeholder="NUEVO MENSAJE DE EMISIÓN..."
+                className="hud-input w-full"
+                style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", caretColor: "#00F0FF" }}
+              />
+              <button
+                onClick={() => {
+                  if (!newBroadcastMsg.trim()) return;
+                  setBroadcastMessages(prev => [...prev, newBroadcastMsg.trim().toUpperCase()]);
+                  setNewBroadcastMsg("");
+                }}
+                className="w-full mt-3 py-3.5 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                style={{ background: "#CEFF00", border: "none", cursor: "pointer", boxShadow: "0 0 24px rgba(206,255,0,0.18)" }}>
+                <Zap size={11} fill="#000" stroke="none" />
+                <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 900, letterSpacing: "0.22em", textTransform: "uppercase", color: "#000" }}>
+                  EMITIR BROADCAST
+                </span>
+              </button>
+            </div>
+          </div>}
         </div>
       )}
 
       {/* ════════════════════════════════════════════════════════════
-          VIEW: LEADERBOARD + CHALLENGE ENGINE
+          VIEW: LEADERBOARD (Podium + Ranks only)
       ════════════════════════════════════════════════════════════ */}
       {currentRoomView === "leaderboard" && (
-        <div className="px-4 pt-5">
+        <div className="px-4 pt-5 animate-mc-room-view-in">
           <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 28, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1, marginBottom: 4 }}>
             RANKING DE SINDICATO
           </h2>
@@ -4798,8 +5615,7 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
               return (
                 <div key={m.rank} className="flex-1 flex flex-col items-center rounded-2xl pt-4 pb-3 gap-2"
                   style={{ height: h, background: isFirst ? "rgba(206,255,0,0.04)" : "#1A1A1A", border: isFirst ? "1px solid rgba(206,255,0,0.25)" : "1px solid rgba(255,255,255,0.04)", boxShadow: isFirst ? "0 0 24px rgba(206,255,0,0.08)" : "none", justifyContent: "center" }}>
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: m.avatarColor, boxShadow: ring }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: m.avatarColor, boxShadow: ring }}>
                     <span style={{ fontFamily: DS, fontWeight: 900, color: "#000", fontSize: 11 }}>{m.name.slice(0, 2)}</span>
                   </div>
                   <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 24, color: nc, lineHeight: 1 }}>#{m.rank}</span>
@@ -4810,11 +5626,11 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
             })}
           </div>
 
-          {/* Ranks 4-6 */}
-          <div className="space-y-3 mb-5">
-            {SALA_LEADERBOARD.slice(3).map(m => (
+          {/* Ranks 4-8 */}
+          <div className="space-y-3 mb-6">
+            {SALA_LEADERBOARD.slice(3).map((m, i) => (
               <div key={m.rank} className="relative rounded-2xl p-4 flex items-center gap-3"
-                style={{ background: m.isMe ? "rgba(206,255,0,0.04)" : "#1A1A1A", border: m.isMe ? "1.5px solid #CEFF00" : "1px solid rgba(255,255,255,0.04)" }}>
+                style={{ background: m.isMe ? "rgba(206,255,0,0.04)" : "#1A1A1A", border: m.isMe ? "1.5px solid #CEFF00" : "1px solid rgba(255,255,255,0.04)", animation: "mc-overlay-in 0.3s ease both", animationDelay: `${i * 40}ms` }}>
                 {m.isMe && (
                   <div className="absolute -top-3 left-4 px-2 py-0.5 rounded"
                     style={{ background: "#CEFF00", fontFamily: MONO, fontSize: 7.5, fontWeight: 900, letterSpacing: "0.18em", textTransform: "uppercase", color: "#000" }}>
@@ -4846,69 +5662,405 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
             ))}
           </div>
 
-          {/* ── LANZAR RETO / APUESTA TÁCTICA ENGINE ── */}
-          <div className="rounded-2xl p-5 mb-4"
-            style={{ background: "#1A1A1A", border: "1px solid rgba(206,255,0,0.18)", boxShadow: "0 0 20px rgba(206,255,0,0.06)" }}>
-            <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 16 }}>
-              ⚡ APUESTA TÁCTICA · VS MARCUS_ELITE
-            </p>
+        </div>
+      )}
 
-            {/* Stake display */}
-            <div className="flex items-end justify-center gap-2 mb-4">
-              <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 64, color: "#CEFF00", lineHeight: 1 }}>{totalStake}</span>
-              <span style={{ fontFamily: MONO, fontSize: 14, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>PTS</span>
-            </div>
+      {/* ════════════════════════════════════════════════════════════
+          VIEW: RETOS — Challenge Hub + Battle Detail Overlay
+      ════════════════════════════════════════════════════════════ */}
+      {currentRoomView === "retos" && (
+        <div className="relative px-4 pt-5 pb-8 animate-mc-room-view-in">
 
-            {/* Quick-add buttons */}
-            <div className="flex gap-2 mb-4">
-              {([10, 50] as number[]).map(delta => (
-                <button key={delta} onClick={() => setTotalStake(s => Math.min(500, s + delta))}
-                  className="flex-1 py-2 rounded-xl active:scale-95 transition-transform"
-                  style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
-                  +{delta}
+          {/* ── CHALLENGE BUILDER ── */}
+          {selectedActiveChallenge === null && (
+            <>
+              <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 28, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1, marginBottom: 4 }}>
+                ⚡ RETOS TÁCTICOS
+              </h2>
+              <p style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#00F0FF", marginBottom: 18 }}>
+                ARENA 1V1 · APUESTA TÁCTICA
+              </p>
+
+              {/* Challenge Builder Card */}
+              <div className="rounded-[22px] p-5 mb-5"
+                style={{ background: "#1A1A1A", border: "1px solid rgba(206,255,0,0.18)", boxShadow: "0 0 28px rgba(206,255,0,0.06)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#CEFF00" }}>⚡ CONFIGURAR DESAFÍO</p>
+                  <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>TÁCTICA 1v1</span>
+                </div>
+
+                {/* Step 1: Rival — driven by rosterMembers state */}
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", marginBottom: 10 }}>01 · SELECCIONAR RIVAL</p>
+                <div className="flex gap-3 overflow-x-auto pb-3 mb-4 scrollbar-none">
+                  {rosterMembers.filter(m => !m.isMe).map(rival => {
+                    const isSel = selectedAthlete === rival.name;
+                    return (
+                      <button key={rival.id} onClick={() => setSelectedAthlete(isSel ? "" : rival.name)}
+                        className="flex flex-col items-center gap-1.5 flex-shrink-0 active:scale-90 transition-transform"
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 2px" }}>
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                          style={{ background: rival.avatarBgColor, boxShadow: isSel ? "0 0 0 2.5px #CEFF00, 0 0 16px rgba(206,255,0,0.5)" : "0 0 0 1.5px rgba(255,255,255,0.1)", transition: "box-shadow 0.15s ease" }}>
+                          <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 12, color: "#000" }}>{rival.avatarInitials}</span>
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: isSel ? "#CEFF00" : "#808080", whiteSpace: "nowrap", fontWeight: isSel ? 900 : 400 }}>{rival.name.split("_")[0]}</span>
+                        {isSel && <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#CEFF00" }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Step 2: Modality — dropdown trigger */}
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", marginBottom: 10 }}>02 · MODALIDAD DE COMBATE</p>
+                <button onClick={() => { setShowModalityPicker(true); setUseCustomChallenge(false); setCustomChallengeText(""); }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl mb-5 active:scale-[0.98] transition-transform"
+                  style={{ background: challengeModality ? "rgba(206,255,0,0.05)" : "rgba(255,255,255,0.03)", border: challengeModality ? "1.5px solid rgba(206,255,0,0.35)" : "1px solid rgba(255,255,255,0.08)", cursor: "pointer", boxShadow: challengeModality ? "0 0 14px rgba(206,255,0,0.1)" : "none" }}>
+                  <div className="flex items-center gap-2.5">
+                    <span style={{ fontSize: 16 }}>
+                      {challengeModality === "DEADLIFT" ? "🏋️" : challengeModality === "CONSISTENCY" ? "📊" : challengeModality === "KCAL" ? "🔥" : challengeModality ? "🎯" : "⚡"}
+                    </span>
+                    <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: challengeModality ? "#CEFF00" : "#808080", fontWeight: challengeModality ? 900 : 400 }}>
+                      {challengeModality
+                        ? CHALLENGE_MODALITIES.find(m => m.id === challengeModality)?.label ?? challengeModality
+                        : "SELECCIONAR MODALIDAD"}
+                    </span>
+                  </div>
+                  <ChevronDown size={14} style={{ color: challengeModality ? "#CEFF00" : "#808080", flexShrink: 0 }} />
                 </button>
-              ))}
-              <button onClick={() => setTotalStake(500)}
-                className="flex-1 py-2 rounded-xl active:scale-95 transition-transform"
-                style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
-                MAX
-              </button>
-              <button onClick={() => setTotalStake(0)}
-                className="px-3 py-2 rounded-xl active:scale-95 transition-transform"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontFamily: MONO, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", fontWeight: 900 }}>
-                ✕
-              </button>
-            </div>
 
-            {/* Range slider */}
-            <div className="mb-5">
-              <input type="range" min={0} max={500} step={10}
-                value={totalStake}
-                onChange={e => setTotalStake(Number(e.target.value))}
-                className="w-full"
-                style={{ accentColor: "#CEFF00", cursor: "pointer", height: 4 }} />
-              <div className="flex justify-between mt-1">
-                <span style={{ fontFamily: MONO, fontSize: 8, color: "#808080" }}>0</span>
-                <span style={{ fontFamily: MONO, fontSize: 8, color: "#808080" }}>500 PTS MAX</span>
+                {/* Step 3: Stake */}
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", marginBottom: 10 }}>03 · MONTO DE APUESTA</p>
+                <div className="text-center mb-4">
+                  <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 52, color: "#CEFF00", lineHeight: 1, letterSpacing: "-0.01em" }}>$ {stakeAmount.toFixed(2)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginLeft: 8 }}>USD</span>
+                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginTop: 4 }}>POOL TOTAL: $ {(stakeAmount * 2).toFixed(2)} USD</p>
+                </div>
+                <div className="flex gap-2 mb-4">
+                  {([10, 50] as const).map(delta => (
+                    <button key={delta} onClick={() => setStakeAmount(s => Math.min(1000, s + delta))}
+                      className="flex-1 py-2.5 rounded-xl active:scale-95 transition-transform"
+                      style={{ background: "rgba(206,255,0,0.07)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+                      +{delta}
+                    </button>
+                  ))}
+                  <button onClick={() => setStakeAmount(1000)}
+                    className="flex-1 py-2.5 rounded-xl active:scale-95 transition-transform"
+                    style={{ background: "rgba(206,255,0,0.07)", border: "1px solid rgba(206,255,0,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+                    MAX
+                  </button>
+                  <button onClick={() => setStakeAmount(0)}
+                    className="px-4 py-2.5 rounded-xl active:scale-95 transition-transform"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", fontFamily: MONO, fontSize: 12, color: "#808080", fontWeight: 900 }}>
+                    ✕
+                  </button>
+                </div>
+                <div className="mb-5">
+                  <input type="range" min={0} max={1000} step={10} value={stakeAmount} onChange={e => setStakeAmount(Number(e.target.value))}
+                    className="w-full" style={{ accentColor: "#CEFF00", cursor: "pointer", height: 4 }} />
+                  <div className="flex justify-between mt-1.5">
+                    <span style={{ fontFamily: MONO, fontSize: 7.5, color: "#808080" }}>$ 0</span>
+                    <span style={{ fontFamily: MONO, fontSize: 7.5, color: "#808080" }}>$ 1000 MAX</span>
+                  </div>
+                </div>
+
+                {!canLaunch && (
+                  <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <AlertTriangle size={11} style={{ color: "#fbbf24", flexShrink: 0 }} />
+                    <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>
+                      {!selectedAthlete ? "Selecciona un rival" : "Define la modalidad del reto"}
+                    </span>
+                  </div>
+                )}
+                <button onClick={launchChallenge} disabled={!canLaunch}
+                  className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                  style={{
+                    background: canLaunch ? "#CEFF00" : "rgba(255,255,255,0.06)",
+                    border: "none", cursor: canLaunch ? "pointer" : "not-allowed",
+                    fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase",
+                    color: canLaunch ? "#000" : "#808080",
+                    boxShadow: canLaunch ? "0 0 32px rgba(206,255,0,0.35)" : "none",
+                    opacity: canLaunch ? 1 : 0.55,
+                  }}>
+                  <Zap size={18} fill={selectedAthlete && challengeModality ? "#000" : "#808080"} stroke="none" />
+                  LANZAR RETO [ ⚡ ]
+                </button>
               </div>
-            </div>
 
-            {/* Launch button */}
-            <button
-              onClick={() => {
-                alert("RETO ENVIADO CORRECTAMENTE AL ATLETA TARGET");
-                setTotalStake(50);
-              }}
-              className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
-              style={{ background: "#CEFF00", border: "none", cursor: "pointer", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase", color: "#000", boxShadow: "0 0 32px rgba(206,255,0,0.35)" }}>
-              <Zap size={18} fill="#000" stroke="none" />
-              LANZAR RETO [ ⚡ ]
-            </button>
+              {/* Monitor de Combate */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
+                    ⚔️ MONITOR DE COMBATE
+                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#CEFF00" }} />
+                    <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#CEFF00" }}>{liveStakes.length} RETOS ACTIVOS</span>
+                  </div>
+                </div>
+                {liveStakes.length === 0 && (
+                  <div className="rounded-xl p-6 text-center" style={{ background: "rgba(26,26,26,0.2)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", display: "block", marginBottom: 8 }}>
+                      ⚔️ [ SYSTEM INTEL // ARENA VACÍA ]
+                    </span>
+                    <button
+                      onClick={() => setCurrentRoomView("members")}
+                      className="inline-flex items-center gap-1 active:scale-[0.97] active:opacity-90 transition-all duration-150"
+                      style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#CEFF00", background: "none", border: "none", cursor: "pointer", textShadow: "0 0 12px rgba(206,255,0,0.5)" }}>
+                      [ INICIAR DESAFÍO EN ROSTER → ]
+                    </button>
+                  </div>
+                )}
+                {liveStakes.map(stake => {
+                  const myPct    = stake.myMax  > 0 ? Math.min(100, Math.round((stake.myScore    / stake.myMax)    * 100)) : 0;
+                  const rivalPct = stake.rivalMax > 0 ? Math.min(100, Math.round((stake.rivalScore / stake.rivalMax) * 100)) : 0;
+                  const isLive   = stake.status === "EN COMBATE TÁCTICO";
+                  const myInitials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                  const rivalInit  = stake.opponent.slice(0, 2);
+                  return (
+                    <button key={stake.id} onClick={() => setSelectedActiveChallenge(stake)}
+                      className="w-full rounded-[24px] p-5 mb-4 flex flex-col relative text-left active:scale-[0.98] transition-transform"
+                      style={{ background: "#1A1A1A", border: isLive ? "1px solid rgba(206,255,0,0.2)" : "1px solid rgba(255,255,255,0.04)", boxShadow: isLive ? "0 0 20px rgba(206,255,0,0.05)" : "none", cursor: "pointer" }}>
 
-            <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", textAlign: "center", marginTop: 10 }}>
-              EL RANKING SE REINICIA EN 2 DÍAS, 14 HORAS
-            </p>
-          </div>
+                      {/* Status token */}
+                      <div className="absolute top-4 right-4">
+                        {isLive ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full animate-pulse"
+                            style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.35)" }}>
+                            <Zap size={9} fill="#CEFF00" stroke="none" />
+                            <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900, whiteSpace: "nowrap" }}>EN COMBATE</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                            style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
+                            <span style={{ fontSize: 8 }}>⏳</span>
+                            <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fbbf24", fontWeight: 900, whiteSpace: "nowrap" }}>AGUARDANDO</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", marginBottom: 14 }}>{stake.modality}</p>
+
+                      {/* Face-off */}
+                      <div className="flex items-center justify-between mb-5">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                            style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", boxShadow: "0 0 0 2.5px #CEFF00, 0 0 16px rgba(206,255,0,0.4)" }}>
+                            <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: "#000" }}>{myInitials}</span>
+                          </div>
+                          <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>TÚ</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="relative flex items-center justify-center">
+                            <div style={{ position: "absolute", width: 60, height: 1.5, background: "linear-gradient(to right,rgba(206,255,0,0.4),rgba(206,255,0,0.9),rgba(206,255,0,0.4))", transform: "rotate(-8deg)" }} />
+                            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, color: "#CEFF00", letterSpacing: "0.02em", position: "relative", zIndex: 1, textShadow: "0 0 12px rgba(206,255,0,0.6)" }}>VS</span>
+                          </div>
+                          <div className="mt-1 px-3 py-1 rounded-lg" style={{ background: "rgba(206,255,0,0.06)", border: "1px solid rgba(206,255,0,0.25)" }}>
+                            <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 11, letterSpacing: "0.06em", color: "#CEFF00" }}>$ {stake.pool.toFixed(2)} USD</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="w-14 h-14 rounded-full flex items-center justify-center"
+                            style={{ background: stake.opponentColor, boxShadow: "0 0 0 2px rgba(0,240,255,0.6), 0 0 14px rgba(0,240,255,0.25)" }}>
+                            <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: "#000" }}>{rivalInit}</span>
+                          </div>
+                          <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900, maxWidth: 64, textAlign: "center", lineHeight: 1.3 }}>{stake.opponent.split("_")[0]}</span>
+                        </div>
+                      </div>
+
+                      {/* Progress bars */}
+                      <div className="mb-3">
+                        <div className="flex justify-between mb-2">
+                          <div>
+                            <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>{stake.myScore.toLocaleString()}</p>
+                            <p style={{ fontFamily: MONO, fontSize: 7, color: "#808080", textTransform: "uppercase", letterSpacing: "0.08em" }}>MI MARCA</p>
+                          </div>
+                          <div className="text-right">
+                            <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900 }}>{stake.rivalScore.toLocaleString()}</p>
+                            <p style={{ fontFamily: MONO, fontSize: 7, color: "#808080", textTransform: "uppercase", letterSpacing: "0.08em" }}>RIVAL</p>
+                          </div>
+                        </div>
+                        <div className="w-full rounded-full overflow-hidden mb-2" style={{ height: 8, background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: `${myPct}%`, borderRadius: 9999, background: "linear-gradient(to right,rgba(206,255,0,0.6),#CEFF00)", boxShadow: myPct > 0 ? "0 0 8px rgba(206,255,0,0.5)" : "none", transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)", minWidth: myPct > 0 ? 4 : 0 }} />
+                        </div>
+                        <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: `${rivalPct}%`, borderRadius: 9999, background: "linear-gradient(to right,rgba(0,240,255,0.5),#00F0FF)", boxShadow: rivalPct > 0 ? "0 0 8px rgba(0,240,255,0.4)" : "none", transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)", minWidth: rivalPct > 0 ? 4 : 0 }} />
+                        </div>
+                        <div className="flex justify-between mt-1.5">
+                          <span style={{ fontFamily: MONO, fontSize: 7, color: "#CEFF00" }}>{myPct}% completado</span>
+                          <span style={{ fontFamily: MONO, fontSize: 7, color: "#00F0FF" }}>{rivalPct}% completado</span>
+                        </div>
+                      </div>
+
+                      {/* Tap hint */}
+                      <div className="flex items-center justify-center gap-1 mt-2 opacity-40">
+                        <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>TAP PARA DETALLE →</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* ── DETAIL OVERLAY (when a battle card is tapped) ── */}
+          {selectedActiveChallenge !== null && (() => {
+            const stake = selectedActiveChallenge;
+            const myPct    = stake.myMax  > 0 ? Math.min(100, Math.round((stake.myScore    / stake.myMax)    * 100)) : 0;
+            const rivalPct = stake.rivalMax > 0 ? Math.min(100, Math.round((stake.rivalScore / stake.rivalMax) * 100)) : 0;
+            const isLive   = stake.status === "EN COMBATE TÁCTICO";
+            const myInitials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            const rivalInit  = stake.opponent.slice(0, 2);
+            const iWinning   = stake.myScore > stake.rivalScore;
+
+            return (
+              <div className="fixed inset-0 z-[55] flex flex-col overflow-y-auto"
+                style={{ background: "#070708", animation: "mc-overlay-in 0.3s cubic-bezier(0.16,1,0.3,1) both" }}>
+
+                {/* Back + title bar */}
+                <div className="flex items-center gap-3 px-4 pt-5 pb-4 sticky top-0 z-10"
+                  style={{ background: "rgba(7,7,8,0.95)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <button onClick={() => setSelectedActiveChallenge(null)}
+                    className="flex items-center justify-center w-9 h-9 rounded-full active:scale-90 transition-transform"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+                    <ChevronLeft size={16} style={{ color: "#fff" }} />
+                  </button>
+                  <div className="flex-1">
+                    <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 18, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>DETALLE DE RETO</p>
+                    <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{stake.modality}</p>
+                  </div>
+                  {/* Status badge */}
+                  {isLive ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full animate-pulse"
+                      style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.35)" }}>
+                      <Zap size={9} fill="#CEFF00" stroke="none" />
+                      <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900, whiteSpace: "nowrap" }}>EN COMBATE</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                      style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
+                      <span style={{ fontSize: 8 }}>⏳</span>
+                      <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fbbf24", fontWeight: 900, whiteSpace: "nowrap" }}>AGUARDANDO</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 px-4 py-5 space-y-4">
+                  {/* Pool header */}
+                  <div className="rounded-2xl p-5 text-center"
+                    style={{ background: "rgba(206,255,0,0.04)", border: "1px solid rgba(206,255,0,0.2)", boxShadow: "0 0 28px rgba(206,255,0,0.07)" }}>
+                    <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>POOL TOTAL EN ESCROW</p>
+                    <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 52, color: "#CEFF00", lineHeight: 1 }}>$ {stake.pool.toFixed(2)}</p>
+                    <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 4 }}>USD · BLOQUEADO</p>
+                  </div>
+
+                  {/* Face-off + scores */}
+                  <div className="rounded-2xl p-5"
+                    style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                          style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", boxShadow: "0 0 0 2.5px #CEFF00, 0 0 20px rgba(206,255,0,0.4)" }}>
+                          <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 16, color: "#000" }}>{myInitials}</span>
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>TÚ</span>
+                        <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 26, color: "#CEFF00", lineHeight: 1 }}>{stake.myScore.toLocaleString()}</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="relative flex items-center justify-center">
+                          <div style={{ position: "absolute", width: 60, height: 1.5, background: "linear-gradient(to right,rgba(206,255,0,0.4),rgba(206,255,0,0.9),rgba(206,255,0,0.4))", transform: "rotate(-8deg)" }} />
+                          <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 26, color: "#CEFF00", position: "relative", zIndex: 1, textShadow: "0 0 16px rgba(206,255,0,0.6)" }}>VS</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                          style={{ background: stake.opponentColor, boxShadow: "0 0 0 2px rgba(0,240,255,0.6), 0 0 18px rgba(0,240,255,0.3)" }}>
+                          <span style={{ fontFamily: DS, fontWeight: 900, fontSize: 16, color: "#000" }}>{rivalInit}</span>
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900, textAlign: "center" }}>{stake.opponent.split("_")[0]}</span>
+                        <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 26, color: "#00F0FF", lineHeight: 1 }}>{stake.rivalScore.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Progress tracks */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span style={{ fontFamily: MONO, fontSize: 7, color: "#CEFF00", width: 30, textAlign: "right" }}>{myPct}%</span>
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 10, background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: `${myPct}%`, borderRadius: 9999, background: "linear-gradient(to right,rgba(206,255,0,0.6),#CEFF00)", boxShadow: myPct > 0 ? "0 0 10px rgba(206,255,0,0.5)" : "none", transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)", minWidth: myPct > 0 ? 6 : 0 }} />
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 7, color: "#808080", width: 24 }}>TÚ</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span style={{ fontFamily: MONO, fontSize: 7, color: "#00F0FF", width: 30, textAlign: "right" }}>{rivalPct}%</span>
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 10, background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: `${rivalPct}%`, borderRadius: 9999, background: "linear-gradient(to right,rgba(0,240,255,0.5),#00F0FF)", boxShadow: rivalPct > 0 ? "0 0 10px rgba(0,240,255,0.4)" : "none", transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)", minWidth: rivalPct > 0 ? 6 : 0 }} />
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 7, color: "#808080", width: 24 }}>RVL</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reglas de Enganche */}
+                  <div className="rounded-2xl p-4"
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", marginBottom: 10 }}>⚖️ REGLAS DE ENGANCHE</p>
+                    {[
+                      { rule: "MODALIDAD", value: stake.modality },
+                      { rule: "POOL ESCROW", value: `$ ${stake.pool.toFixed(2)} USD` },
+                      { rule: "ESTADO", value: stake.status },
+                      { rule: "CONDICIÓN DE VICTORIA", value: "MAYOR MARCA AL VENCIMIENTO" },
+                    ].map(({ rule, value }) => (
+                      <div key={rule} className="flex justify-between items-center py-2.5"
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                        <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>{rule}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", fontWeight: 900 }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action buttons */}
+                  <button
+                    disabled={!iWinning || claimInFlight.current}
+                    onClick={() => {
+                      if (!iWinning || claimInFlight.current) return;
+                      claimInFlight.current = true;
+                      setClaimedPool(stake.pool);
+                      onClaimPrize(stake.pool).finally(() => { claimInFlight.current = false; });
+                      setLiveStakes(prev => prev.filter(s => s.id !== stake.id));
+                      setSelectedActiveChallenge(null);
+                      setShowClaimModal(true);
+                    }}
+                    className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    style={{
+                      background: iWinning ? "#CEFF00" : "rgba(255,255,255,0.04)",
+                      border: "none", cursor: iWinning ? "pointer" : "not-allowed",
+                      fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: iWinning ? "#000" : "#808080",
+                      boxShadow: iWinning ? "0 0 32px rgba(206,255,0,0.35)" : "none",
+                      opacity: iWinning ? 1 : 0.4,
+                    }}>
+                    <Trophy size={18} style={{ color: iWinning ? "#000" : "#808080" }} />
+                    RECLAMAR PREMIO
+                  </button>
+                  {!iWinning && (
+                    <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", textAlign: "center", marginTop: -8, marginBottom: 4 }}>
+                      Disponible solo cuando tu marca supera al rival
+                    </p>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (!window.confirm("¿Seguro que quieres abandonar este reto? Perderás la apuesta.")) return;
+                      setLiveStakes(prev => prev.filter(s => s.id !== stake.id));
+                      setSelectedActiveChallenge(null);
+                    }}
+                    className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)", cursor: "pointer", fontFamily: MONO, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171", fontWeight: 900 }}>
+                    ABANDONAR RETO
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -4916,53 +6068,103 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
           VIEW: MEMBERS
       ════════════════════════════════════════════════════════════ */}
       {currentRoomView === "members" && (
-        <div className="px-4 pt-5">
+        <div className="px-4 pt-5 animate-mc-room-view-in">
           <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 24, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1, marginBottom: 4 }}>
             ROSTER DE ATLETAS
           </h2>
           <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 14 }}>
-            42 REGISTRADOS
+            {rosterMembers.length} REGISTRADOS
           </p>
 
           {/* Search bar */}
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl mb-5" style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: "#1A1A1A", border: showRosterFilter ? "1px solid rgba(206,255,0,0.2)" : "1px solid rgba(255,255,255,0.04)", marginBottom: showRosterFilter ? 0 : 12 }}>
             <Search size={14} style={{ color: "#808080", flexShrink: 0 }} />
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               placeholder="Buscar atleta o rango..."
               className="flex-1 bg-transparent outline-none"
               style={{ fontSize: 13, color: "#fff", fontFamily: "inherit" }} />
-            <SlidersHorizontal size={14} style={{ color: "#808080", flexShrink: 0 }} />
+            <button onClick={() => setShowRosterFilter(v => !v)} className="relative flex-shrink-0 active:scale-90 transition-transform">
+              <SlidersHorizontal size={14} style={{ color: activeFilterCount > 0 ? "#CEFF00" : "#808080" }} />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center font-black"
+                  style={{ background: "#CEFF00", color: "#000", fontSize: 7, fontFamily: MONO }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Collapsible filter strip */}
+          {showRosterFilter && (
+            <div className="mb-4 rounded-b-xl px-4 pb-4 pt-3"
+              style={{ background: "#1A1A1A", borderLeft: "1px solid rgba(206,255,0,0.2)", borderRight: "1px solid rgba(206,255,0,0.2)", borderBottom: "1px solid rgba(206,255,0,0.2)", animation: "mc-overlay-in 0.18s ease both" }}>
+              {/* Rank filter */}
+              <p className="font-mono text-[8px] uppercase tracking-widest mb-2" style={{ color: "#808080" }}>RANGO</p>
+              <div className="flex gap-2 flex-wrap mb-3">
+                {["ATLETA", "GUERRERO", "BESTIA", "LEYENDA"].map(r => (
+                  <button key={r} onClick={() => setFilterRank(filterRank === r ? null : r)}
+                    className="px-2.5 py-1 rounded-lg font-mono font-black text-[8px] uppercase tracking-wider transition-all active:scale-90"
+                    style={{ background: filterRank === r ? "#CEFF00" : "rgba(255,255,255,0.05)", color: filterRank === r ? "#000" : "#808080", border: filterRank === r ? "none" : "1px solid rgba(255,255,255,0.08)", letterSpacing: "0.1em" }}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {/* Online + Streak row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={() => setFilterOnline(v => !v)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono font-black text-[8px] uppercase tracking-wider transition-all active:scale-90"
+                  style={{ background: filterOnline ? "#CEFF00" : "rgba(255,255,255,0.05)", color: filterOnline ? "#000" : "#808080", border: filterOnline ? "none" : "1px solid rgba(255,255,255,0.08)", letterSpacing: "0.1em" }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: filterOnline ? "#000" : "#22c55e" }} />
+                  EN LÍNEA
+                </button>
+                {[0, 7, 14, 30].map(n => (
+                  <button key={n} onClick={() => setFilterStreakMin(filterStreakMin === n ? 0 : n)}
+                    className="px-2.5 py-1 rounded-lg font-mono font-black text-[8px] uppercase tracking-wider transition-all active:scale-90"
+                    style={{ background: filterStreakMin === n && n > 0 ? "#CEFF00" : "rgba(255,255,255,0.05)", color: filterStreakMin === n && n > 0 ? "#000" : "#808080", border: filterStreakMin === n && n > 0 ? "none" : "1px solid rgba(255,255,255,0.08)", letterSpacing: "0.1em", display: n === 0 ? "none" : "block" }}>
+                    +{n}D
+                  </button>
+                ))}
+              </div>
+              {activeFilterCount > 0 && (
+                <button onClick={() => { setFilterRank(null); setFilterOnline(false); setFilterStreakMin(0); }}
+                  className="mt-3 font-mono font-black text-[7.5px] uppercase tracking-widest active:opacity-60"
+                  style={{ color: "#f87171", letterSpacing: "0.14em", background: "none", border: "none", cursor: "pointer" }}>
+                  ✕ LIMPIAR FILTROS
+                </button>
+              )}
+            </div>
+          )}
 
           {/* 2-col grid */}
           <div className="grid grid-cols-2 gap-4 w-full">
             {filteredRoster.map(member => (
-              <div key={member.id} className="relative flex flex-col rounded-2xl overflow-hidden"
+              <div key={member.id} className="relative flex flex-col rounded-2xl overflow-hidden active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out"
                 style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
                 <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded"
                   style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>{member.rank}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>{member.rankBadgeTitle}</span>
                 </div>
                 <div className="flex flex-col items-center pt-9 pb-3 px-3">
                   <div className="relative mb-3">
                     <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-sm"
-                      style={{ background: member.avatarColor, fontFamily: DS, color: "#000" }}>
-                      {member.name.slice(0, 2)}
+                      style={{ background: member.avatarBgColor, fontFamily: DS, color: "#000" }}>
+                      {member.avatarInitials}
                     </div>
                     <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-[#1A1A1A]"
-                      style={{ background: member.online ? "#CEFF00" : "#808080", boxShadow: member.online ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
+                      style={{ background: member.isOnline ? "#CEFF00" : "#808080", boxShadow: member.isOnline ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
                   </div>
-                  <p className="font-bold text-white text-center leading-tight" style={{ fontSize: 12 }}>{member.name}</p>
+                  <p className="font-bold text-white text-center leading-tight" style={{ fontSize: 12 }}>{member.name.replace(/_/g, " ")}</p>
                   <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", marginTop: 3, textAlign: "center" }}>
-                    {member.rank.split(" ")[0]} · RNK #{member.rnk.toString().padStart(2, "0")}
+                    {member.rankBadgeTitle.split(" ")[0]} · RNK #{member.rnk.toString().padStart(2, "0")}
                   </p>
                 </div>
                 <div className="flex" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <button className="flex-1 py-2.5 flex items-center justify-center active:opacity-60"
+                  <button onClick={() => setSelectedRosterProfile(member)}
+                    className="flex-1 py-2.5 flex items-center justify-center active:opacity-60 transition-opacity"
                     style={{ background: "none", border: "none", borderRight: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
                     <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>PERFIL</span>
                   </button>
-                  <button onClick={() => alert(`RETO ENVIADO A ${member.name}`)}
+                  <button onClick={() => setCurrentRoomView("retos")}
                     className="w-12 py-2.5 flex items-center justify-center active:scale-90 transition-transform"
                     style={{ background: "none", border: "none", cursor: "pointer" }}>
                     <Zap size={13} fill="#CEFF00" stroke="none" />
@@ -4972,122 +6174,330 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
             ))}
           </div>
           {filteredRoster.length === 0 && (
-            <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", textAlign: "center", marginTop: 40 }}>SIN RESULTADOS</p>
+            <div className="col-span-2 rounded-xl p-6 text-center mt-2" style={{ background: "rgba(26,26,26,0.2)", border: "1px solid rgba(255,255,255,0.04)" }}>
+              <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#808080", display: "block", marginBottom: 10 }}>
+                🚫 [ NO ATHLETES MATCH RADAR REQUIREMENTS ]
+              </span>
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => { setFilterRank(null); setFilterOnline(false); setFilterStreakMin(0); setSearchQuery(""); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg active:scale-[0.97] active:opacity-90 transition-all duration-150"
+                  style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", background: "rgba(206,255,0,0.06)", border: "1px solid rgba(206,255,0,0.18)", cursor: "pointer" }}>
+                  ✕ RESET RADAR FILTERS
+                </button>
+              )}
+            </div>
           )}
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════
-          VIEW: AVISOS
-      ════════════════════════════════════════════════════════════ */}
-      {currentRoomView === "avisos" && (
-        <div className="px-4 pt-5">
-          <div className="flex items-start justify-between mb-6">
-            <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
-              CANAL DE INSTRUCCIÓN<br />/ AVISOS
-            </h2>
-            <div className="flex items-center gap-1.5 mt-1 flex-shrink-0">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171" }}>EN DIRECTO • 42 ACTIVOS</span>
-            </div>
-          </div>
-
-          {/* Pinned broadcast */}
-          <div className="rounded-2xl p-5 mb-5"
-            style={{ background: "#1A1A1A", border: "1px solid rgba(239,68,68,0.35)", boxShadow: "0 0 15px rgba(239,68,68,0.15)" }}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", color: "#fff", fontFamily: DS }}>CL</div>
-                <div>
-                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>COACH LUIS YÁÑEZ</p>
-                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>HACE 2 HORAS</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
-                style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                <Pin size={11} style={{ color: "#f87171" }} />
-                <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#f87171" }}>FIJADO</span>
-              </div>
-            </div>
-            <p className="text-[13px] leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.88)" }}>
-              ¡ALERTA DE DESAFÍO! Mañana iniciamos el protocolo de superación de fuerza en Sentadilla. Aseguren sus macronutrientes esta noche. No hay espacio para debilidad.
-            </p>
-            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>🔥 128</span>
-              <span style={{ width: 1, height: 12, background: "rgba(255,255,255,0.14)", display: "inline-block" }} />
-              <span style={{ fontFamily: MONO, fontSize: 11, color: "rgba(255,255,255,0.7)" }}>💪 94</span>
-            </div>
-          </div>
-
-          <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 12 }}>HISTORIAL DE INSTRUCCIONES</p>
-          {SALA_AVISOS.filter(a => !a.pinned).map(aviso => (
-            <div key={aviso.id} className="bg-[#1A1A1A] rounded-2xl p-4 mb-4 border border-white/[0.02]">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-[11px] flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg,#00F0FF,#0ea5e9)", color: "#000", fontFamily: DS }}>
-                  {aviso.author.split(" ").slice(-2).map((w: string) => w[0]).join("").slice(0, 2)}
-                </div>
-                <div>
-                  <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 13, color: "#fff" }}>{aviso.author}</p>
-                  <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{aviso.time}</p>
-                </div>
-              </div>
-              <p className="text-[12.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.78)" }}>{aviso.text}</p>
-              <div className="flex gap-3">
-                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>🔥 {aviso.fire}</span>
-                <span style={{ fontFamily: MONO, fontSize: 10, color: "rgba(255,255,255,0.4)" }}>💪 {aviso.muscle}</span>
-              </div>
-            </div>
-          ))}
-
-          <div className="grid grid-cols-2 gap-3 mt-2">
-            {([
-              { label: "RENDIMIENTO",  value: "+12%", accent: "#CEFF00" },
-              { label: "CONSISTENCIA", value: "98%",  accent: "#00F0FF" },
-            ] as { label: string; value: string; accent: string }[]).map(item => (
-              <div key={item.label} className="rounded-xl p-4 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 8 }}>{item.label}</p>
-                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 36, color: item.accent, lineHeight: 1 }}>{item.value}</p>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
       </div>{/* end main content */}
 
       {/* ═══════════════════════════════════════════════════════════
-          NEW POST MODAL (opened by FAB)
+          MODALITY PICKER MODAL
+      ═══════════════════════════════════════════════════════════ */}
+      {showModalityPicker && (
+        <>
+          <div className="fixed inset-0 bg-[#070708]/85 backdrop-blur-sm z-[60]"
+            onClick={() => setShowModalityPicker(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-sm z-[61] rounded-[24px] overflow-hidden"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 0 50px rgba(0,0,0,0.9)" }}>
+
+            {/* Picker header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+              <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#CEFF00" }}>⚡ MODALIDAD DE COMBATE</p>
+              <button onClick={() => setShowModalityPicker(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer" }}>
+                <X size={13} style={{ color: "#808080" }} />
+              </button>
+            </div>
+
+            {/* Predefined options */}
+            {!useCustomChallenge && (
+              <div className="px-4 py-3">
+                {CHALLENGE_MODALITIES.map(mod => (
+                  <button key={mod.id} onClick={() => { setChallengeModality(mod.id); setUseCustomChallenge(false); setShowModalityPicker(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl mb-2 active:scale-[0.98] transition-transform"
+                    style={{ background: challengeModality === mod.id ? "rgba(206,255,0,0.06)" : "rgba(255,255,255,0.03)", border: challengeModality === mod.id ? "1.5px solid #CEFF00" : "1px solid rgba(255,255,255,0.06)", cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{mod.emoji}</span>
+                    <div className="flex-1">
+                      <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: challengeModality === mod.id ? "#CEFF00" : "#fff", fontWeight: 900 }}>{mod.label}</p>
+                      <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.08em", textTransform: "uppercase", color: "#808080", marginTop: 2 }}>{mod.sub}</p>
+                    </div>
+                    {challengeModality === mod.id && <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#CEFF00" }} />}
+                  </button>
+                ))}
+
+                {/* Custom option trigger */}
+                <button onClick={() => setUseCustomChallenge(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl mt-1 active:scale-[0.98] transition-transform"
+                  style={{ background: "rgba(206,255,0,0.03)", border: "1.5px dashed rgba(206,255,0,0.25)", cursor: "pointer" }}>
+                  <Plus size={13} style={{ color: "#CEFF00" }} />
+                  <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>CREAR RETO PERSONALIZADO</span>
+                </button>
+              </div>
+            )}
+
+            {/* Custom challenge input */}
+            {useCustomChallenge && (
+              <div className="px-4 py-4">
+                <button onClick={() => setUseCustomChallenge(false)}
+                  className="flex items-center gap-1.5 mb-4 active:opacity-60"
+                  style={{ background: "none", border: "none", cursor: "pointer" }}>
+                  <ChevronLeft size={14} style={{ color: "#808080" }} />
+                  <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>VOLVER</span>
+                </button>
+                <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080", marginBottom: 10 }}>🎯 DEFINE TU MÉTRICA</p>
+                <input
+                  value={customChallengeText}
+                  onChange={e => setCustomChallengeText(e.target.value.toUpperCase())}
+                  placeholder="EJ: MÁXIMAS DOMINADAS, INGESTA AGUA..."
+                  autoFocus
+                  className="w-full bg-[#070708] border border-white/[0.08] rounded-xl text-white p-3 font-mono text-sm uppercase placeholder-[#808080] focus:border-[#CEFF00]/50 outline-none mb-4"
+                  style={{ letterSpacing: "0.06em", fontSize: 12 }}
+                />
+                <button
+                  onClick={() => {
+                    if (!customChallengeText.trim()) return;
+                    setChallengeModality(customChallengeText.trim());
+                    setCustomChallengeText("");
+                    setUseCustomChallenge(false);
+                    setShowModalityPicker(false);
+                  }}
+                  disabled={!customChallengeText.trim()}
+                  className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                  style={{
+                    background: customChallengeText.trim() ? "#CEFF00" : "rgba(255,255,255,0.06)",
+                    border: "none", cursor: customChallengeText.trim() ? "pointer" : "not-allowed",
+                    fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 16, letterSpacing: "0.1em", textTransform: "uppercase",
+                    color: customChallengeText.trim() ? "#000" : "#808080",
+                    opacity: customChallengeText.trim() ? 1 : 0.5,
+                  }}>
+                  CONFIRMAR RETO PERSONALIZADO
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          ROSTER PROFILE — FULL-SCREEN OVERLAY (z-50 masks nav)
+      ═══════════════════════════════════════════════════════════ */}
+      {selectedRosterProfile !== null && (() => {
+        const mp = selectedRosterProfile;
+        const prRows = [
+          { label: "MAX DEADLIFT", value: `${mp.prs.maxDeadlift} KG` },
+          { label: "MAX SQUAT",    value: `${mp.prs.maxSquat} KG`    },
+          { label: "BENCH PRESS",  value: `${mp.prs.benchPress} KG`  },
+          { label: "KCAL RECORD",  value: `${mp.prs.kcalRecord.toLocaleString()} KCAL` },
+        ];
+        return (
+          <div className="fixed inset-0 bg-[#070708]/95 backdrop-blur-md z-50 flex flex-col overflow-y-auto pb-32"
+            style={{ animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
+
+            {/* ── Top nav header ── */}
+            <div className="flex items-center justify-between px-5 pt-safe-top pt-6 pb-4 flex-shrink-0"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 18, textTransform: "uppercase", letterSpacing: "0.05em", color: "#fff" }}>
+                PERFIL DE ATLETA DE ÉLITE
+              </p>
+              <button onClick={() => setSelectedRosterProfile(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full active:scale-90 transition-transform"
+                style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.25)", cursor: "pointer" }}>
+                <X size={12} style={{ color: "#CEFF00" }} />
+                <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>CERRAR</span>
+              </button>
+            </div>
+
+            {/* ── Avatar + identity ── */}
+            <div className="flex flex-col items-center px-6 pt-8 pb-6"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+              <div className="relative mb-4">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center font-black text-2xl"
+                  style={{ background: mp.avatarBgColor, fontFamily: DS, color: "#000", boxShadow: "0 0 0 3px rgba(206,255,0,0.3), 0 0 32px rgba(206,255,0,0.15)" }}>
+                  {mp.avatarInitials}
+                </div>
+                <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[2.5px]"
+                  style={{ background: mp.isOnline ? "#CEFF00" : "#808080", borderColor: "#070708", boxShadow: mp.isOnline ? "0 0 10px rgba(206,255,0,0.7)" : "none" }} />
+              </div>
+              <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 26, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1 }}>
+                {mp.name.replace(/_/g, " ")}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="px-3 py-0.5 rounded-full"
+                  style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.2)", fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+                  {mp.rankBadgeTitle}
+                </span>
+                <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>
+                  RNK #{mp.rnk.toString().padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+
+            {/* ── Bio telemetry tiles ── */}
+            <div className="grid grid-cols-2 gap-3 px-5 py-5"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+              {[
+                { label: "RACHA ACTIVA",    value: `${mp.rachaActiveDays} DÍAS`, accent: "#CEFF00" },
+                { label: "ESTADO",           value: mp.isOnline ? "EN LÍNEA" : "OFFLINE",  accent: mp.isOnline ? "#CEFF00" : "#808080" },
+                { label: "PTS TOTALES",      value: mp.pts.toLocaleString(),    accent: "#00F0FF" },
+                { label: "KCAL ACUMULADAS",  value: mp.kcal.toLocaleString(),   accent: "#00F0FF" },
+              ].map(stat => (
+                <div key={stat.label} className="rounded-xl p-4 text-center"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", marginBottom: 6 }}>{stat.label}</p>
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, color: stat.accent, lineHeight: 1 }}>{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ── PRs Registrados ── */}
+            <div className="px-5 py-5">
+              <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080", marginBottom: 14 }}>🏆 PRs REGISTRADOS</p>
+              {prRows.map(pr => (
+                <div key={pr.label} className="flex items-center justify-between py-3.5"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>{pr.label}</span>
+                  <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, color: "#fff" }}>{pr.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Actions ── */}
+            <div className="px-5 pt-2 pb-8 flex gap-3">
+              <button onClick={() => { setSelectedRosterProfile(null); setSelectedAthlete(mp.name); setCurrentRoomView("retos"); }}
+                className="flex-1 py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                style={{ background: "#CEFF00", border: "none", cursor: "pointer", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 16, letterSpacing: "0.1em", textTransform: "uppercase", color: "#000", boxShadow: "0 0 28px rgba(206,255,0,0.3)" }}>
+                <Zap size={16} fill="#000" stroke="none" />
+                ENVIAR RETO
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 🏆 CLAIM PRIZE CELEBRATION MODAL ── */}
+      {showClaimModal && (
+        <div className="fixed inset-0 bg-[#070708]/97 backdrop-blur-md z-[70] flex flex-col items-center justify-center px-6"
+          style={{ animation: "mc-overlay-in 0.35s cubic-bezier(0.16,1,0.3,1) both" }}>
+          {/* Volt glow ring */}
+          <div className="w-28 h-28 rounded-full flex items-center justify-center mb-6"
+            style={{ background: "rgba(206,255,0,0.08)", border: "2px solid rgba(206,255,0,0.4)", boxShadow: "0 0 60px rgba(206,255,0,0.25)" }}>
+            <Trophy size={48} style={{ color: "#CEFF00" }} />
+          </div>
+          <p style={{ fontFamily: "'Courier New',monospace", fontSize: 9, letterSpacing: "0.28em", textTransform: "uppercase", color: "#CEFF00", marginBottom: 8 }}>
+            ⚡ VICTORIA CONFIRMADA
+          </p>
+          <p style={{ fontFamily: "var(--font-display,'Barlow Condensed',sans-serif)", fontWeight: 900, fontStyle: "italic", fontSize: 42, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em", lineHeight: 1, marginBottom: 4, textAlign: "center" }}>
+            PREMIO RECLAMADO
+          </p>
+          <p style={{ fontFamily: "var(--font-display,'Barlow Condensed',sans-serif)", fontWeight: 900, fontStyle: "italic", fontSize: 56, color: "#CEFF00", lineHeight: 1, marginBottom: 6 }}>
+            $ {claimedPool.toFixed(2)}
+          </p>
+          <p style={{ fontFamily: "'Courier New',monospace", fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#00F0FF", marginBottom: 4 }}>
+            USD · TRANSFERIDO CON ÉXITO A TU BILLETERA
+          </p>
+          <p style={{ fontFamily: "'Courier New',monospace", fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", marginBottom: 32 }}>
+            SALDO ACTUAL: ${walletBalance.toLocaleString()} USD
+          </p>
+          <div className="w-full max-w-xs space-y-3">
+            <button onClick={() => setShowClaimModal(false)}
+              className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+              style={{ background: "#CEFF00", border: "none", cursor: "pointer", fontFamily: "var(--font-display,'Barlow Condensed',sans-serif)", fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase", color: "#000", boxShadow: "0 0 36px rgba(206,255,0,0.4)" }}>
+              CONTINUAR
+            </button>
+            <button onClick={() => { setShowClaimModal(false); setCurrentRoomView("retos"); }}
+              className="w-full py-3 rounded-xl flex items-center justify-center active:opacity-60 transition-opacity"
+              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "'Courier New',monospace", fontSize: 8.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#808080" }}>
+              VER MIS RETOS
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── General info toast ── */}
+      {infoToast && (
+        <div className="fixed top-6 left-1/2 z-[65] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
+          style={{
+            transform: "translateX(-50%)",
+            background: "rgba(206,255,0,0.08)",
+            border: "1px solid rgba(206,255,0,0.35)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            boxShadow: "0 0 24px rgba(206,255,0,0.15)",
+            animation: "mc-toast-lifecycle 2.4s cubic-bezier(0.16,1,0.3,1) forwards",
+            whiteSpace: "nowrap",
+          }}>
+          <Zap size={13} fill="#CEFF00" stroke="none" />
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
+            {infoToastMsg}
+          </span>
+        </div>
+      )}
+
+      {/* ── Challenge dispatch toast (cyan, 2 s) ── */}
+      {challengeToast && (
+        <div className="fixed top-6 left-1/2 z-[60] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
+          style={{
+            transform: "translateX(-50%)",
+            background: "rgba(0,240,255,0.1)",
+            border: "1px solid rgba(0,240,255,0.45)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            boxShadow: "0 0 28px rgba(0,240,255,0.2)",
+            animation: "mc-toast-lifecycle 2s cubic-bezier(0.16,1,0.3,1) forwards",
+            whiteSpace: "nowrap",
+          }}>
+          <Zap size={15} fill="#00F0FF" stroke="none" />
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900 }}>
+            {challengeToastMsg}
+          </span>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          NEW POST MODAL (opened by FAB) — centered card
       ═══════════════════════════════════════════════════════════ */}
       {showPostModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowPostModal(false); setNewPostText(""); } }}>
-          <div className="w-full max-w-lg rounded-t-3xl p-6"
-            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+        <>
+          {/* Deep backdrop — hides nav bars completely */}
+          <div className="fixed inset-0 bg-[#070708]/90 backdrop-blur-sm z-40"
+            onClick={() => { setShowPostModal(false); setNewPostText(""); }} />
 
-            {/* Modal header */}
+          {/* Centered card */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-md w-[92%] bg-[#1A1A1A] z-50 rounded-[24px] p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-white/[0.06]">
+
+            {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 NUEVO POST
               </h3>
               <button onClick={() => { setShowPostModal(false); setNewPostText(""); }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#808080" }}>
-                <X size={20} />
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+                <X size={16} style={{ color: "#808080" }} />
               </button>
             </div>
 
-            {/* Composer */}
-            <div className="flex items-start gap-3 mb-5">
+            {/* Composer row */}
+            <div className="flex items-start gap-3 mb-4">
               <div className="w-9 h-9 rounded-full flex items-center justify-center font-black flex-shrink-0"
                 style={{ background: student.avatarColor ?? "linear-gradient(135deg,#CEFF00,#00F0FF)", color: "#000", fontFamily: DS }}>
                 {initials(student.name)}
               </div>
               <textarea value={newPostText} onChange={e => setNewPostText(e.target.value)}
-                placeholder="Comparte tu PR, entrenamiento o motivación..." rows={4} autoFocus
+                placeholder="Comparte tu PR, entrenamiento o motivación..." rows={3} autoFocus
                 className="flex-1 bg-transparent resize-none outline-none"
-                style={{ fontSize: 14, color: "#fff", fontFamily: "inherit", lineHeight: 1.6, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 8 }} />
+                style={{ fontSize: 13, color: "#fff", fontFamily: "inherit", lineHeight: 1.6, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.08)" }} />
+            </div>
+
+            {/* Media upload slot */}
+            <div className="w-full h-32 border border-dashed border-white/[0.1] rounded-xl flex flex-col justify-center items-center text-xs text-[#808080] bg-[#070708]/40 mb-4 cursor-pointer hover:border-[#CEFF00]/40 transition-colors">
+              <Camera size={22} style={{ color: "#808080", marginBottom: 8 }} />
+              <span style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080" }}>AÑADIR FOTO / REPORTE DE PROGRESO</span>
             </div>
 
             {/* Submit */}
@@ -5114,21 +6524,15 @@ function TabComunidad({ student }: { student: { name: string; streak: number; st
               style={{
                 background: newPostText.trim() ? "#CEFF00" : "rgba(255,255,255,0.06)",
                 opacity: newPostText.trim() ? 1 : 0.5,
-                border: "none",
-                cursor: "pointer",
-                fontFamily: DS,
-                fontStyle: "italic",
-                fontWeight: 900,
-                fontSize: 16,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
+                border: "none", cursor: "pointer",
+                fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 16, letterSpacing: "0.1em", textTransform: "uppercase",
                 color: newPostText.trim() ? "#000" : "#808080",
               }}>
               <Send size={16} style={{ color: newPostText.trim() ? "#000" : "#808080" }} />
               PUBLICAR POST
             </button>
           </div>
-        </div>
+        </>
       )}
 
     </div>
@@ -5169,14 +6573,14 @@ function BottomNav({ active, onChange, onSignOut }: {
           const isActive = active === id;
           if (isActive) return (
             <button key={id} onClick={() => onChange(id)}
-              className="w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all shrink-0"
+              className="w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-150 shrink-0 active:scale-[0.92] active:opacity-90"
               style={{ background: "#CEFF00", boxShadow: "0 0 16px rgba(206,255,0,0.28)" }}>
               <Icon size={22} strokeWidth={2.5} style={{ color: "#000" }} />
             </button>
           );
           return (
             <button key={id} onClick={() => onChange(id)}
-              className="flex flex-col items-center justify-center gap-0.5 cursor-pointer active:opacity-60 transition-all flex-1 py-2"
+              className="flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-[0.92] active:opacity-90 transition-all duration-150 ease-out flex-1 py-2"
               style={{ minWidth: 48 }}>
               <Icon size={19} strokeWidth={1.5} style={{ color: "#808080" }} />
               <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#808080" }}>
@@ -5186,7 +6590,7 @@ function BottomNav({ active, onChange, onSignOut }: {
           );
         })}
         <button onClick={onSignOut}
-          className="flex flex-col items-center justify-center gap-0.5 cursor-pointer active:opacity-50 transition-all flex-1 py-2"
+          className="flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-[0.92] active:opacity-90 transition-all duration-150 ease-out flex-1 py-2"
           style={{ minWidth: 48 }}>
           <LogOut size={19} strokeWidth={1.5} style={{ color: "#808080" }} />
           <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "#808080" }}>
@@ -5202,24 +6606,111 @@ function BottomNav({ active, onChange, onSignOut }: {
    GLOBAL HEADER
 ══════════════════════════════════════════════════════════════ */
 
-function GlobalHeader({ student }: { student: Student }) {
-  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+function GlobalHeader({
+  student,
+  broadcastMessages,
+  onOpenBriefing,
+}: {
+  student: Student;
+  broadcastMessages: string[];
+  onOpenBriefing: () => void;
+}) {
+  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
+  const MONO = "'Courier New',monospace";
+
+  const [tickerIdx, setTickerIdx] = useState(0);
+
+  useEffect(() => {
+    if (broadcastMessages.length <= 1) return;
+    const id = setInterval(() => {
+      setTickerIdx(i => (i + 1) % broadcastMessages.length);
+    }, 4200);
+    return () => clearInterval(id);
+  }, [broadcastMessages.length]);
+
+  const currentMsg = broadcastMessages[tickerIdx] ?? "";
+
+  // Parse message and wrap signal-word tokens in volt capsule badges
+  const SIGNAL_WORDS = [
+    "CERO MARGEN DE ERROR", "DISCIPLINA ABSOLUTA", "FELLS INTEL",
+    "STREAK GRUPAL", "PROTOCOLO EN EJECUCIÓN", "PLAN ACTIVO",
+    "DISCIPLINA", "PROTOCOLO", "ALINEACIÓN", "RECOMPOSICIÓN",
+  ];
+  const renderHudMsg = (msg: string): React.ReactNode => {
+    const escaped = SIGNAL_WORDS.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const parts = msg.split(new RegExp(`(${escaped.join("|")})`, "gi"));
+    return parts.map((part, i) => {
+      if (SIGNAL_WORDS.some(w => w.toUpperCase() === part.toUpperCase())) {
+        return (
+          <span key={i}
+            className="bg-[#CEFF00] text-black px-1.5 py-0.5 rounded-sm font-black mx-0.5"
+            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.08em", lineHeight: 1, display: "inline-block", verticalAlign: "middle" }}>
+            {part.toUpperCase()}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
-    <div className="flex items-center justify-between px-5 pt-5 pb-3 sticky top-0 z-40"
-      style={{ background: "rgba(7,7,8,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
-      <div className="flex items-center gap-2">
-        <Zap size={14} fill="#CEFF00" stroke="none" />
-        <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(16px,4.8vw,19px)", letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>MYCOACH</span>
-      </div>
-      <div className="relative shrink-0">
-        {/* Outer glow ring */}
-        <div className="absolute inset-0 rounded-full"
-          style={{ boxShadow: "0 0 0 2px #070708, 0 0 0 4px #CEFF00, 0 0 18px rgba(206,255,0,0.35)", borderRadius: "50%" }} />
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-black relative z-10"
-          style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, letterSpacing: "0.02em", border: "2px solid rgba(206,255,0,0.6)" }}>
-          {student.avatarInitials}
+    <div className="sticky top-0 z-40 flex flex-col"
+      style={{ background: "rgba(7,7,8,0.96)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+
+      {/* ── Row 1: Brand logo + Avatar ── */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Zap size={14} fill="#CEFF00" stroke="none" />
+          <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(16px,4.8vw,19px)", letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>
+            MYCOACH
+          </span>
+        </div>
+        <div className="relative shrink-0">
+          <div className="absolute inset-0 rounded-full"
+            style={{ boxShadow: "0 0 0 2px #070708, 0 0 0 4px #CEFF00, 0 0 18px rgba(206,255,0,0.35)", borderRadius: "50%" }} />
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-black relative z-10"
+            style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, letterSpacing: "0.02em", border: "2px solid rgba(206,255,0,0.6)" }}>
+            {student.avatarInitials}
+          </div>
         </div>
       </div>
+
+      {/* ── Row 2: Stealth HUD Capsule (tappable, zero background) ── */}
+      {broadcastMessages.length > 0 && (
+        <button
+          onClick={onOpenBriefing}
+          className="w-full flex items-center px-4 pb-3 pt-0 overflow-hidden text-left active:opacity-50 transition-opacity"
+          style={{ background: "transparent", border: "none", cursor: "pointer" }}>
+          {/* Tech bracket prefix */}
+          <span aria-hidden style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", color: "rgba(206,255,0,0.28)", flexShrink: 0, whiteSpace: "nowrap" }}>
+            [&nbsp;TACTICAL&nbsp;//&nbsp;
+          </span>
+          {/* Cycling message — scan-in on key change via animation */}
+          <span
+            key={tickerIdx}
+            className="min-w-0 overflow-hidden"
+            style={{
+              flex: "1 1 0",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0,
+              fontFamily: MONO,
+              fontSize: 10,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              color: "#808080",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              animation: "mc-hud-scan 0.28s cubic-bezier(0.16,1,0.3,1) both",
+            }}>
+            {renderHudMsg(currentMsg)}
+          </span>
+          {/* Tech bracket suffix */}
+          <span aria-hidden style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", color: "rgba(206,255,0,0.28)", flexShrink: 0, whiteSpace: "nowrap" }}>
+            &nbsp;]
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -5233,46 +6724,259 @@ export default function PortalPage() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>("today");
-  const [prevTab, setPrevTab] = useState<TabId>("today");
   const [animating, setAnimating] = useState(false);
-
-  // Routine day auto-selection: match today's weekday
-  const todayIndex = (() => {
-    const dayMap: Record<string, number> = { lunes:0, martes:1, miércoles:2, jueves:3, viernes:4, sábado:5, domingo:6 };
-    const name = new Date().toLocaleDateString("es-MX", { weekday: "long" }).toLowerCase();
-    return dayMap[name] ?? 0;
-  })();
-  const [activeDay] = useState(todayIndex);
 
   const [activeMeal, setActiveMeal] = useState<Meal | null>(null);
   const [activeExercise, setActiveExercise] = useState<(Exercise & { muscleGroup?: string }) | null>(null);
 
-  // Shared hydration state (cross-tab, localStorage-persisted)
+  // Shared hydration state — date-anchored: resets at midnight of a new calendar day
+  const todayISO = new Date().toISOString().split("T")[0];
   const [waterMl, setWaterMl] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
-    try { return Number(localStorage.getItem("mc:water_ml")) || 0; }
-    catch { return 0; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("mc:water_ml", String(waterMl)); }
-    catch {}
-  }, [waterMl]);
-  const addWater = () => setWaterMl(w => Math.min(w + 250, 4000));
-
-  // ── Meal check + notification chain ──────────────────────────────────────
-  // Lifted from TabHoy so the MealSheet confirm button can close itself and
-  // trigger the same toast/diet-complete flow as the checkbox path.
-  const [checkedMeals, setCheckedMeals] = useState<Set<number>>(() => {
-    if (typeof window === "undefined") return new Set();
     try {
-      const v = localStorage.getItem("mc:meals_checked");
-      return v ? new Set(JSON.parse(v) as number[]) : new Set();
-    } catch { return new Set(); }
+      const raw = localStorage.getItem("mc:water_ml");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { ml: number; date: string };
+        if (parsed.date === new Date().toISOString().split("T")[0]) return parsed.ml;
+      }
+    } catch {}
+    return 0;
   });
   useEffect(() => {
-    try { localStorage.setItem("mc:meals_checked", JSON.stringify([...checkedMeals])); }
+    try {
+      localStorage.setItem("mc:water_ml", JSON.stringify({ ml: waterMl, date: todayISO }));
+    } catch {}
+  }, [waterMl, todayISO]);
+  const addWater = () => {
+    setWaterMl(w => Math.min(w + 250, WATER_TARGET_ML));
+    fetch("/api/student/water", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountMl: 250, date: todayISO }),
+    }).catch(() => {});
+  };
+
+  // ── Chronological Day Index — weekly cycle, resets every 7 days ──────────
+  const [activeDayIndex, setActiveDayIndex] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const savedDay   = Number(localStorage.getItem("mc:active_day") ?? "0");
+      const savedWeek  = Number(localStorage.getItem("mc:cycle_week") ?? "-1");
+      const thisWeek   = currentCycleWeek();
+      if (savedWeek < thisWeek) {
+        // New cycle — flush history dictionaries so streak matrix starts fresh
+        localStorage.removeItem("mc:nutrition_history");
+        localStorage.removeItem("mc:workout_history");
+        return 1;
+      }
+      if (savedDay >= 1 && savedDay <= 7) return savedDay;
+    } catch {}
+    return currentCycleDay();
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("mc:active_day",   String(activeDayIndex));
+      localStorage.setItem("mc:cycle_week",   String(currentCycleWeek()));
+    }
     catch {}
-  }, [checkedMeals]);
+  }, [activeDayIndex]);
+
+  // ── Nutrition History Dictionary — per-day independent Sets ──────────────
+  // Keys are day indices 1-7. Each value is the Set of checked meal indices
+  // for that day. Advancing to a new day never wipes other days' data.
+  const [nutritionHistory, setNutritionHistory] = useState<Record<number, Set<number>>>(() => {
+    const empty = (): Record<number, Set<number>> => ({ 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set(), 5: new Set(), 6: new Set(), 7: new Set() });
+    if (typeof window === "undefined") return empty();
+    try {
+      const v = localStorage.getItem("mc:nutrition_history");
+      if (v) {
+        const parsed = JSON.parse(v) as Record<string, number[]>;
+        const rec: Record<number, Set<number>> = {};
+        for (let d = 1; d <= 7; d++) rec[d] = new Set(parsed[String(d)] ?? []);
+        return rec;
+      }
+    } catch {}
+    return empty();
+  });
+
+  useEffect(() => {
+    try {
+      const ser: Record<string, number[]> = {};
+      for (let d = 1; d <= 7; d++) ser[String(d)] = [...(nutritionHistory[d] ?? new Set())];
+      localStorage.setItem("mc:nutrition_history", JSON.stringify(ser));
+    } catch {}
+  }, [nutritionHistory]);
+
+  // Derive active-day slice — what the UI renders
+  const checkedMeals: Set<number> = nutritionHistory[activeDayIndex] ?? new Set<number>();
+
+  // ── Workout History Dictionary — persisted to localStorage ─────────────────
+  const [workoutHistory, setWorkoutHistory] = useState<Record<number, string[]>>(() => {
+    const empty = (): Record<number, string[]> => ({ 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] });
+    if (typeof window === "undefined") return empty();
+    try {
+      const raw = localStorage.getItem("mc:workout_history");
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, string[]>;
+        const rec: Record<number, string[]> = {};
+        for (let d = 1; d <= 7; d++) rec[d] = Array.isArray(parsed[String(d)]) ? parsed[String(d)] : [];
+        return rec;
+      }
+    } catch {}
+    return empty();
+  });
+
+  const onLogExercise = useCallback((dayIdx: number, exerciseName: string) => {
+    setWorkoutHistory(prev => {
+      const existing = prev[dayIdx] ?? [];
+      if (existing.includes(exerciseName)) return prev;
+      return { ...prev, [dayIdx]: [...existing, exerciseName] };
+    });
+    // Fire-and-forget server sync
+    const dayName = (detail?.routine?.days ?? [])[dayIdx - 1]?.label ?? "Entrenamiento";
+    fetch("/api/student/workout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: cycleDate(dayIdx), name: dayName, exerciseLogs: [{ name: exerciseName }] }),
+    }).catch(() => {});
+  }, [detail]);
+
+  useEffect(() => {
+    try {
+      const ser: Record<string, string[]> = {};
+      for (let d = 1; d <= 7; d++) ser[String(d)] = workoutHistory[d] ?? [];
+      localStorage.setItem("mc:workout_history", JSON.stringify(ser));
+    } catch {}
+  }, [workoutHistory]);
+
+  // ── Personal Records — reactive, updated by TabWorkout on new PR ─────────
+  const [prs, setPrs] = useState<{ squat: number; deadlift: number; bench: number }>({
+    squat: 0, deadlift: 0, bench: 0,
+  });
+
+  // ── System error toast (PR save failures, wallet errors) ─────────────────
+  const [sysErrToast, setSysErrToast] = useState<string | null>(null);
+  const sysErrToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fireSysErrToast = useCallback((msg: string) => {
+    setSysErrToast(msg);
+    if (sysErrToastRef.current) clearTimeout(sysErrToastRef.current);
+    sysErrToastRef.current = setTimeout(() => setSysErrToast(null), 3500);
+  }, []);
+
+  const onNewPR = useCallback(async (lift: "squat" | "deadlift" | "bench", kg: number) => {
+    // Optimistic: only advance if the new value actually beats the stored one
+    setPrs(p => kg > p[lift] ? { ...p, [lift]: kg } : p);
+    try {
+      const res = await fetch("/api/me/prs", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ lift, kg }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setPrs({ squat: d.prSquat, deadlift: d.prDeadlift, bench: d.prBench });
+      } else {
+        // Server rejected — restore authoritative values from /api/me
+        const me = await fetch("/api/me").then(r => r.ok ? r.json() : null).catch(() => null);
+        if (me?.student) setPrs({ squat: me.student.prSquat ?? 0, deadlift: me.student.prDeadlift ?? 0, bench: me.student.prBench ?? 0 });
+        fireSysErrToast("⚠️ Error al guardar el récord. Inténtalo de nuevo.");
+      }
+    } catch {
+      fetch("/api/me").then(r => r.ok ? r.json() : null).then(me => {
+        if (me?.student) setPrs({ squat: me.student.prSquat ?? 0, deadlift: me.student.prDeadlift ?? 0, bench: me.student.prBench ?? 0 });
+      }).catch(() => {});
+      fireSysErrToast("⚠️ Sin conexión — récord no guardado.");
+    }
+  }, [fireSysErrToast]);
+
+  // ── Wallet balance — DB-hydrated on mount, mutated via PATCH /api/me/wallet
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+
+  const onClaimPrize = useCallback(async (amount: number) => {
+    // Optimistic: credit immediately for zero-latency UX
+    setWalletBalance(prev => prev + amount);
+    try {
+      const res = await fetch("/api/me/wallet", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ delta: amount }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setWalletBalance(d.walletBalance);
+      } else {
+        // Revert and surface error
+        setWalletBalance(prev => prev - amount);
+        fireSysErrToast("⚠️ Error al procesar el premio. Contacta a soporte.");
+      }
+    } catch {
+      setWalletBalance(prev => prev - amount);
+      fireSysErrToast("⚠️ Sin conexión — premio no registrado.");
+    }
+  }, [fireSysErrToast]);
+
+  const onLaunchDebit = useCallback(async (amount: number): Promise<boolean> => {
+    if (amount > walletBalance) return false;
+    setWalletBalance(prev => prev - amount);
+    try {
+      const res = await fetch("/api/me/wallet", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta: -amount }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setWalletBalance(d.walletBalance);
+        return true;
+      } else {
+        setWalletBalance(prev => prev + amount);
+        fireSysErrToast("⚠️ Saldo insuficiente — desafío no lanzado.");
+        return false;
+      }
+    } catch {
+      setWalletBalance(prev => prev + amount);
+      fireSysErrToast("⚠️ Sin conexión — apuesta no debitada.");
+      return false;
+    }
+  }, [walletBalance, fireSysErrToast]);
+
+  // ── Live scores: computed from current nutrition & streak data ───────────
+  const nutritionTotal = useMemo(() => {
+    if (!detail) return 0;
+    const mealsArr: { calories: number }[] = (detail as any).diet?.meals ?? [];
+    return mealsArr.reduce((s: number, m: { calories: number }, i: number) => s + (checkedMeals.has(i) ? m.calories : 0), 0);
+  }, [checkedMeals, detail]);
+
+  const streakCompletedDays = useMemo(() =>
+    [1,2,3,4,5,6,7].filter(d =>
+      (nutritionHistory[d]?.size ?? 0) > 0 || (workoutHistory[d]?.length ?? 0) > 0
+    ).length,
+  [nutritionHistory, workoutHistory]);
+
+  // ── Coach Broadcast Engine — global ticker state ──────────────────────────
+  const [broadcastMessages, setBroadcastMessages] = useState<string[]>([
+    "⚡ PROTOCOLO EN EJECUCIÓN • PLAN ACTIVO › DÍA 1",
+    "🔥 EL ÚNICO MAL ENTRENAMIENTO ES EL QUE NO HICISTE • DISCIPLINA ABSOLUTA",
+    "🦾 ALINEACIÓN DE MACROS: CERO MARGEN DE ERROR EN TU RECOMPOSICIÓN",
+    "⚔️ FELLS INTEL: MIEMBROS TIENEN UN STREAK GRUPAL DEL 92% HOY",
+  ]);
+
+  // ── TabComunidad persistent navigation state (lifted from TabComunidad) ───
+  const [currentRoomView, setCurrentRoomView] = useState<"feed" | "leaderboard" | "retos" | "members" | "avisos">("feed");
+  const [selectedActiveChallenge, setSelectedActiveChallenge] = useState<LiveStake | null>(null);
+  const [searchQuery,      setSearchQuery]      = useState("");
+  const [showRosterFilter, setShowRosterFilter] = useState(false);
+  const [filterRank,       setFilterRank]       = useState<string | null>(null);
+  const [filterOnline,     setFilterOnline]     = useState(false);
+  const [filterStreakMin,  setFilterStreakMin]   = useState(0);
+
+  const [showBriefingDrawer, setShowBriefingDrawer] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = showBriefingDrawer ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [showBriefingDrawer]);
 
   const [mealToast,    setMealToast]    = useState<{ protein: number; carbs: number; fat: number } | null>(null);
   const [dietComplete, setDietComplete] = useState(false);
@@ -5329,15 +7033,76 @@ export default function PortalPage() {
           return;
         }
       }
-      if (res.ok) { const d = await res.json(); setStudent(d.student); setDetail(d.detail); }
+      if (res.ok) {
+        const d = await res.json();
+        setStudent(d.student);
+        setDetail(d.detail);
+        // Hydrate gamification state from DB — fallback to 0 when field is absent
+        if (d.student) {
+          setPrs({
+            squat:    d.student.prSquat    ?? 0,
+            deadlift: d.student.prDeadlift ?? 0,
+            bench:    d.student.prBench    ?? 0,
+          });
+          setWalletBalance(d.student.walletBalance ?? 0);
+        }
+      }
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchMe(); }, [fetchMe]);
 
+  // ── Server-side history hydration (run once on mount, after auth) ──────────
+
+  useEffect(() => {
+    // Water: fetch today's server total; overwrite localStorage cold-start cache
+    fetch(`/api/student/water?date=${new Date().toISOString().split("T")[0]}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { totalMl: number } | null) => {
+        if (d && typeof d.totalMl === "number")
+          setWaterMl(Math.min(d.totalMl, WATER_TARGET_ML));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Nutrition: hydrate each of the 7 cycle days from DailyCheck server records
+    const hydrateDay = async (d: number) => {
+      try {
+        const res = await fetch(`/api/me/checks?date=${cycleDate(d)}`);
+        if (!res.ok) return;
+        const { checks } = (await res.json()) as { checks: { kind: string; itemKey: string }[] };
+        const indices = checks.filter(c => c.kind === "meal").map(c => Number(c.itemKey));
+        setNutritionHistory(prev => ({ ...prev, [d]: new Set(indices) }));
+      } catch {}
+    };
+    for (let d = 1; d <= 7; d++) hydrateDay(d);
+  }, []);
+
+  useEffect(() => {
+    // Workout: map last 20 sessions back onto workoutHistory by cycle date
+    fetch("/api/student/workout-session")
+      .then(r => r.ok ? r.json() : [])
+      .then((sessions: { date: string; exerciseLogs: string }[]) => {
+        if (!Array.isArray(sessions)) return;
+        const next: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+        for (let d = 1; d <= 7; d++) {
+          const target = cycleDate(d);
+          const session = sessions.find(s => s.date === target);
+          if (session) {
+            try {
+              const logs = JSON.parse(session.exerciseLogs ?? "[]") as { name: string }[];
+              next[d] = logs.map(l => l.name);
+            } catch {}
+          }
+        }
+        setWorkoutHistory(next);
+      })
+      .catch(() => {});
+  }, []);
+
   const switchTab = (t: TabId) => {
     if (t === activeTab) return;
-    setPrevTab(activeTab);
     setAnimating(true);
     setActiveTab(t);
     setTimeout(() => setAnimating(false), 220);
@@ -5363,7 +7128,7 @@ export default function PortalPage() {
   }
 
   const startWeight = detail.weightHistory[0]?.weight ?? student.currentWeight;
-  const day: RoutineDay | undefined = detail.routine.days[activeDay] ?? detail.routine.days[0];
+  const day: RoutineDay | undefined = detail.routine.days[activeDayIndex - 1] ?? detail.routine.days[0];
 
   // Enrich meals
   const meals: Meal[] = detail.diet.meals.map((m: any) => ({
@@ -5379,27 +7144,44 @@ export default function PortalPage() {
     })),
   }));
 
-  // ── Meal notification handlers (need meals in scope) ─────────────────────
+  // ── Meal notification handlers — keyed to activeDayIndex ────────────────
   const handleToggleMeal = (i: number) => {
-    setCheckedMeals(prev => {
-      const isAdding = !prev.has(i);
-      const n = new Set(prev); isAdding ? n.add(i) : n.delete(i);
-      if (isAdding) triggerMealChain(meals[i]?.macros ?? { protein: 32, carbs: 48, fat: 14 }, n.size, meals.length);
-      return n;
+    const isAdding = !(nutritionHistory[activeDayIndex] ?? new Set()).has(i);
+    setNutritionHistory(prev => {
+      const daySet = new Set(prev[activeDayIndex] ?? []);
+      isAdding ? daySet.add(i) : daySet.delete(i);
+      if (isAdding) triggerMealChain(meals[i]?.macros ?? { protein: 32, carbs: 48, fat: 14 }, daySet.size, meals.length);
+      return { ...prev, [activeDayIndex]: daySet };
+    });
+    // Server sync — optimistic; rollback on failure
+    const date = cycleDate(activeDayIndex);
+    fetch("/api/me/checks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, kind: "meal", itemKey: String(i), done: isAdding }),
+    }).catch(() => {
+      setNutritionHistory(prev => {
+        const daySet = new Set(prev[activeDayIndex] ?? []);
+        isAdding ? daySet.delete(i) : daySet.add(i);
+        return { ...prev, [activeDayIndex]: daySet };
+      });
     });
   };
 
   const handleSheetConfirm = () => {
     if (!activeMeal) return;
     const idx = meals.findIndex(m => m.name === activeMeal.name && m.time === activeMeal.time);
-    setActiveMeal(null);                                      // 1. close sheet immediately
+    setActiveMeal(null);
     if (idx < 0) return;
-    setCheckedMeals(prev => {
-      const alreadyDone = prev.has(idx);
-      const n = new Set(prev); n.add(idx);
-      const mac = meals[idx]?.macros ?? { protein: 32, carbs: 48, fat: 14 };
-      triggerMealChain(mac, n.size, meals.length);            // 2+3. toast → 100% check
-      return alreadyDone ? prev : n;
+    setNutritionHistory(prev => {
+      const daySet = new Set(prev[activeDayIndex] ?? []);
+      const alreadyDone = daySet.has(idx);
+      if (!alreadyDone) {
+        daySet.add(idx);
+        const mac = meals[idx]?.macros ?? { protein: 32, carbs: 48, fat: 14 };
+        triggerMealChain(mac, daySet.size, meals.length);
+      }
+      return alreadyDone ? prev : { ...prev, [activeDayIndex]: daySet };
     });
   };
 
@@ -5413,7 +7195,96 @@ export default function PortalPage() {
       <div className="w-full min-h-screen relative overflow-x-hidden flex flex-col" style={{ background: "#070708" }}>
 
         {/* Global brand header — hidden during workout focus */}
-        {!workoutFocusMode && <GlobalHeader student={student} />}
+        {!workoutFocusMode && (
+          <GlobalHeader
+            student={student}
+            broadcastMessages={broadcastMessages}
+            onOpenBriefing={() => setShowBriefingDrawer(true)}
+          />
+        )}
+
+        {/* ── Coach Briefing Drawer ── */}
+        {showBriefingDrawer && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[80] flex flex-col overflow-hidden"
+            style={{ background: "rgba(7,7,8,0.95)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
+
+            {/* ── Command Header ── */}
+            <div className="flex items-start justify-between px-5 pt-8 pb-5 flex-shrink-0"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+              <div>
+                <p style={{ fontFamily: "'Courier New',monospace", fontSize: 7, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(206,255,0,0.45)", marginBottom: 8 }}>
+                  ◈ SECURE CHANNEL · {broadcastMessages.length} ACTIVE TRANSMISSIONS
+                </p>
+                <p style={{ fontFamily: "var(--font-display,'Barlow Condensed',sans-serif)", fontWeight: 900, fontStyle: "italic", fontSize: 26, textTransform: "uppercase", letterSpacing: "0.05em", color: "#fff", lineHeight: 1 }}>
+                  COACH BROADCAST<br />
+                  <span style={{ color: "#CEFF00" }}>INTEL FEED</span>
+                </p>
+              </div>
+              {/* [ CLOSE TERMINAL ✕ ] */}
+              <button onClick={() => setShowBriefingDrawer(false)}
+                className="flex-shrink-0 self-start mt-1 active:opacity-50 transition-opacity"
+                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "6px 10px", cursor: "pointer" }}>
+                <span style={{ fontFamily: "'Courier New',monospace", fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontWeight: 900 }}>
+                  [ CLOSE TERMINAL ✕ ]
+                </span>
+              </button>
+            </div>
+
+            {/* ── Transmission Log — Bento cells ── */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-2.5 pb-16">
+              {broadcastMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Bell size={32} strokeWidth={1} style={{ color: "rgba(255,255,255,0.08)", marginBottom: 12 }} />
+                  <p style={{ fontFamily: "'Courier New',monospace", fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+                    // NO ACTIVE TRANSMISSIONS
+                  </p>
+                </div>
+              ) : broadcastMessages.map((msg, i) => (
+                <div key={i}
+                  className="rounded-xl p-4 flex items-start gap-4 transition-all duration-200"
+                  style={i === 0 ? {
+                    background: "rgba(206,255,0,0.025)",
+                    border: "1px solid rgba(206,255,0,0.32)",
+                    boxShadow: "0 0 30px rgba(206,255,0,0.08)",
+                  } : {
+                    background: "rgba(26,26,26,0.4)",
+                    border: "1px solid rgba(255,255,255,0.04)",
+                  }}>
+                  {/* Sequence index */}
+                  <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 rounded"
+                    style={{ background: i === 0 ? "rgba(206,255,0,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${i === 0 ? "rgba(206,255,0,0.2)" : "rgba(255,255,255,0.05)"}` }}>
+                    <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9, fontWeight: 900, color: i === 0 ? "#CEFF00" : "rgba(255,255,255,0.25)" }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {i === 0 && (
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#CEFF00]"
+                          style={{ animation: "subtle-pulse 1.8s ease-in-out infinite", boxShadow: "0 0 6px rgba(206,255,0,0.8)" }} />
+                        <span style={{ fontFamily: "'Courier New',monospace", fontSize: 6.5, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: "#CEFF00" }}>
+                          EN EMISIÓN ACTIVA
+                        </span>
+                      </div>
+                    )}
+                    <p style={{ fontFamily: "'Courier New',monospace", fontSize: 10.5, letterSpacing: "0.06em", color: i === 0 ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+                      {msg}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Footer — routing cue ── */}
+            <div className="px-5 py-4 flex-shrink-0"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+              <p style={{ fontFamily: "'Courier New',monospace", fontSize: 7.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
+                // CONFIGURA EN SALAS › AVISOS › GESTIÓN DE EMISIÓN
+              </p>
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* Tab content */}
         <div
@@ -5431,10 +7302,20 @@ export default function PortalPage() {
               waterMl={waterMl}
               onAddWater={addWater}
               checkedMeals={checkedMeals}
-              onToggleMeal={handleToggleMeal} />
+              onToggleMeal={handleToggleMeal}
+              activeDayIndex={activeDayIndex}
+              onAdvanceDay={delta => setActiveDayIndex(d => Math.max(1, d + delta))} />
           )}
           {activeTab === "progress" && (
-            <TabProgreso student={student} detail={detail} startWeight={startWeight}
+            <TabProgreso
+              student={student}
+              detail={detail}
+              startWeight={startWeight}
+              prs={prs}
+              nutritionHistory={nutritionHistory}
+              workoutHistory={workoutHistory}
+              checkedMeals={checkedMeals}
+              meals={meals}
               onBadge={() => downloadBadge({ name: student.name, photoUrl: detail.photoName, currentWeight: student.currentWeight, startWeight, streak: student.streak, height: detail.height, bodyFat: detail.bodyFat, stage: `${student.stage} · E${student.stageNumber}`, weightHistory: detail.weightHistory })} />
           )}
           {activeTab === "squads" && (
@@ -5442,13 +7323,52 @@ export default function PortalPage() {
               waterMl={waterMl}
               onAddWater={addWater}
               onFocusMode={setWorkoutFocusMode}
-              memberTier={student.stageNumber >= 2 ? "berserker" : "basic"} />
+              memberTier={student.stageNumber >= 2 ? "berserker" : "basic"}
+              prs={prs}
+              onNewPR={onNewPR}
+              activeDayIndex={activeDayIndex}
+              onLogExercise={onLogExercise} />
           )}
           {activeTab === "community" && (
-            <TabComunidad student={student} />
+            <TabComunidad
+              student={student}
+              broadcastMessages={broadcastMessages}
+              setBroadcastMessages={setBroadcastMessages}
+              walletBalance={walletBalance}
+              onClaimPrize={onClaimPrize}
+              onLaunchDebit={onLaunchDebit}
+              nutritionTotal={nutritionTotal}
+              streakCompletedDays={streakCompletedDays}
+              workoutHistory={workoutHistory}
+              currentRoomView={currentRoomView}
+              setCurrentRoomView={setCurrentRoomView}
+              selectedActiveChallenge={selectedActiveChallenge}
+              setSelectedActiveChallenge={setSelectedActiveChallenge}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              showRosterFilter={showRosterFilter}
+              setShowRosterFilter={setShowRosterFilter}
+              filterRank={filterRank}
+              setFilterRank={setFilterRank}
+              filterOnline={filterOnline}
+              setFilterOnline={setFilterOnline}
+              filterStreakMin={filterStreakMin}
+              setFilterStreakMin={setFilterStreakMin}
+              isCoach={false}
+              coachId={student.coachId ?? null}
+            />
           )}
           {activeTab === "profile" && (
-            <TabPerfil student={student} detail={detail} onCancelRequest={openCancelSheet} />
+            <TabPerfil
+              student={student}
+              detail={detail}
+              onCancelRequest={openCancelSheet}
+              nutritionHistory={nutritionHistory}
+              workoutHistory={workoutHistory}
+              activeDayIndex={activeDayIndex}
+              prs={prs}
+              walletBalance={walletBalance}
+            />
           )}
         </div>
 
@@ -5494,6 +7414,33 @@ export default function PortalPage() {
           onClose={closeCancelSheet}
         />
       </BottomSheet>
+
+      {/* ── System error toast (PR / wallet failures) ── */}
+      {sysErrToast && (
+        <div style={{ position: "fixed", bottom: 90, left: 0, right: 0, zIndex: 9999, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{
+            pointerEvents: "auto",
+            background: "rgba(20,0,0,0.96)",
+            border: "1px solid rgba(248,113,113,0.35)",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.9)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            padding: "12px 18px",
+            borderRadius: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            maxWidth: 360,
+            width: "calc(100vw - 32px)",
+            animation: "mc-toast-lifecycle 3.5s cubic-bezier(0.16,1,0.3,1) forwards",
+          }}>
+            <span style={{ fontSize: 14 }}>⚠️</span>
+            <p style={{ fontFamily: "'Courier New',monospace", fontSize: 11, letterSpacing: "0.06em", color: "#f87171", margin: 0 }}>
+              {sysErrToast}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Meal notification overlays (portal-mounted, always above shell) ── */}
       {mealToast && <MealToast macros={mealToast} />}

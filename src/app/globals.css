@@ -297,6 +297,42 @@ input::placeholder {
 .animate-mc-slide-up-3 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.30s both; }
 .animate-mc-slide-up-4 { animation: mc-slide-up 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both; }
 
+/* ── HUD Telemetry Scan-In (ticker message switch + achievement badges) ── */
+@keyframes mc-hud-scan {
+  0%   { opacity: 0; transform: translateX(-10px); filter: blur(2px); }
+  55%  { opacity: 0.9; transform: translateX(0); filter: blur(0); }
+  100% { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+.animate-mc-hud-scan {
+  animation: mc-hud-scan 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Community room view transition ── */
+@keyframes mc-room-view-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.animate-mc-room-view-in {
+  animation: mc-room-view-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── HUD Input — borderless, cyan focus accent line ── */
+.hud-input {
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0;
+  background: transparent;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hud-input:focus {
+  outline: none;
+  border-bottom-color: #00F0FF;
+  box-shadow: 0 2px 12px rgba(0, 240, 255, 0.1);
+}
+.hud-input::placeholder {
+  color: rgba(255, 255, 255, 0.18);
+}
+
 /* ═══════════════════════════════════════════
    Mobile Bottom Navigation
    ═══════════════════════════════════════════ */
