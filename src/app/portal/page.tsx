@@ -3677,7 +3677,7 @@ function PremiumGate() {
 
 function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier, prs, onNewPR, activeDayIndex, onLogExercise,
   wView, setWView, activeExIdx, setActiveExIdx, doneSets, setDoneSets, doneEx, setDoneEx,
-  workoutComplete, setWorkoutComplete, wDuration, setWDuration,
+  workoutComplete, setWorkoutComplete, wDuration, setWDuration, workoutDate,
 }: {
   day: RoutineDay | undefined;
   student: Student;
@@ -3701,6 +3701,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   setWorkoutComplete: React.Dispatch<React.SetStateAction<boolean>>;
   wDuration: number;
   setWDuration: React.Dispatch<React.SetStateAction<number>>;
+  workoutDate: string;
 }) {
   const [animating,   setAnimating]   = useState(false);
   const [focusWeight, setFocusWeight] = useState<number>(0);
@@ -3711,6 +3712,28 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   const restRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
+
+  // ── Training lifecycle state machine ──────────────────────────────────────
+  // IDLE → ACTIVE_TRACKING → PAUSED → COMPLETED
+  // NATIVE_BRIDGE: State transitions map 1:1 to HealthKit HKWorkoutSession states.
+  type SessionLifecycle = "IDLE" | "ACTIVE_TRACKING" | "PAUSED" | "COMPLETED";
+  const [sessionLifecycle, setSessionLifecycle] = useState<SessionLifecycle>("IDLE");
+
+  // ── In-memory biometric snapshot (populated by native bridge at session end) ─
+  type BiometricsSnapshot = {
+    avgHeartRate:   number;
+    maxHeartRate:   number;
+    activeCalories: number;
+    totalCalories:  number;
+    deviceSource:   string;
+  };
+  const [biometrics, setBiometrics] = useState<BiometricsSnapshot>({
+    avgHeartRate:   0,
+    maxHeartRate:   0,
+    activeCalories: 0,
+    totalCalories:  0,
+    deviceSource:   "—",
+  });
 
   const exercises   = day?.exercises ?? [];
   const totalEx     = exercises.length || 6;
@@ -3727,13 +3750,25 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
 
   useEffect(() => { setFocusReps(targetReps); }, [activeExIdx, targetReps]);
 
+  // Interval cleanup on unmount only (rest timer lives here too)
   useEffect(() => {
-    durationRef.current = setInterval(() => setWDuration(s => s + 1), 1000);
     return () => {
-      if (restRef.current) clearInterval(restRef.current);
+      if (restRef.current)     clearInterval(restRef.current);
       if (durationRef.current) clearInterval(durationRef.current);
     };
   }, []);
+
+  // Session clock — only runs while ACTIVE_TRACKING, pauses on all other states
+  useEffect(() => {
+    if (sessionLifecycle !== "ACTIVE_TRACKING") {
+      if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
+      return;
+    }
+    durationRef.current = setInterval(() => setWDuration(s => s + 1), 1000);
+    return () => {
+      if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
+    };
+  }, [sessionLifecycle]);
 
   const switchView = (next: "lobby" | "focus") => {
     if (next === wView) return;
@@ -3820,6 +3855,96 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
         </h1>
         <p className="text-[11px] mt-2" style={{ color: "#fff" }}>{day?.label ?? "Rutina de hoy"} · Sesión activa</p>
       </div>
+
+      {/* ── INICIAR / lifecycle controls ── */}
+      {sessionLifecycle === "IDLE" && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => {
+              // NATIVE_BRIDGE: Trigger Apple HealthKit HKWorkoutSessionStart() / HealthConnect equivalent
+              setSessionLifecycle("ACTIVE_TRACKING");
+            }}
+            className="w-full py-4 rounded-sm flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+            style={{ background: "#CEFF00", boxShadow: "0 0 28px rgba(206,255,0,0.28)", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "16px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#000", border: "none" }}>
+            ▶ INICIAR ENTRENAMIENTO
+          </button>
+        </div>
+      )}
+
+      {sessionLifecycle === "ACTIVE_TRACKING" && (
+        <div className="px-4 mb-4 flex gap-2">
+          <button
+            onClick={() => {
+              // NATIVE_BRIDGE: Pause — HealthKit HKWorkoutSession.pause() / HealthConnect equivalent
+              setSessionLifecycle("PAUSED");
+            }}
+            className="flex-1 py-3 rounded-sm text-center cursor-pointer active:scale-95 transition-all"
+            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "13px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            ⏸ PAUSAR
+          </button>
+        </div>
+      )}
+
+      {sessionLifecycle === "PAUSED" && (
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => {
+              // NATIVE_BRIDGE: Resume — HealthKit HKWorkoutSession.resume() / HealthConnect equivalent
+              setSessionLifecycle("ACTIVE_TRACKING");
+            }}
+            className="w-full py-3 rounded-sm cursor-pointer active:scale-[0.98] transition-all"
+            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "14px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", background: "rgba(206,255,0,0.06)", border: "1px solid rgba(206,255,0,0.3)" }}>
+            ▶ REANUDAR SESIÓN
+          </button>
+        </div>
+      )}
+
+      {/* ── MODULE 4: BIOMETRIC HUD — visible during ACTIVE / PAUSED ── */}
+      {(sessionLifecycle === "ACTIVE_TRACKING" || sessionLifecycle === "PAUSED") && (
+        <div className="px-4 mb-4">
+          <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-md grid grid-cols-2 gap-4">
+
+            {/* ❤ RITMO CARDÍACO */}
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    background: "#ef4444",
+                    boxShadow: "0 0 6px rgba(239,68,68,0.7)",
+                    animation: "mc-hr-pulse 1.1s ease-in-out infinite",
+                  }}
+                />
+                <p className="text-[9px] font-mono font-black uppercase tracking-widest text-zinc-500">RITMO CARDÍACO</p>
+              </div>
+              <p className="font-mono text-xl font-black text-white leading-none">
+                {biometrics.avgHeartRate > 0 ? biometrics.avgHeartRate : "—"}
+                <span className="text-[11px] font-normal text-zinc-500 ml-1">BPM</span>
+              </p>
+              {biometrics.maxHeartRate > 0 && (
+                <p className="text-[9px] font-mono text-zinc-600 mt-0.5">
+                  PICO {biometrics.maxHeartRate} BPM
+                </p>
+              )}
+            </div>
+
+            {/* 🔥 ENERGÍA ACTIVA */}
+            <div>
+              <p className="text-[9px] font-mono font-black uppercase tracking-widest text-zinc-500 mb-1.5">ENERGÍA ACTIVA</p>
+              <p className="font-mono text-xl font-black text-white leading-none">
+                {biometrics.activeCalories > 0 ? biometrics.activeCalories : "—"}
+                <span className="text-[11px] font-normal text-zinc-500 ml-1">KCAL</span>
+              </p>
+              {biometrics.deviceSource !== "—" && biometrics.deviceSource !== "" && (
+                <p className="text-[9px] font-mono text-zinc-600 mt-0.5 truncate">
+                  {biometrics.deviceSource}
+                </p>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ── PROGRESO GENERAL BAR ── */}
       <div className="px-5 mb-4">
@@ -3990,10 +4115,21 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
       </div>
 
       {/* ── FINALIZAR — appears once all exercises are done ── */}
-      {doneEx.size >= totalEx && totalEx > 0 && (
+      {doneEx.size >= totalEx && totalEx > 0 && sessionLifecycle !== "IDLE" && (
         <div className="mx-4 mt-3 mb-2">
           <button
-            onClick={() => setWorkoutComplete(true)}
+            onClick={() => {
+              // NATIVE_BRIDGE: Trigger Apple HealthKit HKWorkoutSessionEnd() / HealthConnect equivalent
+              if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
+              setSessionLifecycle("COMPLETED");
+              setWorkoutComplete(true);
+              // Fire biometric summary to Postgres (upsert — safe to retry)
+              fetch("/api/student/workout-session/telemetry", {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ date: workoutDate, ...biometrics }),
+              }).catch(err => console.error("[telemetry] POST failed:", err));
+            }}
             className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
             style={{ background: "#CEFF00", boxShadow: "0 0 32px rgba(206,255,0,0.3)", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "16px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#000", border: "none" }}>
             <Zap size={16} fill="#000" stroke="none" />
@@ -7855,7 +7991,8 @@ export default function PortalPage() {
               workoutComplete={workoutComplete}
               setWorkoutComplete={setWorkoutComplete}
               wDuration={wDuration}
-              setWDuration={setWDuration} />
+              setWDuration={setWDuration}
+              workoutDate={realDateForDayIndex(activeDayIndex)} />
           )}
           {activeTab === "community" && (
             <TabComunidad

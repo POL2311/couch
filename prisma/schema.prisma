@@ -230,17 +230,37 @@ model DailyCheck {
 // Las series exactas viven en exerciseLogs (JSON snapshot).
 // ─────────────────────────────────────────────
 model WorkoutSession {
-  id           String   @id @default(cuid())
+  id           String              @id @default(cuid())
   studentId    String
-  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  routineId    String?                   // referencia opcional a la plantilla de rutina
-  name         String                   // ej. "Push Day · Lunes"
-  date         String                   // YYYY-MM-DD
-  completed    Boolean  @default(false)
-  exerciseLogs String   @default("[]")  // JSON: SessionExercise[]
+  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  routineId    String?             // referencia opcional a la plantilla de rutina
+  name         String              // ej. "Push Day · Lunes"
+  date         String              // YYYY-MM-DD
+  completed    Boolean             @default(false)
+  exerciseLogs String              @default("[]") // JSON: SessionExercise[]
   notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  biometrics   WorkoutBiometrics?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Telemetría biométrica de sesión (smartwatch)
+// Registro opcional 1:1 acoplado a WorkoutSession.
+// Populado vía POST /api/student/workout-session/telemetry
+// cuando el adaptador nativo (HealthKit / Health Connect) entrega el resumen.
+// ─────────────────────────────────────────────
+model WorkoutBiometrics {
+  id              String         @id @default(cuid())
+  sessionId       String         @unique
+  session         WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  avgHeartRate    Int?           // bpm – promedio durante la sesión
+  maxHeartRate    Int?           // bpm – valor pico registrado
+  activeCalories  Int?           // kcal – energía activa metabólica
+  totalCalories   Int?           // kcal – gasto energético total
+  deviceSource    String?        // "Apple Watch Ultra", "Garmin Forerunner", "Galaxy Watch", etc.
+  heartRateSeries Json?          // [{ t: ISO8601, bpm: Int }] – serie temporal para gráficas futuras
+  createdAt       DateTime       @default(now())
 }
 
 // ─────────────────────────────────────────────
