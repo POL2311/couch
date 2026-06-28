@@ -53,6 +53,8 @@ model Coach {
   stripeConnectId          String?
   stripeOnboardingComplete Boolean    @default(false)
   monthlyPrice             Float      @default(1200)
+  joinCode                 String?    @unique
+  isPublic                 Boolean    @default(false)
   createdAt                DateTime   @default(now())
 }
 

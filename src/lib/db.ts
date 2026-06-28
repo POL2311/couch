@@ -921,9 +921,12 @@ export async function seedDefaultEjercicios(coachId: string): Promise<number> {
    ═══════════════════════════════════════════ */
 
 /** Devuelve los ítems marcados de un alumno en una fecha, como "kind:itemKey". */
-export async function getDailyChecks(studentId: string, date: string): Promise<string[]> {
+export async function getDailyChecks(
+  studentId: string,
+  date: string,
+): Promise<{ kind: string; itemKey: string }[]> {
   const rows = await prisma.dailyCheck.findMany({ where: { studentId, date } });
-  return rows.map((r) => `${r.kind}:${r.itemKey}`);
+  return rows.map((r) => ({ kind: r.kind, itemKey: r.itemKey }));
 }
 
 /** Todos los checks de un alumno (para que el coach calcule cumplimiento). */
@@ -1161,6 +1164,25 @@ export async function updateCoachMonthlyPrice(coachId: string, price: number): P
   await prisma.coach.update({ where: { id: coachId }, data: { monthlyPrice: price } });
 }
 
+/** Returns the full coach room/pricing profile (isPublic, joinCode, monthlyPrice). */
+export async function getCoachRoomProfile(coachId: string) {
+  return prisma.coach.findUnique({
+    where:  { id: coachId },
+    select: { isPublic: true, joinCode: true, monthlyPrice: true },
+  });
+}
+
+/**
+ * Set a coach's public-room visibility and/or join code.
+ * joinCode must be unique — callers should catch P2002 (unique-constraint) errors.
+ */
+export async function updateCoachRoomSettings(
+  coachId: string,
+  data: { isPublic?: boolean; joinCode?: string | null },
+): Promise<void> {
+  await prisma.coach.update({ where: { id: coachId }, data });
+}
+
 export async function getCoachMonthlyPriceForStudent(studentId: string): Promise<number | null> {
   const row = await prisma.student.findUnique({
     where: { id: studentId },
@@ -1199,4 +1221,173 @@ export async function provisionUserForStudent(
   }
 
   await prisma.student.update({ where: { id: studentId }, data: { userId } });
+}
+
+/* ═══════════════════════════════════════════
+   Registro de peso diario del alumno (biométrico)
+   ═══════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   Community join / room verification
+   ═══════════════════════════════════════════ */
+
+export async function findCoachByJoinCode(code: string) {
+  return prisma.coach.findFirst({
+    where: { joinCode: { equals: code.trim().toUpperCase() } },
+    include: { user: { select: { name: true } } },
+  });
+}
+
+export async function findPublicCoachById(coachId: string) {
+  return prisma.coach.findFirst({
+    where: { id: coachId, isPublic: true },
+    include: { user: { select: { name: true } } },
+  });
+}
+
+export interface PublicRoomDTO {
+  id: string;
+  name: string;
+  memberCount: number;
+}
+
+export async function getPublicRooms(): Promise<PublicRoomDTO[]> {
+  const coaches = await prisma.coach.findMany({
+    where: { isPublic: true },
+    include: {
+      user:    { select: { name: true } },
+      _count:  { select: { students: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  return coaches.map(c => ({
+    id:          c.id,
+    name:        c.user?.name ?? "COACH ROOM",
+    memberCount: c._count.students,
+  }));
+}
+
+export async function getCoachById(coachId: string) {
+  return prisma.coach.findUnique({
+    where: { id: coachId },
+    include: { user: { select: { name: true } } },
+  });
+}
+
+export async function linkStudentToCoach(studentId: string, coachId: string): Promise<void> {
+  await prisma.student.update({ where: { id: studentId }, data: { coachId } });
+}
+
+export async function getRecentCoachNotices(coachId: string, limit = 20) {
+  const rows = await prisma.groupMessage.findMany({
+    where: { coachId, role: "COACH" },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map(r => ({
+    id: r.id,
+    senderName: r.senderName,
+    role: r.role,
+    content: r.content,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+/* ═══════════════════════════════════════════
+   Team Telemetry — % of active students today
+   ═══════════════════════════════════════════ */
+
+export interface TeamTelemetry {
+  totalStudents: number;
+  activeToday:   number;
+  streakPct:     number;
+}
+
+export async function getTeamTelemetry(
+  coachId: string,
+  date:    string,
+): Promise<TeamTelemetry> {
+  const students = await prisma.student.findMany({
+    where:  { coachId },
+    select: { id: true },
+  });
+  const ids   = students.map(s => s.id);
+  const total = ids.length;
+  if (total === 0) return { totalStudents: 0, activeToday: 0, streakPct: 0 };
+
+  const [checkRows, sessionRows] = await Promise.all([
+    prisma.dailyCheck.findMany({
+      where:    { date, studentId: { in: ids } },
+      distinct: ["studentId"],
+      select:   { studentId: true },
+    }),
+    prisma.workoutSession.findMany({
+      where:    { date, studentId: { in: ids } },
+      distinct: ["studentId"],
+      select:   { studentId: true },
+    }),
+  ]);
+
+  const activeSet  = new Set([
+    ...checkRows.map(r => r.studentId),
+    ...sessionRows.map(r => r.studentId),
+  ]);
+  const activeToday = activeSet.size;
+  const streakPct   = Math.round((activeToday / total) * 100);
+  return { totalStudents: total, activeToday, streakPct };
+}
+
+/* ── Coach Notice Management (admin) ─────────── */
+
+export async function getCoachNoticesAdmin(coachId: string, limit = 50) {
+  const rows = await prisma.groupMessage.findMany({
+    where:   { coachId },
+    orderBy: { createdAt: "desc" },
+    take:    limit,
+    select:  { id: true, senderName: true, role: true, content: true, createdAt: true },
+  });
+  return rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }));
+}
+
+export async function deleteNotice(noticeId: string, coachId: string): Promise<boolean> {
+  const msg = await prisma.groupMessage.findUnique({
+    where:  { id: noticeId },
+    select: { coachId: true },
+  });
+  if (!msg || msg.coachId !== coachId) return false;
+  await prisma.groupMessage.delete({ where: { id: noticeId } });
+  return true;
+}
+
+/* ── Student Roster Management ──────────────── */
+
+export async function unlinkStudentFromCoach(
+  studentId: string,
+  coachId:   string,
+): Promise<boolean> {
+  const student = await prisma.student.findUnique({
+    where:  { id: studentId },
+    select: { coachId: true },
+  });
+  if (!student || student.coachId !== coachId) return false;
+  await prisma.student.update({ where: { id: studentId }, data: { coachId: null } });
+  return true;
+}
+
+/* ═══════════════════════════════════════════
+   Registro de peso diario del alumno (biométrico)
+   ═══════════════════════════════════════════ */
+
+export async function logDailyWeight(
+  studentId: string,
+  weight: number,
+  date: string,
+): Promise<{ date: string; weight: number }> {
+  await prisma.$transaction([
+    // Replace any existing entry for this date so each day has exactly one node
+    prisma.weightEntry.deleteMany({ where: { studentId, date } }),
+    prisma.weightEntry.create({ data: { studentId, date, weight } }),
+    prisma.student.update({ where: { id: studentId }, data: { currentWeight: weight } }),
+  ]);
+  return { date, weight };
 }
