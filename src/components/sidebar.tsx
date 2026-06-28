@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LayoutGrid, Users, FileText, CalendarRange, CreditCard, LogOut } from "lucide-react";
+import { LayoutGrid, Users, FileText, CalendarRange, CreditCard, LogOut, Megaphone } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    Navegación — Iconos Lucide (líneas finas)
@@ -16,6 +16,7 @@ const NAV_ITEMS: { label: string; shortLabel?: string; href: string; icon: typeo
   // shortLabel: etiqueta corta para el bottom bar móvil; el sidebar de escritorio usa label.
   { label: "Periodización", shortLabel: "Períodos", href: "/coach/periodization", icon: CalendarRange },
   { label: "Pagos", href: "/coach/payments", icon: CreditCard },
+  { label: "Sala", href: "/coach/sala", icon: Megaphone },
 ];
 
 /* Fuente única del estado activo: la raíz (/coach) solo por igualdad exacta;
@@ -179,7 +180,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 items-center backdrop-blur-xl"
+      className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-7 items-center backdrop-blur-xl"
       style={{
         height: "72px",
         background: "var(--bg-sidebar)",

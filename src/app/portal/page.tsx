@@ -11,7 +11,7 @@ import {
   Shield, CreditCard, Calendar, ChevronDown, ChevronUp,
   AlertTriangle, Settings, MessageSquare, Send, Heart, Printer, Lock,
   MapPin, Activity,
-  Trophy, SlidersHorizontal, Plus, Bell, Pin,
+  Trophy, SlidersHorizontal, Plus, Bell, Pin, Scale,
 } from "lucide-react";
 import { Skeleton } from "@/components/skeleton";
 import { downloadBadge } from "@/lib/badge";
@@ -397,14 +397,65 @@ const UP = (id: string) => `https://images.unsplash.com/photo-${id}?w=300&h=300&
 
 const WATER_TARGET_ML = 3000;
 
-// ── Cycle-date utilities (module-level so cycleDate() is usable outside PortalPage) ──
-const BASE_DATE_MS    = new Date("2026-06-25T00:00:00Z").getTime();
-const daysSinceBase   = () => Math.max(0, Math.floor((Date.now() - BASE_DATE_MS) / 86_400_000));
-const currentCycleWeek = () => Math.floor(daysSinceBase() / 7);
-const currentCycleDay  = () => (daysSinceBase() % 7) + 1;
-const cycleDate = (dayIdx: number) =>
-  new Date(BASE_DATE_MS + (currentCycleWeek() * 7 + dayIdx - 1) * 86_400_000)
-    .toISOString().split("T")[0];
+// ── Calendar Weekday Engine ────────────────────────────────────────────────
+// app dayIdx convention: 1=Monday … 6=Saturday … 7=Sunday (ISO week).
+// All DB date keys are real YYYY-MM-DD local-calendar strings — no fixed anchor.
+
+/** Today's date as YYYY-MM-DD using the device's local calendar (not UTC). */
+const todayDateStr = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/**
+ * Converts an app day index (1=Mon … 7=Sun) to a JS Date .getDay() weekday
+ * (0=Sun … 6=Sat). App-Sunday (7) → JS-Sunday (0); all others are identical.
+ */
+const appDayToJsWeekday = (dayIdx: number): number => (dayIdx === 7 ? 0 : dayIdx);
+
+/**
+ * Returns the real calendar date (YYYY-MM-DD) for the given app day index
+ * inside the ISO week that contains today.
+ *   dayIdx 1 → this week's Monday
+ *   dayIdx 7 → this week's Sunday
+ * Uses local calendar arithmetic — no UTC offset issues.
+ */
+const realDateForDayIndex = (dayIdx: number): string => {
+  const today = new Date();
+  const jsToday = today.getDay();                              // 0=Sun … 6=Sat
+  const daysFromMonday = jsToday === 0 ? 6 : jsToday - 1;    // distance past Mon
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysFromMonday);           // rewind to this week's Mon
+  const target = new Date(monday);
+  target.setDate(monday.getDate() + dayIdx - 1);              // Mon+0=1, Tue+1=2, …, Sun+6=7
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+};
+
+/**
+ * Returns today as an app day index (1=Mon … 7=Sun).
+ * JS Sunday (0) maps to app Sunday (7).
+ */
+const todayAsDayIndex = (): number => {
+  const js = new Date().getDay();
+  return js === 0 ? 7 : js;
+};
+
+/**
+ * Resolves the correct RoutineDay for an app day index.
+ * Checks for explicit `weekday` fields first; falls back to ordinal (days[dayIdx-1]).
+ * Returns undefined when the routine has fewer slots than the requested index.
+ */
+const resolveRoutineDay = (dayIdx: number, days: RoutineDay[]): RoutineDay | undefined => {
+  const jsWeekday = appDayToJsWeekday(dayIdx);
+  const explicit  = days.find(d => d.weekday === jsWeekday);
+  return explicit ?? days[dayIdx - 1];
+};
+
+/** Short weekday labels keyed by app day index (1–7). */
+const WEEKDAY_SHORT: Readonly<Record<number, string>> = {
+  1: "LUNES", 2: "MARTES", 3: "MIÉRCOLES", 4: "JUEVES",
+  5: "VIERNES", 6: "SÁBADO", 7: "DOMINGO",
+};
 
 const EQUIV_CARBS: Equivalent[] = [
   { name: "Arroz blanco",    gramsPerCarb: 3.3,  calsPer100g: 130, fatPer100g: 0.3, icon: "rice",         photo: UP("1536304929831-ee1ca9d44906"), note: "Digestión rápida, post-entreno",  macroType:"carb" },
@@ -2481,6 +2532,16 @@ function WorkoutCompleteModal({ onClose, durationStr, exerciseCount }: {
    TAB: HOY
 ══════════════════════════════════════════════════════════════ */
 
+const DAY_DIRECTIVES: Readonly<Record<number, { mission: string; status: string }>> = {
+  1: { mission: "MISSION: DOMINATE",   status: "STATUS: UNSTOPPABLE" },
+  2: { mission: "MISSION: EXECUTE",    status: "STATUS: LOCKED IN"   },
+  3: { mission: "MISSION: CONQUER",    status: "STATUS: UNBREAKABLE" },
+  4: { mission: "MISSION: PERSIST",    status: "STATUS: RELENTLESS"  },
+  5: { mission: "MISSION: OBLITERATE", status: "STATUS: INEVITABLE"  },
+  6: { mission: "MISSION: TRANSCEND",  status: "STATUS: ELITE"       },
+  7: { mission: "MISSION: RECHARGE",   status: "STATUS: RECOVERING"  },
+};
+
 function TabHoy({
   student, detail, meals, day,
   onMealOpen, onExerciseOpen,
@@ -2510,23 +2571,59 @@ function TabHoy({
   const waterTarget   = WATER_TARGET_ML;
   const isDayPerfect  = meals.length > 0 && checkedMeals.size === meals.length;
 
-  return (
-    <div className="pb-4">
+  const directive = DAY_DIRECTIVES[activeDayIndex] ?? DAY_DIRECTIVES[1]!;
 
-      {/* ── MOTIVATIONAL MARQUEE BANNER ── */}
-      <div className="mb-5 rounded-xl px-4 py-2.5"
-        style={{ background: "rgba(26,26,26,0.4)", border: "1px solid rgba(255,255,255,0.04)" }}>
-        <p className="text-[9.5px] font-black uppercase truncate"
-          style={{ fontFamily: DS, letterSpacing: "0.2em", color: "#808080" }}>
-          <span style={{ color: "#CEFF00" }}>⚡</span>
-          {" "}DISCIPLINA ABSOLUTA
-          <span style={{ color: "rgba(255,255,255,0.1)" }}>{" "}•{" "}</span>
-          SISTEMA TÁCTICO SINCRONIZADO
-          <span style={{ color: "rgba(255,255,255,0.1)" }}>{" "}•{" "}</span>
-          PLAN ACTIVO
-          <span style={{ color: "#CEFF00" }}>{" "}›{" "}</span>
-          DÍA {student.streak}
+  // ── Live coach directive from DB ────────────────────────────────────────
+  type CoachNotice = { content: string; senderName: string };
+  const [coachNotice, setCoachNotice] = useState<CoachNotice | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/student/latest-notice", { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() as Promise<{ notice: CoachNotice | null }> : null)
+      .then(d => { if (d?.notice) setCoachNotice(d.notice); })
+      .catch(() => {});
+    return () => ctrl.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const directiveText = coachNotice
+    ? `MISSION: ${coachNotice.senderName.toUpperCase()} // STATUS: ${coachNotice.content.slice(0, 60).toUpperCase()}`
+    : `${directive.mission} // ${directive.status}`;
+
+  return (
+    <div className="pb-40">
+
+      {/* ── MODULE 1: TACTICAL OS DIRECTIVE CARD ── */}
+      <div className="w-full bg-zinc-950 border-2 border-lime-400 p-5 mb-4 relative overflow-hidden rounded-sm shadow-[0_0_25px_rgba(163,230,53,0.05)]">
+        <div className="absolute top-0 right-0 w-10 h-10 border-l border-b border-lime-400/25 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-10 h-10 border-r border-t border-lime-400/25 pointer-events-none" />
+        <span className="text-[10px] font-mono tracking-[0.2em] text-lime-400 font-black uppercase block mb-2">
+          SYSTEM_ENFORCED_DIRECTIVE
+        </span>
+        <p className="text-base sm:text-lg font-black italic uppercase tracking-normal text-white leading-snug drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
+          {directiveText}
         </p>
+      </div>
+
+      {/* ── MODULE 2: MICRO-CALENDAR WEEKDAY STRIP ── */}
+      <div className="flex items-center justify-between gap-1.5 w-full bg-zinc-900/40 p-1.5 border border-zinc-800/80 rounded-sm mb-5">
+        {(["L","M","MI","J","V","S","D"] as const).map((label, i) => {
+          const dayNum  = i + 1;
+          const isActive = activeDayIndex === dayNum;
+          return (
+            <button
+              key={dayNum}
+              onClick={() => onAdvanceDay(dayNum - activeDayIndex)}
+              className={
+                isActive
+                  ? "flex-1 py-2 text-center text-xs font-mono font-black border border-lime-400 text-lime-400 bg-lime-400/10 shadow-[0_0_12px_rgba(163,230,53,0.15)] rounded-sm transition-all"
+                  : "flex-1 py-2 text-center text-xs font-mono font-bold border border-transparent text-zinc-500 hover:text-zinc-300 transition-all"
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── NUTRICIÓN HEADER + DAY SWITCHER ── */}
@@ -2546,7 +2643,7 @@ function TabHoy({
               <ChevronLeft size={14} style={{ color: "#fff" }} />
             </button>
             <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(22px,6.5vw,28px)", textTransform: "uppercase", letterSpacing: "-0.01em", color: "#fff", lineHeight: 1 }}>
-              DÍA {activeDayIndex} · NUTRICIÓN
+              {WEEKDAY_SHORT[activeDayIndex] ?? `DÍA ${activeDayIndex}`} · NUTRICIÓN
             </h2>
             <button onClick={() => onAdvanceDay(+1)} disabled={activeDayIndex >= 7}
               className="w-8 h-8 flex items-center justify-center rounded-xl active:scale-90 transition-transform"
@@ -2597,25 +2694,25 @@ function TabHoy({
               {totalTarget} KCAL OBJETIVO
             </span>
           </div>
-          <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "#1A1A1A" }}>
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${caloricPct * 100 || 2}%`, background: "linear-gradient(90deg, #00F0FF 0%, #CEFF00 100%)", boxShadow: "0 0 8px rgba(206,255,0,0.5)" }} />
+          <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.5)" }}>
+            <div className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${caloricPct * 100 || 2}%`, background: "linear-gradient(90deg, #00F0FF 0%, #CEFF00 100%)", boxShadow: "0 0 10px rgba(206,255,0,0.6), 0 0 4px rgba(0,240,255,0.4)" }} />
           </div>
         </div>
       </div>
 
       {/* ── RACHA DE CONSISTENCIA CARD ── */}
-      <div className="rounded-3xl flex items-center gap-4 px-5 py-4 mb-5"
-        style={{ background: "#CEFF00" }}>
+      <div className="rounded-3xl flex items-center gap-4 px-5 py-4 mb-5 backdrop-blur-md"
+        style={{ background: "rgba(18,18,20,0.80)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid #CEFF00", boxShadow: "0 0 20px rgba(206,255,0,0.06)" }}>
         <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-          style={{ background: "rgba(0,0,0,0.12)" }}>
-          <Utensils size={20} strokeWidth={2.5} style={{ color: "#000" }} />
+          style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.18)" }}>
+          <Utensils size={20} strokeWidth={2.5} style={{ color: "#CEFF00" }} />
         </div>
         <div>
-          <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(18px,5.8vw,23px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#000", lineHeight: 1 }}>
-            DÍA {activeDayIndex} DE RACHA · {student.streak} DÍAS TOTALES
+          <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "normal", fontSize: "clamp(18px,5.8vw,23px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#CEFF00", lineHeight: 1 }}>
+            {WEEKDAY_SHORT[activeDayIndex] ?? `DÍA ${activeDayIndex}`} · {student.streak === 1 ? "1 DÍA DE RACHA" : `${student.streak} DÍAS DE RACHA`}
           </p>
-          <p className="text-[9px] font-black uppercase tracking-[0.28em] mt-1" style={{ color: "rgba(0,0,0,0.42)", fontFamily: DS }}>
+          <p className="text-[9px] font-black uppercase tracking-[0.28em] mt-1" style={{ color: "rgba(255,255,255,0.28)", fontFamily: DS }}>
             RACHA ACTIVA · {new Date().toISOString().split("T")[0]}
           </p>
         </div>
@@ -2642,7 +2739,7 @@ function TabHoy({
               <img src={imgSrc} alt="" className="absolute inset-0 w-full h-full object-cover"
                 style={{ opacity: isChecked ? 0.22 : 0.58, filter: isChecked ? "grayscale(60%) saturate(0.6)" : "none", transition: "all 0.4s ease" }} />
               {/* Dark mask gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
               {/* Content */}
               <div className="relative z-10 p-5 h-full flex flex-col justify-between" style={{ minHeight: cardH }}>
                 {/* Top row: macro pills + check button */}
@@ -2730,7 +2827,7 @@ function TabHoy({
 type MealMacros = { protein: number; carbs: number; fat: number };
 
 function TabProgreso({
-  student, detail, startWeight, onBadge, prs, nutritionHistory, workoutHistory, checkedMeals, meals,
+  student, detail, startWeight, onBadge, prs, nutritionHistory, workoutHistory, checkedMeals, meals, onWeightLog, onPhotoUpload,
 }: {
   student: Student;
   detail: Detail;
@@ -2741,15 +2838,39 @@ function TabProgreso({
   workoutHistory: Record<number, string[]>;
   checkedMeals: Set<number>;
   meals: Array<{ name: string; macros?: MealMacros }>;
+  onWeightLog: (kg: number, date: string) => Promise<boolean>;
+  onPhotoUpload: (file: File, label: string) => Promise<{ url: string; label: string; createdAt: string } | null>;
 }) {
   const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
   const MONO = "'Courier New',monospace";
   const diff = +(student.currentWeight - startWeight).toFixed(1);
 
-  /* ── Historical check-in photo registry — live from DB, Unsplash fallback ── */
+  /* ── State ── */
+  const [dayTab,          setDayTab]          = useState(2);
+  const [isGalleryOpen,   setIsGalleryOpen]   = useState(false);
+  const [isComparisonOpen,setIsComparisonOpen]= useState(false);
+  const [beforeIdx,       setBeforeIdx]       = useState(0);
+  const [afterIdx,        setAfterIdx]        = useState(0);
+  const [barsReady,        setBarsReady]        = useState(false);
+  useEffect(() => { const t = setTimeout(() => setBarsReady(true), 120); return () => clearTimeout(t); }, []);
+
+  const [showWeightModal,  setShowWeightModal]  = useState(false);
+  const [weightInput,      setWeightInput]      = useState("");
+  const [weightSaveState,  setWeightSaveState]  = useState<"idle" | "saving" | "done" | "error">("idle");
+
+  // ── Photo upload state machine ──────────────────────────────────────────
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploadState, setPhotoUploadState] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  const [localPhotos, setLocalPhotos] = useState<{ url: string; label: string; createdAt: string }[]>(
+    (detail.photos ?? []).map(p => ({ url: p.url, label: p.label || "FRONTAL", createdAt: p.createdAt }))
+  );
+
+  /* ── Historical check-in photo registry — live from localPhotos (optimistic) ── */
   type PhotoEntry = { photo: string; mes: string; angle: string };
-  const VISUAL_LOG: PhotoEntry[] = (detail.photos ?? []).length > 0
-    ? (detail.photos ?? []).map(p => ({
+  // localPhotos is authoritative: initialised from detail.photos, updated optimistically on upload
+  const VISUAL_LOG: PhotoEntry[] = localPhotos.length > 0
+    ? localPhotos.map(p => ({
         photo: p.url,
         mes: new Date(p.createdAt).toLocaleDateString("es-MX", { month: "long", year: "numeric" }).toUpperCase(),
         angle: p.label || "FRONTAL",
@@ -2763,14 +2884,38 @@ function TabProgreso({
         { photo: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=700&fit=crop&auto=format&q=80", mes: "MES 3 · JUNIO",  angle: "POSTERIOR" },
       ];
 
-  /* ── State ── */
-  const [dayTab,          setDayTab]          = useState(2);
-  const [isGalleryOpen,   setIsGalleryOpen]   = useState(false);
-  const [isComparisonOpen,setIsComparisonOpen]= useState(false);
-  const [beforeIdx,       setBeforeIdx]       = useState(0);
-  const [afterIdx,        setAfterIdx]        = useState(Math.max(0, VISUAL_LOG.length - 1));
-  const [barsReady,       setBarsReady]       = useState(false);
-  useEffect(() => { const t = setTimeout(() => setBarsReady(true), 120); return () => clearTimeout(t); }, []);
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-uploaded if needed
+    e.target.value = "";
+    setPhotoUploadState("uploading");
+    setPhotoUploadError(null);
+    const result = await onPhotoUpload(file, "FRONTAL");
+    if (result) {
+      setLocalPhotos(prev => [...prev, result]);
+      setPhotoUploadState("done");
+      setTimeout(() => setPhotoUploadState("idle"), 2200);
+    } else {
+      setPhotoUploadState("error");
+      setPhotoUploadError("Error al transmitir. Verifica la conexión.");
+      setTimeout(() => { setPhotoUploadState("idle"); setPhotoUploadError(null); }, 3500);
+    }
+  };
+
+  const handleWeightSave = async () => {
+    const kg = Math.round(parseFloat(weightInput) * 10) / 10;
+    if (!Number.isFinite(kg) || kg < 20 || kg > 500) { setWeightSaveState("error"); return; }
+    const date = new Date().toISOString().split("T")[0];
+    setWeightSaveState("saving");
+    const ok = await onWeightLog(kg, date);
+    if (ok) {
+      setWeightSaveState("done");
+      setTimeout(() => { setShowWeightModal(false); setWeightSaveState("idle"); setWeightInput(""); }, 900);
+    } else {
+      setWeightSaveState("error");
+    }
+  };
 
   /* ── Weight chart SVG math (inverted: weight drop = ascending success curve) ── */
   const history = detail.weightHistory;
@@ -2805,6 +2950,10 @@ function TabProgreso({
   const months = [...new Set(VISUAL_LOG.map(v => v.mes))];
 
   /* ── Comparison slot helpers ── */
+  // Keep afterIdx pointing to the last photo whenever new photos are added
+  useEffect(() => {
+    setAfterIdx(Math.max(0, VISUAL_LOG.length - 1));
+  }, [VISUAL_LOG.length]);
   const cycleBefore = () => setBeforeIdx(i => (i + 1) % VISUAL_LOG.length);
   const cycleAfter  = () => setAfterIdx(i  => (i + 1) % VISUAL_LOG.length);
   const imgStyle: React.CSSProperties = { filter: "grayscale(0.45) brightness(0.82)" };
@@ -2902,6 +3051,16 @@ function TabProgreso({
           ))}
         </div>
       </div>
+
+      {/* ── LOG TELEMETRY TRIGGER ── */}
+      <button onClick={() => { setShowWeightModal(true); setWeightInput(""); setWeightSaveState("idle"); }}
+        className="w-full rounded-2xl py-4 flex items-center justify-center gap-2.5 mb-6 active:scale-[0.97] transition-transform"
+        style={{ background: "#1A1A1A", border: "1px solid rgba(206,255,0,0.18)", cursor: "pointer", boxShadow: "0 0 20px rgba(206,255,0,0.06)" }}>
+        <Scale size={14} strokeWidth={1.75} style={{ color: "#CEFF00" }} />
+        <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 14, letterSpacing: "0.12em", textTransform: "uppercase", color: "#CEFF00" }}>
+          LOG TELEMETRY // REGISTRAR PESO
+        </span>
+      </button>
 
       {/* ── 3. BIOMETRIC MEASUREMENTS ── */}
       <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "#808080" }}>
@@ -3022,7 +3181,7 @@ function TabProgreso({
         const intakePath = "M " + data.map((d, i) => `${toX(i).toFixed(1)},${toY(d.intake).toFixed(1)}`).join(" L ");
         const burnPath   = "M " + data.map((d, i) => `${toX(i).toFixed(1)},${toY(d.burn).toFixed(1)}`).join(" L ");
         const DAY_LABELS = ["L","M","X","J","V","S","D"];
-        const todayIdx = currentCycleDay() - 1;
+        const todayIdx = todayAsDayIndex() - 1; // 0-indexed Mon=0 … Sun=6
         return (
           <div className="w-full bg-[#1A1A1A] rounded-[24px] p-5 mb-6 border border-white/[0.02]">
             <p className="font-mono uppercase mb-1" style={{ fontSize: 9, letterSpacing: "0.22em", color: "#808080" }}>CICLO 7 DÍAS</p>
@@ -3102,13 +3261,50 @@ function TabProgreso({
         <p className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "#808080" }}>
           REGISTRO VISUAL
         </p>
-        <button
-          onClick={() => setIsGalleryOpen(true)}
-          className="active:opacity-70 transition-opacity"
-          style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 12, letterSpacing: "0.06em", color: "#CEFF00" }}>
-          Ver Todo
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Hidden file input — triggered by the upload button below */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handlePhotoFileChange}
+          />
+          {/* Upload CTA */}
+          <button
+            onClick={() => { if (photoUploadState === "idle") photoInputRef.current?.click(); }}
+            disabled={photoUploadState === "uploading"}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg active:scale-95 transition-all disabled:opacity-60"
+            style={{
+              background: photoUploadState === "done" ? "rgba(206,255,0,0.08)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${photoUploadState === "error" ? "rgba(248,113,113,0.4)" : photoUploadState === "done" ? "rgba(206,255,0,0.3)" : "rgba(255,255,255,0.1)"}`,
+              cursor: photoUploadState === "uploading" ? "wait" : "pointer",
+            }}>
+            {photoUploadState === "uploading"
+              ? <Loader2 size={10} className="animate-spin" style={{ color: "#CEFF00" }} />
+              : photoUploadState === "done"
+                ? <CheckCircle2 size={10} style={{ color: "#CEFF00" }} />
+                : <Camera size={10} style={{ color: "#808080" }} />}
+            <span style={{
+              fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase",
+              color: photoUploadState === "error" ? "#f87171" : photoUploadState === "done" ? "#CEFF00" : "#808080",
+            }}>
+              {photoUploadState === "uploading" ? "TRANSMITIENDO..." : photoUploadState === "done" ? "GUARDADA" : photoUploadState === "error" ? "ERROR" : "SUBIR FOTO"}
+            </span>
+          </button>
+          <button
+            onClick={() => setIsGalleryOpen(true)}
+            className="active:opacity-70 transition-opacity"
+            style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, fontSize: 12, letterSpacing: "0.06em", color: "#CEFF00" }}>
+            Ver Todo
+          </button>
+        </div>
       </div>
+      {photoUploadError && (
+        <p className="text-center mb-2" style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171" }}>
+          ⚠ {photoUploadError}
+        </p>
+      )}
       <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 mb-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
         {VISUAL_LOG.slice(0, 3).map((v, i) => (
@@ -3298,6 +3494,103 @@ function TabProgreso({
         </div>,
         document.body
       )}
+
+      {/* ── WEIGHT MICRO-MODAL ── */}
+      {showWeightModal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[70] flex items-end justify-center px-4 pb-8"
+          style={{ background: "rgba(7,7,8,0.88)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", animation: "mc-overlay-in 0.18s ease both" }}>
+          <div className="w-full max-w-sm rounded-[28px] overflow-hidden flex flex-col"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 -24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(206,255,0,0.06)", animation: "float-up 0.26s cubic-bezier(0.16,1,0.3,1) both" }}>
+
+            {/* ── Header ── */}
+            <div className="px-6 pt-6 pb-5 flex items-center justify-between"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 5 }}>
+                  TELEMETRÍA BIOMÉTRICA
+                </p>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.04em", color: "#CEFF00", lineHeight: 1 }}>
+                  LOG DE PESO
+                </p>
+              </div>
+              <button onClick={() => setShowWeightModal(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
+                <X size={14} style={{ color: "#808080" }} />
+              </button>
+            </div>
+
+            {/* ── Input ── */}
+            <div className="px-6 py-6">
+              <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.08em", color: "#808080", lineHeight: 1.65, marginBottom: 18 }}>
+                Registra tu peso matutino. Se actualiza en el historial y recalcula la curva de progreso inmediatamente.
+              </p>
+              <div className="flex items-center gap-3 px-5 py-4 rounded-2xl"
+                style={{
+                  background: "rgba(206,255,0,0.04)",
+                  border: `1.5px solid ${weightSaveState === "error" ? "#f87171" : weightSaveState === "done" ? "#CEFF00" : "rgba(206,255,0,0.22)"}`,
+                  transition: "border-color 0.2s ease",
+                }}>
+                <Scale size={16} strokeWidth={1.75} style={{ color: weightSaveState === "error" ? "#f87171" : "#CEFF00", flexShrink: 0 }} />
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  min="20"
+                  max="500"
+                  value={weightInput}
+                  onChange={e => { setWeightInput(e.target.value); setWeightSaveState("idle"); }}
+                  onKeyDown={e => { if (e.key === "Enter") handleWeightSave(); }}
+                  placeholder={String(student.currentWeight)}
+                  className="flex-1 bg-transparent border-none outline-none tabular-nums"
+                  style={{
+                    fontFamily: MONO, fontSize: 28, fontWeight: 900, letterSpacing: "-0.01em",
+                    color: weightSaveState === "error" ? "#f87171" : "#fff",
+                    caretColor: "#CEFF00",
+                    minWidth: 0,
+                  }}
+                  autoFocus
+                />
+                <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.35)", flexShrink: 0 }}>KG</span>
+              </div>
+              {weightSaveState === "error" && (
+                <p className="mt-2 text-center" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#f87171" }}>
+                  ✕ VALOR INVÁLIDO — INGRESA UN PESO ENTRE 20 Y 500 KG
+                </p>
+              )}
+              {weightSaveState === "done" && (
+                <p className="mt-2 text-center" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
+                  ⚡ TELEMETRÍA SINCRONIZADA
+                </p>
+              )}
+            </div>
+
+            {/* ── CTAs ── */}
+            <div className="px-6 pb-6 flex gap-3">
+              <button onClick={() => setShowWeightModal(false)}
+                className="flex-1 py-3.5 rounded-xl active:scale-[0.95] transition-transform"
+                style={{ cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080" }}>
+                CANCELAR
+              </button>
+              <button
+                onClick={handleWeightSave}
+                disabled={weightSaveState === "saving" || weightSaveState === "done"}
+                className="flex-2 flex-1 py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.95] transition-transform disabled:opacity-60"
+                style={{
+                  cursor: weightSaveState === "saving" ? "wait" : "pointer",
+                  background: weightSaveState === "done" ? "rgba(206,255,0,0.12)" : "#CEFF00",
+                  border: weightSaveState === "done" ? "1.5px solid #CEFF00" : "none",
+                  fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 14, letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: weightSaveState === "done" ? "#CEFF00" : "#000",
+                  boxShadow: weightSaveState === "done" ? "0 0 18px rgba(206,255,0,0.25)" : "0 0 24px rgba(206,255,0,0.28)",
+                }}>
+                {weightSaveState === "saving" ? "GUARDANDO..." : weightSaveState === "done" ? "⚡ LISTO" : "CONFIRMAR"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -3309,38 +3602,6 @@ function TabProgreso({
 /* ══════════════════════════════════════════════════════════════
    TAB: WORKOUT — 3-screen state machine (lobby | focus | library)
 ══════════════════════════════════════════════════════════════ */
-
-const EXERCISE_LIBRARY = [
-  { name: "Barbell Squat",     muscle: "Piernas", sets: 4, reps: "8-10", strength: 14, mobility: 6  },
-  { name: "Bench Press",       muscle: "Pecho",   sets: 4, reps: "8",    strength: 16, mobility: 4  },
-  { name: "Romanian Deadlift", muscle: "Espalda", sets: 3, reps: "10",   strength: 15, mobility: 8  },
-  { name: "Pull-Up",           muscle: "Dorsal",  sets: 4, reps: "Al fallo", strength: 12, mobility: 7 },
-  { name: "Shoulder Press",    muscle: "Hombros", sets: 3, reps: "10",   strength: 11, mobility: 6  },
-  { name: "Hip Thrust",        muscle: "Glúteos", sets: 4, reps: "12",   strength: 13, mobility: 5  },
-  { name: "Cable Row",         muscle: "Espalda", sets: 3, reps: "12",   strength: 10, mobility: 6  },
-  { name: "Incline Dumbbell",  muscle: "Pecho",   sets: 3, reps: "10",   strength: 9,  mobility: 5  },
-  { name: "Leg Press 45°",     muscle: "Piernas", sets: 4, reps: "12",   strength: 13, mobility: 4  },
-  { name: "Face Pull",         muscle: "Hombros", sets: 3, reps: "15",   strength: 7,  mobility: 10 },
-];
-
-const MG_GRADIENT: Record<string, string> = {
-  piernas: "radial-gradient(ellipse 90% 60% at 65% 20%, rgba(99,102,241,0.5) 0%, transparent 55%), #03030c",
-  pecho:   "radial-gradient(ellipse 90% 60% at 60% 20%, rgba(239,68,68,0.4)  0%, transparent 55%), #0c0303",
-  espalda: "radial-gradient(ellipse 90% 60% at 55% 20%, rgba(20,184,166,0.45) 0%, transparent 55%), #01100c",
-  dorsal:  "radial-gradient(ellipse 90% 60% at 55% 20%, rgba(6,182,212,0.4)  0%, transparent 55%), #01090c",
-  hombros: "radial-gradient(ellipse 90% 60% at 65% 20%, rgba(251,191,36,0.4) 0%, transparent 55%), #0d0900",
-  glúteos: "radial-gradient(ellipse 90% 60% at 65% 20%, rgba(236,72,153,0.4) 0%, transparent 55%), #0a0005",
-  default: "radial-gradient(ellipse 90% 60% at 65% 20%, rgba(206,255,0,0.2) 0%, transparent 55%), #070808",
-};
-
-function getMgGrad(muscle?: string): string {
-  if (!muscle) return MG_GRADIENT.default;
-  const k = muscle.toLowerCase();
-  for (const [key, val] of Object.entries(MG_GRADIENT)) {
-    if (k.includes(key)) return val;
-  }
-  return MG_GRADIENT.default;
-}
 
 const GYM_IMGS = [
   "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=700&q=30&auto=format",
@@ -3414,7 +3675,10 @@ function PremiumGate() {
   );
 }
 
-function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier, prs, onNewPR, activeDayIndex, onLogExercise }: {
+function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier, prs, onNewPR, activeDayIndex, onLogExercise,
+  wView, setWView, activeExIdx, setActiveExIdx, doneSets, setDoneSets, doneEx, setDoneEx,
+  workoutComplete, setWorkoutComplete, wDuration, setWDuration,
+}: {
   day: RoutineDay | undefined;
   student: Student;
   waterMl: number;
@@ -3425,20 +3689,25 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   onNewPR: (lift: "squat" | "deadlift" | "bench", kg: number) => void;
   activeDayIndex: number;
   onLogExercise: (dayIdx: number, exerciseName: string) => void;
+  wView: "lobby" | "focus";
+  setWView: React.Dispatch<React.SetStateAction<"lobby" | "focus">>;
+  activeExIdx: number;
+  setActiveExIdx: React.Dispatch<React.SetStateAction<number>>;
+  doneSets: Record<number, number>;
+  setDoneSets: React.Dispatch<React.SetStateAction<Record<number, number>>>;
+  doneEx: Set<number>;
+  setDoneEx: React.Dispatch<React.SetStateAction<Set<number>>>;
+  workoutComplete: boolean;
+  setWorkoutComplete: React.Dispatch<React.SetStateAction<boolean>>;
+  wDuration: number;
+  setWDuration: React.Dispatch<React.SetStateAction<number>>;
 }) {
-  type WView = "lobby" | "focus" | "library";
-  const [wView,        setWView]        = useState<WView>("lobby");
-  const [animating,    setAnimating]    = useState(false);
-  const [activeExIdx,  setActiveExIdx]  = useState(0);
-  const [doneSets,     setDoneSets]     = useState<Record<number, number>>({});
-  const [doneEx,       setDoneEx]       = useState<Set<number>>(new Set());
-  const [focusWeight,  setFocusWeight]  = useState<number>(0);
-  const [focusReps,    setFocusReps]    = useState<number>(10);
-  const [restOn,       setRestOn]       = useState(false);
-  const [restSecs,     setRestSecs]     = useState(90);
-  const [restDone,     setRestDone]     = useState(false);
-  const [query,        setQuery]        = useState("");
-  const [wDuration,    setWDuration]    = useState(0);
+  const [animating,   setAnimating]   = useState(false);
+  const [focusWeight, setFocusWeight] = useState<number>(0);
+  const [focusReps,   setFocusReps]   = useState<number>(10);
+  const [restOn,      setRestOn]      = useState(false);
+  const [restSecs,    setRestSecs]    = useState(90);
+  const [restDone,    setRestDone]    = useState(false);
   const restRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
@@ -3466,7 +3735,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
     };
   }, []);
 
-  const switchView = (next: WView) => {
+  const switchView = (next: "lobby" | "focus") => {
     if (next === wView) return;
     setAnimating(true);
     setTimeout(() => { setWView(next); setAnimating(false); }, 160);
@@ -3491,8 +3760,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
 
   const startNextSet = () => { setRestOn(false); setRestDone(false); setRestSecs(90); };
 
-  const [workoutToast,    setWorkoutToast]    = useState(false);
-  const [workoutComplete, setWorkoutComplete] = useState(false);
+  const [workoutToast,  setWorkoutToast]  = useState(false);
   const workoutToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detect if exercise name maps to a trackable PR lift
@@ -3632,22 +3900,31 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
             </div>
           );
 
+          // MODULE 3: progress-capsule card for pending exercises
+          const doneSetsForEx = doneSets[i] ?? 0;
+          const fillPct       = Math.round((doneSetsForEx / Math.max(ex.sets, 1)) * 100);
           return (
-            <div key={i} className="rounded-3xl overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all"
-              style={{ background: "#000", minHeight: 72, border: "1px solid rgba(255,255,255,0.06)" }}
+            <div key={i}
+              className="relative overflow-hidden bg-zinc-950 border border-zinc-800 p-4 rounded-md cursor-pointer active:scale-[0.98] transition-all"
               onClick={() => { setActiveExIdx(i); switchView("focus"); }}>
-              <img src={imgSrc} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: 0.28 }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-              <div className="relative z-10 flex items-center justify-between gap-4 px-5 py-4">
+              {/* Progress fill layer */}
+              <div
+                className="absolute left-0 top-0 bottom-0 bg-lime-500/10 border-r border-lime-400/20 transition-all duration-500 ease-out z-0"
+                style={{ width: `${fillPct}%` }}
+              />
+              {/* Content */}
+              <div className="relative z-10 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: "#fff" }}>PENDIENTE</p>
+                  <p className="text-[8px] font-mono font-black uppercase tracking-widest mb-0.5 text-zinc-500">PENDIENTE</p>
                   <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(18px,5.5vw,22px)", textTransform: "uppercase", letterSpacing: "-0.02em", color: "#fff" }}>
                     {ex.name}
                   </h3>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] tabular-nums" style={{ color: "#fff" }}>{ex.sets} Series</p>
-                  <p className="text-[10px]" style={{ color: "#CEFF00" }}>{ex.reps}</p>
+                  <p className="text-[11px] font-mono font-black tabular-nums text-white">
+                    {doneSetsForEx}<span className="text-zinc-500">/{ex.sets}</span>
+                  </p>
+                  <p className="text-[10px] font-mono" style={{ color: "#CEFF00" }}>{ex.reps}</p>
                 </div>
               </div>
             </div>
@@ -3709,15 +3986,6 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
           style={{ fontFamily: DS, fontStyle: "italic", letterSpacing: "0.1em", fontSize: "13px", background: "rgba(0,240,255,0.08)", border: "1px solid rgba(0,240,255,0.25)", color: "#00F0FF" }}>
           <Droplet size={13} strokeWidth={2.5} /> + 250ML
           {waterMl >= waterTarget && <span className="ml-2 text-[10px] font-normal normal-case tracking-normal" style={{ fontStyle: "normal" }}>✓ Meta alcanzada</span>}
-        </button>
-      </div>
-
-      {/* ── LIBRARY CTA ── */}
-      <div className="mx-4 mt-3">
-        <button onClick={() => switchView("library")}
-          className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
-          style={{ fontFamily: DS, fontStyle: "italic", letterSpacing: "0.1em", fontSize: "13px", fontWeight: 900, textTransform: "uppercase", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#fff" }}>
-          <Search size={13} strokeWidth={2} /> BIBLIOTECA DE EJERCICIOS
         </button>
       </div>
 
@@ -3968,83 +4236,6 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
     </div>
   );
 
-  /* ─── LIBRARY ─── */
-  const filtered = EXERCISE_LIBRARY.filter(e =>
-    e.name.toLowerCase().includes(query.toLowerCase()) ||
-    e.muscle.toLowerCase().includes(query.toLowerCase())
-  );
-
-  const LibraryView = (
-    <div className="pb-4">
-      <div className="flex items-center gap-3 px-5 pt-4 pb-4">
-        <button onClick={() => switchView("lobby")}
-          className="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <ChevronLeft size={15} style={{ color: "#fff" }} />
-        </button>
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.22em] mb-0.5" style={{ color: "#fff" }}>CATÁLOGO TÁCTICO</p>
-          <h2 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(20px,6vw,26px)", lineHeight: 0.95, textTransform: "uppercase", letterSpacing: "-0.02em", color: "#fff" }}>
-            BIBLIOTECA
-          </h2>
-        </div>
-      </div>
-      <div className="px-4 mb-4">
-        <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
-          style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <Search size={14} strokeWidth={1.75} style={{ color: "#fff" }} />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="BUSCAR EJERCICIO..."
-            className="flex-1 bg-transparent border-none outline-none"
-            style={{ fontSize: "13px", fontFamily: DS, fontStyle: "italic", fontWeight: 700, letterSpacing: "0.04em", color: "#fff" }} />
-          {query && (
-            <button onClick={() => setQuery("")} className="cursor-pointer">
-              <X size={13} style={{ color: "#fff" }} />
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="px-4 space-y-3">
-        {filtered.map((ex, idx) => {
-          const mg = getMgGrad(ex.muscle);
-          return (
-            <div key={idx} className="rounded-3xl overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all"
-              style={{ background: mg, border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 16px 40px -12px rgba(0,0,0,0.8)", minHeight: 72 }}>
-              <img src={GYM_IMGS[idx % GYM_IMGS.length]} alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ opacity: 0.28, filter: "saturate(0.5)" }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-              <div className="relative z-10 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: "#fff" }}>{ex.muscle.toUpperCase()}</p>
-                  <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(18px,5.5vw,22px)", textTransform: "uppercase", letterSpacing: "-0.02em", color: "#fff" }}>
-                    {ex.name}
-                  </h3>
-                  <p className="text-[10px] mt-1 tabular-nums" style={{ color: "#CEFF00" }}>{ex.sets} series · {ex.reps}</p>
-                </div>
-                <div className="flex flex-col gap-1.5 shrink-0">
-                  <div className="px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(206,255,0,0.1)", border: "1px solid rgba(206,255,0,0.25)" }}>
-                    <span className="text-[8px] font-black uppercase" style={{ color: "#CEFF00" }}>STRENGTH {ex.strength.toString().padStart(2,"0")}</span>
-                  </div>
-                  <div className="px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(0,240,255,0.08)", border: "1px solid rgba(0,240,255,0.2)" }}>
-                    <span className="text-[8px] font-black uppercase" style={{ color: "#00F0FF" }}>MOBILITY {ex.mobility.toString().padStart(2,"0")}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-10">
-            <Search size={28} strokeWidth={1} style={{ color: "rgba(255,255,255,0.1)" }} />
-            <p className="text-[12px]" style={{ color: "#fff" }}>Sin resultados para &ldquo;{query}&rdquo;</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div style={{ opacity: animating ? 0 : 1, transform: animating ? "translateY(8px)" : "translateY(0)", transition: "opacity 0.16s ease, transform 0.16s ease" }}>
       <>
@@ -4062,9 +4253,8 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
             </button>
           </div>
         )}
-        {wView === "lobby"   && LobbyView}
-        {wView === "focus"   && FocusView}
-        {wView === "library" && LibraryView}
+        {wView === "lobby" && LobbyView}
+        {wView === "focus" && FocusView}
       </>
       {workoutToast && <WorkoutToast />}
       {workoutComplete && (
@@ -4888,6 +5078,8 @@ function TabComunidad({
   setFilterStreakMin,
   isCoach,
   coachId,
+  onJoin,
+  onLeave,
 }: {
   student: { name: string; streak: number; stage: string; avatarColor?: string };
   broadcastMessages: string[];
@@ -4914,6 +5106,13 @@ function TabComunidad({
   setFilterStreakMin: React.Dispatch<React.SetStateAction<number>>;
   isCoach: boolean;
   coachId: string | null;
+  onJoin: (payload: { code?: string; roomId?: string }) => Promise<{
+    ok: boolean;
+    coachId?: string | null;
+    notices?: { id: string; senderName: string; role: string; content: string; createdAt: string }[];
+    error?: string;
+  }>;
+  onLeave: () => Promise<void>;
 }) {
   const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
   const MONO = "'Courier New',monospace";
@@ -4933,11 +5132,50 @@ function TabComunidad({
   }, [currentRoomView, coachId]);
 
   // ══ STATE MACHINE ════════════════════════════════════════════════════════
-  const [hasTeam,          setHasTeam]          = useState(false);
-  const [showCodeModal,    setShowCodeModal]    = useState(false);
-  const [codeInput,        setCodeInput]        = useState("");
-  const [codeError,        setCodeError]        = useState(false);
-  const [codeSuccess,      setCodeSuccess]      = useState(false);
+  // Initialize hasTeam from coachId prop — returning users skip the gate
+  const [hasTeam,    setHasTeam]    = useState(() => coachId !== null);
+  const [codeInput,  setCodeInput]  = useState("");
+  const [codeError,  setCodeError]  = useState(false);
+  const [codeSuccess,setCodeSuccess]= useState(false);
+  const [isJoining,  setIsJoining]  = useState(false);
+  const [joinError,  setJoinError]  = useState<string | null>(null);
+
+  // ── Dynamic public rooms from DB ──────────────────────────────────────
+  type PublicRoom = { id: string; name: string; memberCount: number };
+  type CurrentRoom = { id: string; name: string } | null;
+  const [publicRooms,    setPublicRooms]    = useState<PublicRoom[]>([]);
+  const [currentRoom,    setCurrentRoom]    = useState<CurrentRoom>(null);
+  const [roomsLoading,   setRoomsLoading]   = useState(false);
+  // null = no error; "AUTH" = session not ready (403); "NET" = network/server failure
+  const [roomsFetchErr,  setRoomsFetchErr]  = useState<"AUTH" | "NET" | null>(null);
+
+  useEffect(() => {
+    if (hasTeam) return; // gate not shown — no need to fetch
+    setRoomsLoading(true);
+    setRoomsFetchErr(null);
+    fetch("/api/community/public-rooms")
+      .then(async r => {
+        if (r.status === 403 || r.status === 401) {
+          setRoomsFetchErr("AUTH");
+          return null;
+        }
+        if (!r.ok) {
+          setRoomsFetchErr("NET");
+          return null;
+        }
+        return r.json() as Promise<{ rooms: PublicRoom[]; currentRoom: CurrentRoom }>;
+      })
+      .then(d => {
+        if (!d) return;
+        setPublicRooms(Array.isArray(d.rooms) ? d.rooms : []);
+        setCurrentRoom(d.currentRoom ?? null);
+        // If student already has a linked room, skip the gate
+        if (d.currentRoom) setHasTeam(true);
+      })
+      .catch(() => setRoomsFetchErr("NET"))
+      .finally(() => setRoomsLoading(false));
+  }, [hasTeam]);
+
   // keep below so hook order never changes regardless of hasTeam value:
 
   // ── Feed / activity state ─────────────────────────────────────────────
@@ -5043,10 +5281,10 @@ function TabComunidad({
 
   // Scroll lock: freeze body scroll when any modal is open
   useEffect(() => {
-    const anyOpen = showModalityPicker || showCodeModal || showPostModal || showClaimModal;
+    const anyOpen = showModalityPicker || showPostModal || showClaimModal;
     document.body.style.overflow = anyOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [showModalityPicker, showCodeModal, showPostModal, showClaimModal]);
+  }, [showModalityPicker, showPostModal, showClaimModal]);
 
   // Scores-tick: bind live user data to matching stakes
   const totalWorkoutExercises = Object.values(workoutHistory).reduce((sum, arr) => sum + arr.length, 0);
@@ -5082,125 +5320,195 @@ function TabComunidad({
   ];
 
   // ══ GATE VIEW (early return — all hooks are above) ════════════════════════
+  // ── Async join handler — used by both public rooms and private code engine
+  const executeJoin = async (payload: { code?: string; roomId?: string }) => {
+    setIsJoining(true);
+    setJoinError(null);
+    setCodeError(false);
+    setCodeSuccess(false);
+    const result = await onJoin(payload);
+    setIsJoining(false);
+    if (result.ok) {
+      if (Array.isArray(result.notices) && result.notices.length > 0) {
+        setServerNotices(result.notices.filter(n => n.role === "COACH"));
+      }
+      setCodeSuccess(true);
+      setCodeInput(""); // clear input on success
+      setTimeout(() => setHasTeam(true), 800);
+    } else {
+      setJoinError(result.error ?? "ERROR_DESCONOCIDO");
+      setCodeError(true);
+    }
+  };
+
+  // ── Leave room: call API → flush state → show gate ──────────────────────
+  const [isLeaving, setIsLeaving] = useState(false);
+  const handleLeave = async () => {
+    setIsLeaving(true);
+    try { await onLeave(); } catch (err) { console.error("[TabComunidad] leave failed:", err); }
+    setIsLeaving(false);
+    setHasTeam(false);
+  };
+
   if (!hasTeam) {
     return (
-      <>
-      <div className="w-full min-h-screen bg-[#070708] text-white flex flex-col items-center justify-center px-6 py-16">
-        {/* Shield emblem */}
-        <div style={{ width: 100, height: 100, borderRadius: 20, background: "rgba(206,255,0,0.04)", border: "1.5px solid rgba(206,255,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 28, boxShadow: "0 0 32px rgba(206,255,0,0.12), inset 0 0 20px rgba(206,255,0,0.03)" }}>
-          <Shield size={46} strokeWidth={1.2} style={{ color: "#CEFF00" }} />
-        </div>
+      <div className="w-full min-h-screen bg-[#070708] text-white px-4 pt-7 pb-12">
 
-        <h1 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(28px,8vw,38px)", textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", textAlign: "center", lineHeight: 0.9, marginBottom: 16 }}>
-          SIN SINDICATO<br />ACTIVO
+        {/* Header */}
+        <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.22em", color: "#808080", textTransform: "uppercase", marginBottom: 6 }}>
+          COMUNIDAD · ACCESO TÁCTICO
+        </p>
+        <h1 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(26px,8vw,34px)", textTransform: "uppercase", letterSpacing: "0.02em", color: "#fff", lineHeight: 0.92, marginBottom: 16 }}>
+          RADAR DE SALAS
         </h1>
-        <p style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.04em", color: "#808080", textAlign: "center", lineHeight: 1.75, marginBottom: 40, maxWidth: 320 }}>
-          No perteneces a ninguna sala de entrenamiento. Únete a una comunidad de élite para sincronizar tu progreso o introduce un código táctico.
+
+        {/* API error banner */}
+        {joinError && (
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl mb-5"
+            style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.3)", boxShadow: "0 0 18px rgba(248,113,113,0.08)" }}>
+            <AlertTriangle size={13} style={{ color: "#f87171", flexShrink: 0 }} />
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171", lineHeight: 1.6 }}>
+              ⚠️ [ ERROR // TOKEN INVÁLIDO - VERIFIQUE CON SU ENTRENADOR ]
+            </p>
+          </div>
+        )}
+
+        {/* ── PUBLIC ROOMS — dynamic from DB ────────────────────────────── */}
+        <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.18em", color: "#808080", textTransform: "uppercase", marginBottom: 10 }}>
+          SALAS PÚBLICAS
         </p>
 
-        <div className="w-full flex flex-col gap-3" style={{ maxWidth: 340 }}>
-          <button onClick={() => setHasTeam(true)}
-            className="bg-[#CEFF00] text-black font-black uppercase py-4 rounded-xl w-full active:scale-95 transition-transform"
-            style={{ fontFamily: DS, fontStyle: "italic", fontSize: 17, letterSpacing: "0.1em", cursor: "pointer", border: "none", boxShadow: "0 0 28px rgba(206,255,0,0.3), 0 4px 16px rgba(0,0,0,0.5)" }}>
-            [ UNIRSE A UNA SALA ⚡ ]
-          </button>
-          <button onClick={() => { setShowCodeModal(true); setCodeInput(""); setCodeError(false); setCodeSuccess(false); }}
-            className="w-full py-4 rounded-xl active:opacity-70 transition-opacity"
-            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 14, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
-            INGRESAR CÓDIGO PRIVADO
+        {roomsLoading ? (
+          <div className="flex items-center justify-center gap-2 py-10 mb-8 rounded-2xl"
+            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <Loader2 size={14} className="animate-spin" style={{ color: "#CEFF00" }} />
+            <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.18em", color: "#808080", textTransform: "uppercase" }}>
+              ESCANEANDO RED...
+            </span>
+          </div>
+        ) : roomsFetchErr === "AUTH" ? (
+          <div className="flex items-center gap-3 px-4 py-5 rounded-2xl mb-8"
+            style={{ background: "rgba(248,113,113,0.04)", border: "1px solid rgba(248,113,113,0.22)" }}>
+            <AlertTriangle size={13} strokeWidth={1.5} style={{ color: "#f87171", flexShrink: 0 }} />
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171", lineHeight: 1.6 }}>
+              [ AUTH ERROR // SESIÓN NO VERIFICADA — RECARGA LA PÁGINA ]
+            </p>
+          </div>
+        ) : roomsFetchErr === "NET" ? (
+          <div className="flex items-center gap-3 px-4 py-5 rounded-2xl mb-8"
+            style={{ background: "rgba(248,113,113,0.04)", border: "1px solid rgba(248,113,113,0.22)" }}>
+            <AlertTriangle size={13} strokeWidth={1.5} style={{ color: "#f87171", flexShrink: 0 }} />
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171", lineHeight: 1.6 }}>
+              [ SERVER ERROR // ERROR AL CARGAR SALAS — INTÉNTALO DE NUEVO ]
+            </p>
+          </div>
+        ) : publicRooms.length === 0 ? (
+          <div className="flex items-center gap-3 px-4 py-5 rounded-2xl mb-8"
+            style={{ background: "rgba(206,255,0,0.03)", border: "1px solid rgba(206,255,0,0.12)" }}>
+            <Activity size={13} strokeWidth={1.5} style={{ color: "#808080", flexShrink: 0 }} />
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", lineHeight: 1.6 }}>
+              [ SISTEMA // TODAVÍA NO HAY SALAS PÚBLICAS DISPONIBLES ]
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 mb-8">
+            {publicRooms.map(room => (
+              <div key={room.id}
+                className="flex items-center justify-between gap-4 p-4 rounded-sm border border-zinc-800 bg-zinc-950">
+                <div className="min-w-0">
+                  <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 16, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1.1, marginBottom: 3 }}>
+                    {room.name}
+                  </p>
+                  <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.08em", color: "#808080" }}>
+                    {room.memberCount.toLocaleString()} ACTIVOS
+                  </p>
+                </div>
+                <button
+                  onClick={() => { if (!isJoining) executeJoin({ roomId: room.id }); }}
+                  disabled={isJoining}
+                  className="shrink-0 px-3 py-2 rounded-sm text-[10px] font-mono font-black tracking-widest transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                  style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.35)", color: "#CEFF00" }}>
+                  ⚡ DESTRABAR ACCESO PÚBLICO
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1" style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+          <span style={{ fontFamily: MONO, fontSize: 9, color: "#808080", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+            CÓDIGO PRIVADO
+          </span>
+          <div className="flex-1" style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+        </div>
+
+        {/* ── PRIVATE CODE ENGINE — async DB verification ──────────────── */}
+        <div className="flex flex-col gap-3">
+          <input
+            type="text"
+            value={codeInput}
+            onChange={e => {
+              // Auto-uppercase, strip leading/trailing whitespace
+              setCodeInput(e.target.value.toUpperCase().replace(/^\s+/, ""));
+              setCodeError(false);
+              setJoinError(null);
+              setCodeSuccess(false);
+            }}
+            onKeyDown={e => {
+              if (e.key !== "Enter" || isJoining) return;
+              const clean = codeInput.trim().toUpperCase();
+              if (!clean) { setCodeError(true); return; }
+              executeJoin({ code: clean });
+            }}
+            placeholder="CÓDIGO TÁCTICO"
+            maxLength={24}
+            disabled={isJoining || codeSuccess}
+            className="w-full rounded-xl px-4 py-4 text-center outline-none transition-all disabled:opacity-60"
+            style={{
+              fontFamily: MONO, fontSize: 16, fontWeight: 900, letterSpacing: "0.28em", textTransform: "uppercase",
+              background: "rgba(255,255,255,0.04)",
+              border: `1.5px solid ${codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "rgba(255,255,255,0.1)"}`,
+              color: codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "#fff",
+              caretColor: "#CEFF00",
+            }}
+          />
+          {codeError && !joinError && (
+            <p className="text-center" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#f87171" }}>
+              ✕ INGRESA UN CÓDIGO VÁLIDO
+            </p>
+          )}
+          {codeSuccess && (
+            <p className="text-center" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
+              ⚡ VERIFICADO · ACCESO CONCEDIDO
+            </p>
+          )}
+          <button
+            onClick={() => {
+              if (isJoining || codeSuccess) return;
+              const clean = codeInput.trim().toUpperCase();
+              if (!clean) { setCodeError(true); return; }
+              executeJoin({ code: clean });
+            }}
+            disabled={isJoining || codeSuccess}
+            className="w-full py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60"
+            style={{
+              cursor: isJoining ? "wait" : "pointer",
+              background: codeSuccess ? "rgba(206,255,0,0.1)" : "#CEFF00",
+              border: codeSuccess ? "1.5px solid #CEFF00" : "none",
+              fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 16, letterSpacing: "0.1em", textTransform: "uppercase",
+              color: codeSuccess ? "#CEFF00" : "#000",
+              boxShadow: codeSuccess ? "0 0 20px rgba(206,255,0,0.25)" : "0 0 28px rgba(206,255,0,0.3)",
+            }}>
+            {isJoining
+              ? <><Loader2 size={14} className="animate-spin" />VERIFICANDO...</>
+              : codeSuccess
+                ? "⚡ ACCESO CONCEDIDO"
+                : "🔑 INYECTAR CÓDIGO PRIVADO"}
           </button>
         </div>
       </div>
-
-      {/* ── Private Code Modal ── */}
-      {showCodeModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-6"
-          style={{ background: "rgba(7,7,8,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", animation: "mc-overlay-in 0.2s ease both" }}>
-          <div className="w-full max-w-sm rounded-[28px] flex flex-col overflow-hidden"
-            style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)", animation: "float-up 0.28s cubic-bezier(0.16,1,0.3,1) both" }}>
-            {/* Header */}
-            <div className="px-6 pt-6 pb-5 flex items-start justify-between"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div>
-                <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 6 }}>🔐 ACCESO TÁCTICO</p>
-                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 22, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1 }}>
-                  CÓDIGO PRIVADO
-                </p>
-              </div>
-              <button onClick={() => setShowCodeModal(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition-transform mt-1"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer" }}>
-                <X size={13} style={{ color: "#808080" }} />
-              </button>
-            </div>
-            {/* Body */}
-            <div className="px-6 py-5">
-              <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.06em", color: "#808080", lineHeight: 1.65, marginBottom: 20 }}>
-                Ingresa la clave alfanumérica de acceso corporativo que tu coach te entregó para unirte a la sala.
-              </p>
-              <input
-                type="text"
-                value={codeInput}
-                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(false); }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    if (codeInput.trim() === "FELLS2026") {
-                      setCodeSuccess(true);
-                      setTimeout(() => { setShowCodeModal(false); setHasTeam(true); }, 1200);
-                    } else {
-                      setCodeError(true);
-                    }
-                  }
-                }}
-                placeholder="XXXXXX0000"
-                maxLength={12}
-                className="w-full rounded-xl px-4 py-3.5 text-center outline-none transition-all"
-                style={{
-                  fontFamily: MONO, fontSize: 18, fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase",
-                  background: "rgba(255,255,255,0.04)",
-                  border: `1.5px solid ${codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "rgba(255,255,255,0.1)"}`,
-                  color: codeSuccess ? "#CEFF00" : codeError ? "#f87171" : "#fff",
-                  caretColor: "#CEFF00",
-                }}
-              />
-              {codeError && (
-                <p className="text-center mt-2" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#f87171" }}>
-                  ✕ CÓDIGO INVÁLIDO · ACCESO DENEGADO
-                </p>
-              )}
-              {codeSuccess && (
-                <p className="text-center mt-2" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00" }}>
-                  ⚡ VERIFICADO · ACCESO CONCEDIDO
-                </p>
-              )}
-            </div>
-            {/* CTA */}
-            <div className="px-6 pb-6">
-              <button
-                onClick={() => {
-                  if (codeInput.trim() === "FELLS2026") {
-                    setCodeSuccess(true);
-                    setTimeout(() => { setShowCodeModal(false); setHasTeam(true); }, 1200);
-                  } else {
-                    setCodeError(true);
-                  }
-                }}
-                className="w-full py-3.5 rounded-xl flex items-center justify-center active:scale-95 transition-all"
-                style={{
-                  background: codeSuccess ? "rgba(206,255,0,0.12)" : "#CEFF00",
-                  border: codeSuccess ? "1.5px solid #CEFF00" : "none",
-                  cursor: "pointer",
-                  fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 17, letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: codeSuccess ? "#CEFF00" : "#000",
-                  boxShadow: codeSuccess ? "none" : "0 0 24px rgba(206,255,0,0.3)",
-                }}>
-                {codeSuccess ? "⚡ ACCESO CONCEDIDO" : "VERIFICAR CÓDIGO"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      </>
     );
   }
 
@@ -5222,9 +5530,9 @@ function TabComunidad({
             </svg>
             <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 13, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>FELLS TEAM PRO</span>
           </div>
-          <button onClick={() => setHasTeam(false)}
-            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}>
-            SALIR ✕
+          <button onClick={handleLeave} disabled={isLeaving}
+            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "2px 0", opacity: isLeaving ? 0.5 : 1 }}>
+            {isLeaving ? "..." : "SALIR ✕"}
           </button>
         </div>
         {/* Horizontal pill scroll track */}
@@ -5295,11 +5603,11 @@ function TabComunidad({
         {/* Exit at bottom */}
         <div className="flex flex-col mt-auto p-4 pt-6">
           <div className="w-full h-px mb-4" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <button onClick={() => setHasTeam(false)}
-            className="flex items-center gap-2 active:opacity-60"
-            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+          <button onClick={handleLeave} disabled={isLeaving}
+            className="flex items-center gap-2"
+            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "4px 0", opacity: isLeaving ? 0.5 : 1 }}>
             <LogOut size={12} style={{ color: "#808080" }} />
-            SALIR DEL EQUIPO
+            {isLeaving ? "DESVINCULANDO..." : "SALIR DEL EQUIPO"}
           </button>
         </div>
       </div>
@@ -6606,59 +6914,13 @@ function BottomNav({ active, onChange, onSignOut }: {
    GLOBAL HEADER
 ══════════════════════════════════════════════════════════════ */
 
-function GlobalHeader({
-  student,
-  broadcastMessages,
-  onOpenBriefing,
-}: {
-  student: Student;
-  broadcastMessages: string[];
-  onOpenBriefing: () => void;
-}) {
-  const DS   = "var(--font-display,'Barlow Condensed',sans-serif)";
-  const MONO = "'Courier New',monospace";
-
-  const [tickerIdx, setTickerIdx] = useState(0);
-
-  useEffect(() => {
-    if (broadcastMessages.length <= 1) return;
-    const id = setInterval(() => {
-      setTickerIdx(i => (i + 1) % broadcastMessages.length);
-    }, 4200);
-    return () => clearInterval(id);
-  }, [broadcastMessages.length]);
-
-  const currentMsg = broadcastMessages[tickerIdx] ?? "";
-
-  // Parse message and wrap signal-word tokens in volt capsule badges
-  const SIGNAL_WORDS = [
-    "CERO MARGEN DE ERROR", "DISCIPLINA ABSOLUTA", "FELLS INTEL",
-    "STREAK GRUPAL", "PROTOCOLO EN EJECUCIÓN", "PLAN ACTIVO",
-    "DISCIPLINA", "PROTOCOLO", "ALINEACIÓN", "RECOMPOSICIÓN",
-  ];
-  const renderHudMsg = (msg: string): React.ReactNode => {
-    const escaped = SIGNAL_WORDS.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const parts = msg.split(new RegExp(`(${escaped.join("|")})`, "gi"));
-    return parts.map((part, i) => {
-      if (SIGNAL_WORDS.some(w => w.toUpperCase() === part.toUpperCase())) {
-        return (
-          <span key={i}
-            className="bg-[#CEFF00] text-black px-1.5 py-0.5 rounded-sm font-black mx-0.5"
-            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.08em", lineHeight: 1, display: "inline-block", verticalAlign: "middle" }}>
-            {part.toUpperCase()}
-          </span>
-        );
-      }
-      return part;
-    });
-  };
+function GlobalHeader({ student }: { student: Student }) {
+  const DS = "var(--font-display,'Barlow Condensed',sans-serif)";
 
   return (
-    <div className="sticky top-0 z-40 flex flex-col"
+    <div className="sticky top-0 z-40"
       style={{ background: "rgba(7,7,8,0.96)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-
-      {/* ── Row 1: Brand logo + Avatar ── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+      <div className="flex items-center justify-between px-5 pt-4 pb-4">
         <div className="flex items-center gap-2">
           <Zap size={14} fill="#CEFF00" stroke="none" />
           <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(16px,4.8vw,19px)", letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>
@@ -6674,43 +6936,6 @@ function GlobalHeader({
           </div>
         </div>
       </div>
-
-      {/* ── Row 2: Stealth HUD Capsule (tappable, zero background) ── */}
-      {broadcastMessages.length > 0 && (
-        <button
-          onClick={onOpenBriefing}
-          className="w-full flex items-center px-4 pb-3 pt-0 overflow-hidden text-left active:opacity-50 transition-opacity"
-          style={{ background: "transparent", border: "none", cursor: "pointer" }}>
-          {/* Tech bracket prefix */}
-          <span aria-hidden style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", color: "rgba(206,255,0,0.28)", flexShrink: 0, whiteSpace: "nowrap" }}>
-            [&nbsp;TACTICAL&nbsp;//&nbsp;
-          </span>
-          {/* Cycling message — scan-in on key change via animation */}
-          <span
-            key={tickerIdx}
-            className="min-w-0 overflow-hidden"
-            style={{
-              flex: "1 1 0",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0,
-              fontFamily: MONO,
-              fontSize: 10,
-              letterSpacing: "0.25em",
-              textTransform: "uppercase",
-              color: "#808080",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              animation: "mc-hud-scan 0.28s cubic-bezier(0.16,1,0.3,1) both",
-            }}>
-            {renderHudMsg(currentMsg)}
-          </span>
-          {/* Tech bracket suffix */}
-          <span aria-hidden style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", color: "rgba(206,255,0,0.28)", flexShrink: 0, whiteSpace: "nowrap" }}>
-            &nbsp;]
-          </span>
-        </button>
-      )}
     </div>
   );
 }
@@ -6756,30 +6981,29 @@ export default function PortalPage() {
     }).catch(() => {});
   };
 
-  // ── Chronological Day Index — weekly cycle, resets every 7 days ──────────
+  // ── Calendar Day Index — real ISO weekday, 1=Mon … 7=Sun ─────────────────
+  // Resets daily (not weekly) so each calendar day always starts fresh.
   const [activeDayIndex, setActiveDayIndex] = useState<number>(() => {
-    if (typeof window === "undefined") return 1;
+    if (typeof window === "undefined") return todayAsDayIndex();
     try {
-      const savedDay   = Number(localStorage.getItem("mc:active_day") ?? "0");
-      const savedWeek  = Number(localStorage.getItem("mc:cycle_week") ?? "-1");
-      const thisWeek   = currentCycleWeek();
-      if (savedWeek < thisWeek) {
-        // New cycle — flush history dictionaries so streak matrix starts fresh
+      const savedDay  = Number(localStorage.getItem("mc:active_day") ?? "0");
+      const savedDate = localStorage.getItem("mc:active_date") ?? "";
+      if (savedDate !== todayDateStr()) {
+        // New calendar day — flush daily caches so the new day starts clean
         localStorage.removeItem("mc:nutrition_history");
         localStorage.removeItem("mc:workout_history");
-        return 1;
+        return todayAsDayIndex();
       }
       if (savedDay >= 1 && savedDay <= 7) return savedDay;
     } catch {}
-    return currentCycleDay();
+    return todayAsDayIndex();
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem("mc:active_day",   String(activeDayIndex));
-      localStorage.setItem("mc:cycle_week",   String(currentCycleWeek()));
-    }
-    catch {}
+      localStorage.setItem("mc:active_day",  String(activeDayIndex));
+      localStorage.setItem("mc:active_date", todayDateStr());
+    } catch {}
   }, [activeDayIndex]);
 
   // ── Nutrition History Dictionary — per-day independent Sets ──────────────
@@ -6812,6 +7036,9 @@ export default function PortalPage() {
   const checkedMeals: Set<number> = nutritionHistory[activeDayIndex] ?? new Set<number>();
 
   // ── Workout History Dictionary — persisted to localStorage ─────────────────
+  // workoutHistoryRef gives onLogExercise a synchronous read of the latest value
+  // without adding workoutHistory to the useCallback dep array.
+  const workoutHistoryRef = useRef<Record<number, string[]>>({ 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] });
   const [workoutHistory, setWorkoutHistory] = useState<Record<number, string[]>>(() => {
     const empty = (): Record<number, string[]> => ({ 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] });
     if (typeof window === "undefined") return empty();
@@ -6828,27 +7055,89 @@ export default function PortalPage() {
   });
 
   const onLogExercise = useCallback((dayIdx: number, exerciseName: string) => {
+    // Read current list synchronously via ref (avoids stale closure without
+    // adding workoutHistory to deps, which would re-create the callback too often)
+    const existing = workoutHistoryRef.current[dayIdx] ?? [];
+    if (existing.includes(exerciseName)) return; // dedupe guard
+    const cumulative = [...existing, exerciseName];
+
     setWorkoutHistory(prev => {
-      const existing = prev[dayIdx] ?? [];
-      if (existing.includes(exerciseName)) return prev;
-      return { ...prev, [dayIdx]: [...existing, exerciseName] };
+      // Double-guard inside setState in case of concurrent invocations
+      const prevExisting = prev[dayIdx] ?? [];
+      if (prevExisting.includes(exerciseName)) return prev;
+      return { ...prev, [dayIdx]: cumulative };
     });
-    // Fire-and-forget server sync
+
+    // Persist CUMULATIVE list to DB so re-hydration on next login sees all exercises,
+    // not just the one just completed. upsertWorkoutSession's replace semantics are
+    // intentional: cumulative list IS the full truth; no merge needed server-side.
     const dayName = (detail?.routine?.days ?? [])[dayIdx - 1]?.label ?? "Entrenamiento";
     fetch("/api/student/workout-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: cycleDate(dayIdx), name: dayName, exerciseLogs: [{ name: exerciseName }] }),
+      body: JSON.stringify({
+        date:         realDateForDayIndex(dayIdx),
+        name:         dayName,
+        exerciseLogs: cumulative.map(n => ({ name: n })),
+      }),
     }).catch(() => {});
   }, [detail]);
 
   useEffect(() => {
+    // Keep ref in sync so onLogExercise always reads the latest value synchronously
+    workoutHistoryRef.current = workoutHistory;
     try {
       const ser: Record<string, string[]> = {};
       for (let d = 1; d <= 7; d++) ser[String(d)] = workoutHistory[d] ?? [];
       localStorage.setItem("mc:workout_history", JSON.stringify(ser));
     } catch {}
   }, [workoutHistory]);
+
+  // ── Midnight Auto-Reset Guard ──────────────────────────────────────────────
+  // Polls every 60 s for a calendar date rollover. On midnight crossing:
+  //   1. Resets all in-session tracking state to the new day's zero baseline
+  //   2. Flushes the daily localStorage caches
+  //   3. Navigates to the new real weekday's routine slot
+  // Historical rows in Postgres are NEVER touched — past dates remain frozen.
+  // All setter references are stable (React guarantee) → empty dep array is correct.
+  const midnightDateRef = useRef<string>(
+    typeof window !== "undefined" ? todayDateStr() : "",
+  );
+  useEffect(() => {
+    const id = setInterval(() => {
+      const today = todayDateStr();
+      if (today === midnightDateRef.current) return;
+      // ── Calendar date has rolled past midnight ──────────────────────────
+      midnightDateRef.current = today;
+      console.info(`[calendar] Midnight rollover → ${today}; resetting tracking matrix`);
+      // Reset workout session state machine
+      setWView("lobby");
+      setActiveExIdx(0);
+      setDoneSets({});
+      setDoneEx(new Set());
+      setWorkoutComplete(false);
+      setWDuration(0);
+      setWorkoutFocusMode(false);
+      // Reset daily tracking dictionaries (new day = empty slate)
+      const emptyNutrition: Record<number, Set<number>> = {
+        1: new Set(), 2: new Set(), 3: new Set(), 4: new Set(), 5: new Set(), 6: new Set(), 7: new Set(),
+      };
+      const emptyWorkout: Record<number, string[]> = {
+        1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [],
+      };
+      setNutritionHistory(emptyNutrition);
+      setWorkoutHistory(emptyWorkout);
+      try {
+        localStorage.removeItem("mc:nutrition_history");
+        localStorage.removeItem("mc:workout_history");
+        localStorage.setItem("mc:active_date", today);
+      } catch {}
+      // Navigate to today's real weekday slot
+      setActiveDayIndex(todayAsDayIndex());
+    }, 60_000); // check once per minute — 23:59 → 00:00 catches within 60 s
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // all setters from useState are stable — no deps needed
 
   // ── Personal Records — reactive, updated by TabWorkout on new PR ─────────
   const [prs, setPrs] = useState<{ squat: number; deadlift: number; bench: number }>({
@@ -6889,6 +7178,94 @@ export default function PortalPage() {
       fireSysErrToast("⚠️ Sin conexión — récord no guardado.");
     }
   }, [fireSysErrToast]);
+
+  // ── Daily weight log (biometrics) — optimistic update + rollback
+  const handleWeightLog = useCallback(async (kg: number, date: string): Promise<boolean> => {
+    const prevStudent = student;
+    const prevDetail  = detail;
+    // Optimistic: update displayed weight and inject new chart node
+    setStudent(s => s ? { ...s, currentWeight: kg } : s);
+    setDetail(d => {
+      if (!d) return d;
+      const existsAt = d.weightHistory.findIndex(e => e.date === date);
+      const newHistory = existsAt >= 0
+        ? d.weightHistory.map((e, i) => i === existsAt ? { ...e, weight: kg } : e)
+        : [...d.weightHistory, { date, weight: kg }];
+      return { ...d, weightHistory: newHistory };
+    });
+    try {
+      const res = await fetch("/api/me/biometrics", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ weight: kg, date }),
+      });
+      if (!res.ok) throw new Error("api");
+      return true;
+    } catch {
+      // Rollback on any failure
+      if (prevStudent) setStudent(prevStudent);
+      if (prevDetail)  setDetail(prevDetail);
+      return false;
+    }
+  }, [student, detail]);
+
+  // ── Community join — verifies code/roomId against DB, links student, hydrates
+  type CommunityJoinResult = {
+    ok: boolean;
+    coachId?: string | null;
+    notices?: { id: string; senderName: string; role: string; content: string; createdAt: string }[];
+    error?: string;
+  };
+
+  const handleCommunityJoin = useCallback(
+    async (payload: { code?: string; roomId?: string }): Promise<CommunityJoinResult> => {
+      try {
+        const res = await fetch("/api/community/join", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return { ok: false, error: data?.error ?? "ERROR_DESCONOCIDO" };
+        }
+        if (data.coachId) {
+          setStudent(s => s ? { ...s, coachId: data.coachId } : s);
+        }
+        return { ok: true, coachId: data.coachId ?? null, notices: data.notices ?? [] };
+      } catch {
+        return { ok: false, error: "SIN_CONEXIÓN" };
+      }
+    },
+    [],
+  );
+
+  // ── Community leave — calls API to set coachId=null, updates local student state
+  const handleCommunityLeave = useCallback(async (): Promise<void> => {
+    try {
+      await fetch("/api/student/leave-room", { method: "POST" });
+    } catch (err) {
+      console.error("[portal] leave-room failed:", err);
+    }
+    setStudent(s => s ? { ...s, coachId: undefined } : s);
+  }, []);
+
+  // ── Progress photo upload — sends multipart to /api/me/photos, returns cloud URL
+  const handlePhotoUpload = useCallback(
+    async (file: File, label: string): Promise<{ url: string; label: string; createdAt: string } | null> => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("label", label);
+      try {
+        const res = await fetch("/api/me/photos", { method: "POST", body: fd });
+        if (!res.ok) return null;
+        return (await res.json()) as { url: string; label: string; createdAt: string };
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
 
   // ── Wallet balance — DB-hydrated on mount, mutated via PATCH /api/me/wallet
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -6999,6 +7376,125 @@ export default function PortalPage() {
   // Workout focus mode (hides global header during exercise focus view)
   const [workoutFocusMode, setWorkoutFocusMode] = useState(false);
 
+  // Lifted workout session state — persists across tab switches
+  const [wView,           setWView]           = useState<"lobby" | "focus">("lobby");
+  const [activeExIdx,     setActiveExIdx]     = useState(0);
+  const [doneSets,        setDoneSets]        = useState<Record<number, number>>({});
+  const [doneEx,          setDoneEx]          = useState<Set<number>>(new Set());
+  const [workoutComplete, setWorkoutComplete] = useState(false);
+  const [wDuration,       setWDuration]       = useState(0);
+
+  // Reset workout session when the user changes active day
+  useEffect(() => {
+    setWView("lobby");
+    setActiveExIdx(0);
+    setDoneSets({});
+    setDoneEx(new Set());
+    setWorkoutComplete(false);
+    setWDuration(0);
+    setWorkoutFocusMode(false);
+  }, [activeDayIndex]);
+
+  // Re-hydrate COMPLETED exercises from workoutHistory (fast path: localStorage + server names).
+  // Runs whenever workoutHistory changes (server fetch updates it) or the day switches.
+  useEffect(() => {
+    const exercises = detail?.routine?.days?.[activeDayIndex - 1]?.exercises;
+    if (!exercises?.length) return;
+    const todayHistory = workoutHistory[activeDayIndex] ?? [];
+    if (todayHistory.length === 0) return;
+
+    const newDoneEx   = new Set<number>();
+    const newDoneSets: Record<number, number> = {};
+    exercises.forEach((ex, idx) => {
+      if (todayHistory.includes(ex.name)) {
+        newDoneEx.add(idx);
+        newDoneSets[idx] = ex.sets; // prescribed set count = all done for completed exercises
+      }
+    });
+    if (newDoneEx.size === 0) return;
+
+    setDoneSets(prev => ({ ...newDoneSets, ...prev }));
+    setDoneEx(newDoneEx);
+    if (newDoneEx.size >= exercises.length) {
+      setWorkoutComplete(true);
+    } else {
+      const firstIncomplete = exercises.findIndex((_, idx) => !newDoneEx.has(idx));
+      if (firstIncomplete >= 0) setActiveExIdx(firstIncomplete);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workoutHistory, activeDayIndex]);
+
+  // ── DB sync: persist full workout state (including partial sets) on every change ─
+  // Fires debounced 600 ms after any set completion so incomplete exercises aren't lost
+  // on logout. The exerciseLogs JSON now carries setsCompleted + totalSets per exercise.
+  const sessionSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (Object.keys(doneSets).length === 0) return; // skip empty / post-reset state
+    if (sessionSyncTimerRef.current) clearTimeout(sessionSyncTimerRef.current);
+    sessionSyncTimerRef.current = setTimeout(() => {
+      const dayData = detail?.routine?.days?.[activeDayIndex - 1];
+      if (!dayData?.exercises?.length) return;
+      const exerciseLogs = dayData.exercises
+        .map((ex, idx) => {
+          const sc        = doneSets[idx] ?? 0;
+          const completed = doneEx.has(idx);
+          if (sc === 0 && !completed) return null;
+          return { name: ex.name, setsCompleted: completed ? ex.sets : sc, totalSets: ex.sets, completed };
+        })
+        .filter(Boolean);
+      if (exerciseLogs.length === 0) return;
+      fetch("/api/student/workout-session", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ date: realDateForDayIndex(activeDayIndex), name: dayData.label, exerciseLogs }),
+      }).catch(() => {});
+    }, 600);
+  }, [doneSets, doneEx, activeDayIndex, detail]);
+
+  // ── Direct session fetch: authoritative re-hydration including partial set counts ─
+  // The workoutHistory effect above restores completed exercises; this effect adds
+  // partial set counts (setsCompleted) stored in the rich exerciseLogs JSON so even
+  // in-progress exercises survive a full logout/login cycle.
+  useEffect(() => {
+    if (!student?.id) return; // wait until auth resolves
+    const controller = new AbortController();
+    fetch(`/api/student/workout-session?date=${realDateForDayIndex(activeDayIndex)}`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then((session: { exerciseLogs?: unknown[] } | null) => {
+        if (!session) return;
+        const exercises = detail?.routine?.days?.[activeDayIndex - 1]?.exercises ?? [];
+        const exLogs    = Array.isArray(session.exerciseLogs) ? session.exerciseLogs : [];
+        const newDoneSets: Record<number, number> = {};
+        const newDoneEx   = new Set<number>();
+        (exLogs as Record<string, unknown>[]).forEach(log => {
+          const name = (log.name ?? log.exerciseName ?? "") as string;
+          const idx  = exercises.findIndex(e => e.name === name);
+          if (idx < 0) return;
+          // Rich path: setsCompleted was stored by the sync effect
+          // Legacy path: only `completed: true` was stored → use prescribed sets
+          const sc = typeof log.setsCompleted === "number"
+            ? log.setsCompleted
+            : (log.completed ? exercises[idx].sets : 0);
+          if (sc > 0) newDoneSets[idx] = sc;
+          if (log.completed) newDoneEx.add(idx);
+        });
+        if (Object.keys(newDoneSets).length === 0) return;
+        // Override any localStorage-derived state — DB is authoritative
+        setDoneSets(newDoneSets);
+        setDoneEx(newDoneEx);
+        if (newDoneEx.size >= exercises.length && exercises.length > 0) {
+          setWorkoutComplete(true);
+        } else {
+          const firstIncomplete = exercises.findIndex((_, i) => !newDoneEx.has(i));
+          if (firstIncomplete >= 0) setActiveExIdx(firstIncomplete);
+        }
+      })
+      .catch(() => {}); // AbortError on cleanup silently swallowed
+    return () => controller.abort();
+  // student?.id changes null→id on login; activeDayIndex changes on day navigation
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student?.id, activeDayIndex]);
+
   // Cancel subscription sheet
   const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -7069,7 +7565,7 @@ export default function PortalPage() {
     // Nutrition: hydrate each of the 7 cycle days from DailyCheck server records
     const hydrateDay = async (d: number) => {
       try {
-        const res = await fetch(`/api/me/checks?date=${cycleDate(d)}`);
+        const res = await fetch(`/api/me/checks?date=${realDateForDayIndex(d)}`);
         if (!res.ok) return;
         const { checks } = (await res.json()) as { checks: { kind: string; itemKey: string }[] };
         const indices = checks.filter(c => c.kind === "meal").map(c => Number(c.itemKey));
@@ -7080,20 +7576,23 @@ export default function PortalPage() {
   }, []);
 
   useEffect(() => {
-    // Workout: map last 20 sessions back onto workoutHistory by cycle date
+    // Workout: map last 20 sessions back onto workoutHistory by cycle date.
+    // exerciseLogs arrives already parsed (WorkoutSessionDTO) — never JSON.parse it again.
     fetch("/api/student/workout-session")
       .then(r => r.ok ? r.json() : [])
-      .then((sessions: { date: string; exerciseLogs: string }[]) => {
+      .then((sessions: { date: string; exerciseLogs: { name?: string; exerciseName?: string }[] | string }[]) => {
         if (!Array.isArray(sessions)) return;
         const next: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
         for (let d = 1; d <= 7; d++) {
-          const target = cycleDate(d);
+          const target = realDateForDayIndex(d);
           const session = sessions.find(s => s.date === target);
           if (session) {
-            try {
-              const logs = JSON.parse(session.exerciseLogs ?? "[]") as { name: string }[];
-              next[d] = logs.map(l => l.name);
-            } catch {}
+            // Guard: already-parsed array (normal) or raw JSON string (legacy edge case)
+            const rawLogs = session.exerciseLogs;
+            const logs: { name?: string; exerciseName?: string }[] = Array.isArray(rawLogs)
+              ? rawLogs
+              : (() => { try { return JSON.parse(rawLogs as string); } catch { return []; } })();
+            next[d] = logs.map(l => l.name ?? l.exerciseName ?? "").filter(Boolean);
           }
         }
         setWorkoutHistory(next);
@@ -7128,7 +7627,8 @@ export default function PortalPage() {
   }
 
   const startWeight = detail.weightHistory[0]?.weight ?? student.currentWeight;
-  const day: RoutineDay | undefined = detail.routine.days[activeDayIndex - 1] ?? detail.routine.days[0];
+  const day: RoutineDay | undefined =
+    resolveRoutineDay(activeDayIndex, detail.routine.days) ?? detail.routine.days[0];
 
   // Enrich meals
   const meals: Meal[] = detail.diet.meals.map((m: any) => ({
@@ -7146,24 +7646,27 @@ export default function PortalPage() {
 
   // ── Meal notification handlers — keyed to activeDayIndex ────────────────
   const handleToggleMeal = (i: number) => {
-    const isAdding = !(nutritionHistory[activeDayIndex] ?? new Set()).has(i);
+    // Snapshot day index so in-flight rollbacks don't hit the wrong day if the user
+    // navigates to a different day while the fetch is pending.
+    const snapshotDay = activeDayIndex;
+    const isAdding    = !(nutritionHistory[snapshotDay] ?? new Set()).has(i);
     setNutritionHistory(prev => {
-      const daySet = new Set(prev[activeDayIndex] ?? []);
+      const daySet = new Set(prev[snapshotDay] ?? []);
       isAdding ? daySet.add(i) : daySet.delete(i);
       if (isAdding) triggerMealChain(meals[i]?.macros ?? { protein: 32, carbs: 48, fat: 14 }, daySet.size, meals.length);
-      return { ...prev, [activeDayIndex]: daySet };
+      return { ...prev, [snapshotDay]: daySet };
     });
-    // Server sync — optimistic; rollback on failure
-    const date = cycleDate(activeDayIndex);
+    // Server sync — optimistic; rollback the correct day on failure
+    const date = realDateForDayIndex(snapshotDay);
     fetch("/api/me/checks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date, kind: "meal", itemKey: String(i), done: isAdding }),
     }).catch(() => {
       setNutritionHistory(prev => {
-        const daySet = new Set(prev[activeDayIndex] ?? []);
+        const daySet = new Set(prev[snapshotDay] ?? []);
         isAdding ? daySet.delete(i) : daySet.add(i);
-        return { ...prev, [activeDayIndex]: daySet };
+        return { ...prev, [snapshotDay]: daySet };
       });
     });
   };
@@ -7173,16 +7676,31 @@ export default function PortalPage() {
     const idx = meals.findIndex(m => m.name === activeMeal.name && m.time === activeMeal.time);
     setActiveMeal(null);
     if (idx < 0) return;
-    setNutritionHistory(prev => {
-      const daySet = new Set(prev[activeDayIndex] ?? []);
-      const alreadyDone = daySet.has(idx);
-      if (!alreadyDone) {
+    const snapshotDay  = activeDayIndex;
+    // Read current state synchronously before the update so the server sync branch is correct
+    const alreadyDone  = (nutritionHistory[snapshotDay] ?? new Set<number>()).has(idx);
+    if (!alreadyDone) {
+      setNutritionHistory(prev => {
+        const daySet = new Set(prev[snapshotDay] ?? []);
         daySet.add(idx);
         const mac = meals[idx]?.macros ?? { protein: 32, carbs: 48, fat: 14 };
         triggerMealChain(mac, daySet.size, meals.length);
-      }
-      return alreadyDone ? prev : { ...prev, [activeDayIndex]: daySet };
-    });
+        return { ...prev, [snapshotDay]: daySet };
+      });
+      // Server persist — rollback on network failure
+      const date = realDateForDayIndex(snapshotDay);
+      fetch("/api/me/checks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, kind: "meal", itemKey: String(idx), done: true }),
+      }).catch(() => {
+        setNutritionHistory(prev => {
+          const daySet = new Set(prev[snapshotDay] ?? []);
+          daySet.delete(idx);
+          return { ...prev, [snapshotDay]: daySet };
+        });
+      });
+    }
   };
 
   return (
@@ -7196,11 +7714,7 @@ export default function PortalPage() {
 
         {/* Global brand header — hidden during workout focus */}
         {!workoutFocusMode && (
-          <GlobalHeader
-            student={student}
-            broadcastMessages={broadcastMessages}
-            onOpenBriefing={() => setShowBriefingDrawer(true)}
-          />
+          <GlobalHeader student={student} />
         )}
 
         {/* ── Coach Briefing Drawer ── */}
@@ -7288,7 +7802,7 @@ export default function PortalPage() {
 
         {/* Tab content */}
         <div
-          className="flex-1 px-4 pb-24"
+          className="flex-1 px-4 pt-3 pb-24"
           style={{
             opacity: animating ? 0 : 1,
             transform: animating ? "translateY(6px)" : "translateY(0)",
@@ -7304,7 +7818,7 @@ export default function PortalPage() {
               checkedMeals={checkedMeals}
               onToggleMeal={handleToggleMeal}
               activeDayIndex={activeDayIndex}
-              onAdvanceDay={delta => setActiveDayIndex(d => Math.max(1, d + delta))} />
+              onAdvanceDay={delta => setActiveDayIndex(d => Math.min(7, Math.max(1, d + delta)))} />
           )}
           {activeTab === "progress" && (
             <TabProgreso
@@ -7316,6 +7830,8 @@ export default function PortalPage() {
               workoutHistory={workoutHistory}
               checkedMeals={checkedMeals}
               meals={meals}
+              onWeightLog={handleWeightLog}
+              onPhotoUpload={handlePhotoUpload}
               onBadge={() => downloadBadge({ name: student.name, photoUrl: detail.photoName, currentWeight: student.currentWeight, startWeight, streak: student.streak, height: detail.height, bodyFat: detail.bodyFat, stage: `${student.stage} · E${student.stageNumber}`, weightHistory: detail.weightHistory })} />
           )}
           {activeTab === "squads" && (
@@ -7327,7 +7843,19 @@ export default function PortalPage() {
               prs={prs}
               onNewPR={onNewPR}
               activeDayIndex={activeDayIndex}
-              onLogExercise={onLogExercise} />
+              onLogExercise={onLogExercise}
+              wView={wView}
+              setWView={setWView}
+              activeExIdx={activeExIdx}
+              setActiveExIdx={setActiveExIdx}
+              doneSets={doneSets}
+              setDoneSets={setDoneSets}
+              doneEx={doneEx}
+              setDoneEx={setDoneEx}
+              workoutComplete={workoutComplete}
+              setWorkoutComplete={setWorkoutComplete}
+              wDuration={wDuration}
+              setWDuration={setWDuration} />
           )}
           {activeTab === "community" && (
             <TabComunidad
@@ -7356,6 +7884,8 @@ export default function PortalPage() {
               setFilterStreakMin={setFilterStreakMin}
               isCoach={false}
               coachId={student.coachId ?? null}
+              onJoin={handleCommunityJoin}
+              onLeave={handleCommunityLeave}
             />
           )}
           {activeTab === "profile" && (

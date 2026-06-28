@@ -256,6 +256,12 @@ export interface RoutineDay {
   day: string;
   label: string;
   muscleGroup: string;
+  /**
+   * Optional explicit ISO weekday assignment (0=Sun … 6=Sat).
+   * When set, the calendar engine binds THIS routine slot to that exact weekday.
+   * When absent, ordinal mapping applies: slot 0 → Monday, slot 1 → Tuesday, …
+   */
+  weekday?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   exercises: Exercise[];
 }
 
