@@ -277,6 +277,12 @@ input::placeholder {
   100% { opacity: 0; transform: translateY(-6px)  scale(0.97); }
 }
 
+/* ── Biometric HUD — heart-rate pulse indicator ── */
+@keyframes mc-hr-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    box-shadow: 0 0 6px rgba(239,68,68,0.7);  }
+  50%       { opacity: 0.5; transform: scale(0.65); box-shadow: 0 0 2px rgba(239,68,68,0.2);  }
+}
+
 /* ── WorkoutComplete overlay: full-screen fade-in ── */
 @keyframes mc-overlay-in {
   from { opacity: 0; }
