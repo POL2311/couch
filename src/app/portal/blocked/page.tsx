@@ -187,7 +187,7 @@ export default function BlockedPage() {
 
       {/* Cerrar sesión */}
       <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
+        onClick={() => signOut({ callbackUrl: "/" })}
         className="mt-6 flex items-center gap-1.5 text-[12px] transition-opacity hover:opacity-60"
         style={{ color: "#8E8E93" }}
       >

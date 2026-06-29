@@ -152,7 +152,7 @@ export function DesktopSidebar({ collapsed, onToggleCollapse }: { collapsed: boo
         </button>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => signOut({ callbackUrl: "/" })}
           aria-label="Cerrar sesión"
           className={`flex items-center gap-3 py-2 w-full rounded-xl cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--ring-on-dark)] ${collapsed ? "justify-center px-0" : "px-3"}`}
           style={{ color: "var(--text-sidebar-secondary)", transition: "all var(--transition-fast)" }}
@@ -221,7 +221,7 @@ export function MobileBottomNav() {
 
       {/* Logout tab */}
       <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
+        onClick={() => signOut({ callbackUrl: "/" })}
         aria-label="Cerrar sesión"
         className="flex flex-col items-center justify-center gap-1 py-2 px-1 w-full outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[color:var(--ring-on-dark)] active:opacity-60"
         style={{

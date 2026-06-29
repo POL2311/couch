@@ -2740,7 +2740,7 @@ function TabHoy({
           // ── Compact "done" card — shrinks and sinks to bottom ──────────
           if (isChecked) return (
             <div key={i}
-              className="rounded-xl overflow-hidden relative transition-all"
+              className="rounded-xl overflow-hidden relative transition-all duration-300"
               style={{ background: "rgba(18,18,20,0.55)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="flex items-center gap-3 py-2.5 px-4">
                 <button
@@ -3764,6 +3764,11 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
     deviceSource:   "—",
   });
 
+  // Refs that always reflect the latest values — used in the unmount cleanup closure
+  // so the freeze-on-logout effect captures current state regardless of when it runs.
+  const lifecycleRef   = useRef<SessionLifecycle>("IDLE");
+  const biometricsRef  = useRef<BiometricsSnapshot>({ avgHeartRate: 0, maxHeartRate: 0, activeCalories: 0, totalCalories: 0, deviceSource: "—" });
+
   const exercises   = day?.exercises ?? [];
   const totalEx     = exercises.length || 6;
   const activeEx    = exercises[activeExIdx];
@@ -3791,43 +3796,96 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
   // Cache key is bound to student + date so different days never collide.
   const sessionCacheKey = `mc:session_${student.id}_${workoutDate}`;
 
+  // Strict serialisation schema — exercises keyed by name (not index) so
+  // re-ordering or routine edits never corrupt hydration.
+  type SavedSession = {
+    sessionLifecycle: SessionLifecycle;
+    elapsedSeconds:   number;
+    date?:            string; // YYYY-MM-DD seal — written on FINALIZAR to tag completion day
+    exercises:        { id: string; completedSets: number }[];
+    biometrics?:      BiometricsSnapshot;
+  };
+
   // Mount: restore any in-progress session from localStorage.
-  // Uses functional setters to merge atomically with re-hydration from workoutHistory.
+  // Always restores as PAUSED — the user must explicitly hit REANUDAR to re-engage
+  // the clock and smartwatch bridge. This prevents an auto-running clock on re-login.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const raw = localStorage.getItem(sessionCacheKey);
       if (!raw) return;
-      const cache = JSON.parse(raw) as {
-        lifecycle: SessionLifecycle;
-        doneSets: Record<number, number>;
-        duration: number;
-      };
-      if (!cache || cache.lifecycle === "COMPLETED" || cache.lifecycle === "IDLE") return;
-      setSessionLifecycle("ACTIVE_TRACKING");
-      setWDuration(prev => Math.max(prev, cache.duration ?? 0));
-      setDoneSets(prev => {
-        const merged: Record<number, number> = { ...(cache.doneSets ?? {}) };
-        for (const [k, v] of Object.entries(prev)) {
-          merged[Number(k)] = Math.max(merged[Number(k)] ?? 0, v);
-        }
-        return merged;
+      const cache = JSON.parse(raw) as SavedSession;
+      if (!cache) return;
+      const lc = cache.sessionLifecycle;
+      if (lc === "IDLE") return;
+
+      // Helper: rebuild doneSets + doneEx from the ID-keyed exercise list
+      const savedMap = new Map((cache.exercises ?? []).map(e => [e.id, e.completedSets]));
+      const restoredSets: Record<number, number> = {};
+      const restoredDone = new Set<number>();
+      exercises.forEach((ex, i) => {
+        const clamped = Math.min(savedMap.get(ex.name) ?? 0, ex.sets);
+        restoredSets[i] = clamped;
+        if (ex.sets > 0 && clamped >= ex.sets) restoredDone.add(i);
       });
+      setDoneSets(restoredSets);
+      setDoneEx(restoredDone);
+      setWDuration(cache.elapsedSeconds ?? 0);
+      if (cache.biometrics) setBiometrics(cache.biometrics);
+
+      if (lc === "COMPLETED") {
+        // Same-day re-login after FINALIZAR: restore the locked completed layout.
+        // The user sees all exercises done and the COMPLETED banner — no IDLE reset.
+        setSessionLifecycle("COMPLETED");
+        setWorkoutComplete(true);
+        return;
+      }
+
+      // Always land as PAUSED for in-progress sessions — never auto-resume the clock
+      setSessionLifecycle("PAUSED");
     } catch { /* ignore corrupt or blocked cache */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save on every meaningful state change — fire-and-forget, best-effort.
+  // Save on every meaningful state change — includes biometrics so frozen metrics survive logout.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (sessionLifecycle === "IDLE" || sessionLifecycle === "COMPLETED") return;
     try {
-      localStorage.setItem(
-        sessionCacheKey,
-        JSON.stringify({ lifecycle: sessionLifecycle, doneSets, duration: wDuration }),
-      );
+      const payload: SavedSession = {
+        sessionLifecycle,
+        elapsedSeconds: wDuration,
+        exercises: exercises.map((ex, i) => ({
+          id:            ex.name,
+          completedSets: Math.min(doneSets[i] ?? 0, ex.sets),
+        })),
+        biometrics,
+      };
+      localStorage.setItem(sessionCacheKey, JSON.stringify(payload));
     } catch { /* storage full or blocked */ }
-  }, [sessionLifecycle, doneSets, wDuration, sessionCacheKey]);
+  }, [sessionLifecycle, doneSets, wDuration, sessionCacheKey, biometrics]);
+
+  // Keep refs in sync so the unmount closure always captures the latest values.
+  useEffect(() => { lifecycleRef.current  = sessionLifecycle; }, [sessionLifecycle]);
+  useEffect(() => { biometricsRef.current = biometrics; },      [biometrics]);
+
+  // Freeze-on-unmount: when the component tears down (logout / page close) while
+  // the user is ACTIVE_TRACKING, atomically write PAUSED + last biometrics to the
+  // cache. The next login will hydrate the PAUSED state via the effect above.
+  useEffect(() => {
+    return () => {
+      if (lifecycleRef.current !== "ACTIVE_TRACKING") return;
+      try {
+        const prev = JSON.parse(localStorage.getItem(sessionCacheKey) ?? "null") as SavedSession | null;
+        if (!prev) return;
+        localStorage.setItem(
+          sessionCacheKey,
+          JSON.stringify({ ...prev, sessionLifecycle: "PAUSED", biometrics: biometricsRef.current }),
+        );
+      } catch {}
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty deps — cleanup runs exactly once on unmount
 
   // Session clock — only runs while ACTIVE_TRACKING, pauses on all other states
   useEffect(() => {
@@ -3963,9 +4021,9 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
               // NATIVE_BRIDGE: Resume — HealthKit HKWorkoutSession.resume() / HealthConnect equivalent
               setSessionLifecycle("ACTIVE_TRACKING");
             }}
-            className="w-full py-3 rounded-sm cursor-pointer active:scale-[0.98] transition-all"
-            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "14px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#CEFF00", background: "rgba(206,255,0,0.06)", border: "1px solid rgba(206,255,0,0.3)" }}>
-            ▶ REANUDAR SESIÓN
+            className="w-full py-4 rounded-sm cursor-pointer active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            style={{ fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: "15px", letterSpacing: "0.12em", textTransform: "uppercase", color: "#000", background: "#f59e0b", border: "none", boxShadow: "0 0 24px rgba(245,158,11,0.32)" }}>
+            ▶ REANUDAR ENTRENAMIENTO
           </button>
         </div>
       )}
@@ -4054,7 +4112,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
           // ── Compressed "done" chip ────────────────────────────────────────
           if (exDone) return (
             <div key={i}
-              className="relative overflow-hidden bg-zinc-900/20 border border-zinc-800/40 py-2.5 px-4 rounded-md opacity-50 transition-all">
+              className="relative overflow-hidden bg-zinc-900/20 border border-zinc-800/40 py-2.5 px-4 rounded-md opacity-50 transition-all duration-300">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
@@ -4229,8 +4287,22 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
               if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
               setSessionLifecycle("COMPLETED");
               setWorkoutComplete(true);
-              // Clear session cache — progress intentionally finalized by user
-              try { localStorage.removeItem(sessionCacheKey); } catch {}
+              // Lock session into COMPLETED state — persists until midnight date rollover.
+              // Do NOT remove the key: re-login on the same day must show the full
+              // completed layout instead of an empty 0/5 lobby.
+              try {
+                const finalPayload: SavedSession = {
+                  sessionLifecycle: "COMPLETED",
+                  elapsedSeconds:   wDuration,
+                  date:             todayDateStr(),
+                  exercises:        exercises.map((ex, i) => ({
+                    id:            ex.name,
+                    completedSets: Math.min(doneSets[i] ?? 0, ex.sets),
+                  })),
+                  biometrics,
+                };
+                localStorage.setItem(sessionCacheKey, JSON.stringify(finalPayload));
+              } catch {}
               // Fire biometric summary to Postgres (upsert — safe to retry)
               fetch("/api/student/workout-session/telemetry", {
                 method:  "POST",
@@ -4745,7 +4817,7 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
   ];
 
   return (
-    <div className="w-full flex flex-col pb-24">
+    <div className="w-full flex flex-col pb-40">
 
       {/* ── 1. HERO BANNER ── */}
       <div className="w-full relative overflow-hidden mb-6"
@@ -5107,19 +5179,9 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
         </div>
       </div>
 
-      {/* ── SIGN OUT ── */}
-      <button onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl cursor-pointer transition-opacity hover:opacity-75"
-        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.065)", color: "rgba(255,255,255,0.35)", fontSize: 13 }}>
-        <LogOut size={14} strokeWidth={1.5} />
-        <span style={{ fontFamily: DS, fontStyle: "normal", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          Cerrar Sesión
-        </span>
-      </button>
-
       {/* ── JERARQUÍA Y RANGOS DRAWER — portal-mounted to escape layout stacking ── */}
       {showRankDrawer && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 bg-[#070708]/98 z-[70] flex flex-col overflow-y-auto pb-16"
+        <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto pb-16"
           style={{ animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-8 pb-4 flex-shrink-0"
@@ -5188,17 +5250,19 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
                   border: `1.5px solid ${rank.borderColor}`,
                   opacity: rank.active || rank.voltTheme ? 1 : 0.55,
                 }}>
-                {/* Badge icon */}
+                {/* Chromatic shield container */}
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: rank.active
-                      ? "rgba(206,255,0,0.1)"
+                  style={
+                    rank.active
+                      ? { background: RANK_SHIELD_CFG[rank.level]?.bg, border: RANK_SHIELD_CFG[rank.level]?.border, boxShadow: RANK_SHIELD_CFG[rank.level]?.shadow }
                       : rank.voltTheme
-                      ? "rgba(206,255,0,0.04)"
-                      : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${rank.borderColor}`,
-                  }}>
-                  <span style={{ fontSize: 20, color: rank.accentColor, lineHeight: 1 }}>{rank.icon}</span>
+                      ? { background: RANK_SHIELD_CFG[6]?.bg, border: RANK_SHIELD_CFG[6]?.border, boxShadow: RANK_SHIELD_CFG[6]?.shadow }
+                      : { background: "rgba(24,24,27,0.5)", border: "1px solid rgba(63,63,70,0.8)" }
+                  }>
+                  {rank.active || rank.voltTheme
+                    ? <span style={{ fontSize: 20, color: rank.active ? RANK_SHIELD_CFG[rank.level]?.iconColor : "#a3e635", lineHeight: 1 }}>{rank.icon}</span>
+                    : <Lock size={14} style={{ color: "#52525b" }} />
+                  }
                 </div>
                 {/* Text */}
                 <div className="flex-1 min-w-0">
@@ -5233,104 +5297,114 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
         document.body
       )}
 
-      {/* ══ MODULE 2 + 3: BIOMETRIC SESSION TIMELINE ══════════════════════ */}
-      <div className="px-4 pb-8 mt-6">
+      {/* ══ BITÁCORA DE MISIONES ══════════════════════════════════════════ */}
+      <div className="px-4 pb-4">
 
-        {/* Section header */}
-        <div className="flex items-center gap-3 mb-4">
-          <p className="text-[9px] font-mono font-black uppercase tracking-[0.22em] shrink-0" style={{ color: "#808080" }}>
-            ▶ SESIONES · REGISTRO TELEMETRÍA
-          </p>
-          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-        </div>
+        {/* Tactical section header */}
+        <span className="text-xs font-mono font-black tracking-[0.2em] text-zinc-500 uppercase block mb-4 mt-6">
+          ARCHIVO DE MISIONES // BITÁCORA TÁCTICA
+        </span>
 
         {/* Skeleton while loading */}
         {bioLoading && (
           <div className="space-y-3">
             {[0, 1, 2].map(i => (
-              <div key={i} className="w-full h-20 rounded-sm bg-zinc-900 animate-pulse" />
+              <div key={i} className="w-full h-[72px] rounded-sm bg-zinc-900/60 animate-pulse" />
             ))}
           </div>
         )}
 
         {/* Empty state */}
         {!bioLoading && bioHistory.length === 0 && (
-          <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-sm text-center">
-            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080" }}>
+          <div className="bg-zinc-950 border border-zinc-900/80 p-5 rounded-sm text-center">
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-600">
               SIN SESIONES REGISTRADAS
             </p>
-            <p style={{ fontFamily: MONO, fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 4, lineHeight: 1.6 }}>
+            <p className="font-mono text-[8px] text-zinc-700 mt-1 leading-relaxed">
               Tus sesiones apareceran aqui tras completar tu primer entrenamiento.
             </p>
           </div>
         )}
 
-        {/* Timeline cards */}
+        {/* Mission log cards */}
         {!bioLoading && bioHistory.map(session => {
           const [y, m, d] = session.date.split("-");
           const dateLabel  = `${d}/${m}/${y}`;
           const bio        = session.biometrics;
           const hrSeries   = bio?.heartRateSeries;
           const hasHrData  = Array.isArray(hrSeries) && hrSeries.length > 0;
+          const hasAnyBio  = bio && (bio.avgHeartRate != null || bio.activeCalories != null || bio.deviceSource);
 
           return (
             <div key={session.id}
-              className="w-full bg-zinc-950 border border-zinc-900 p-5 mb-4 rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              className="w-full bg-zinc-950 border border-zinc-900/80 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-sm hover:border-zinc-800 transition-all overflow-hidden"
+              style={{ padding: "18px" }}>
 
-              {/* ── Left: session summary ── */}
+              {/* ── Left: achievement label ── */}
               <div className="flex-1 min-w-0">
-                <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 4 }}>
-                  {dateLabel}
-                  {session.completed && (
-                    <span style={{ color: "#CEFF00", marginLeft: 10 }}>✓ COMPLETADA</span>
-                  )}
-                </p>
-                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.02em", color: "#fff", lineHeight: 1.1, marginBottom: 2 }}>
+                <span className="text-[10px] font-mono text-zinc-500 font-bold block mb-0.5">
+                  <span className="text-lime-400 mr-1.5">✓</span>{dateLabel}
+                </span>
+                <p className="text-base font-black italic uppercase tracking-tight text-white leading-tight"
+                  style={{ fontFamily: DS }}>
                   {session.name}
                 </p>
 
-                {/* MODULE 3: HR sparkline ─ only when series data exists */}
+                {/* HR sparkline — inline below title when data exists */}
                 {hasHrData && (
-                  <div className="mt-3">
-                    <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", textTransform: "uppercase", color: "#3f3f46", marginBottom: 3 }}>
-                      HR CURVE · {hrSeries!.length} PUNTOS
+                  <div className="mt-2.5">
+                    <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-zinc-700 mb-1">
+                      HR CURVE · {hrSeries!.length} PTS
                     </p>
                     <HRSparkline series={hrSeries!} />
                   </div>
                 )}
               </div>
 
-              {/* ── Right: biometrics matrix pills ── */}
-              {bio && (
-                <div className="flex flex-wrap gap-2 shrink-0 md:justify-end">
-                  {bio.avgHeartRate != null && (
-                    <div className="flex flex-col gap-1">
-                      <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm whitespace-nowrap">
-                        ❤️ {bio.avgHeartRate} BPM PROM
-                      </span>
-                      {bio.maxHeartRate != null && (
-                        <span className="font-mono text-[9px] font-black uppercase text-zinc-500 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 rounded-sm whitespace-nowrap">
-                          MAX: {bio.maxHeartRate} BPM
+              {/* ── Right: smartwatch telemetry feed ── */}
+              <div className="flex flex-wrap gap-1.5 shrink-0 sm:justify-end">
+                {hasAnyBio ? (
+                  <>
+                    {bio!.avgHeartRate != null && (
+                      <div className="flex flex-col gap-1">
+                        <span className="bg-zinc-900/60 border border-zinc-800/80 px-2.5 py-1 text-[11px] font-mono font-black uppercase text-zinc-400 rounded-sm flex items-center gap-1 whitespace-nowrap">
+                          ❤ {bio!.avgHeartRate} BPM
                         </span>
-                      )}
-                    </div>
-                  )}
-                  {bio.activeCalories != null && (
-                    <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm self-start whitespace-nowrap">
-                      🔥 {bio.activeCalories} KCAL
-                    </span>
-                  )}
-                  {bio.deviceSource && (
-                    <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm self-start whitespace-nowrap">
-                      📟 DEV: {bio.deviceSource.slice(0, 24)}
-                    </span>
-                  )}
-                </div>
-              )}
+                        {bio!.maxHeartRate != null && (
+                          <span className="bg-zinc-900/60 border border-zinc-800/80 px-2.5 py-1 text-[9px] font-mono font-black uppercase text-zinc-600 rounded-sm flex items-center gap-1 whitespace-nowrap">
+                            MAX {bio!.maxHeartRate} BPM
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {bio!.activeCalories != null && (
+                      <span className="bg-zinc-900/60 border border-zinc-800/80 px-2.5 py-1 text-[11px] font-mono font-black uppercase text-zinc-400 rounded-sm flex items-center gap-1 self-start whitespace-nowrap">
+                        ⚡ {bio!.activeCalories} KCAL
+                      </span>
+                    )}
+                    {bio!.deviceSource && (
+                      <span className="bg-zinc-900/60 border border-zinc-800/80 px-2.5 py-1 text-[11px] font-mono font-black uppercase text-zinc-400 rounded-sm flex items-center gap-1 self-start whitespace-nowrap">
+                        ◈ {bio!.deviceSource.slice(0, 20)}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-zinc-600 font-mono text-[10px] self-center whitespace-nowrap">
+                    [ SIN REGISTRO TELEMÉTRICO ]
+                  </span>
+                )}
+              </div>
 
             </div>
           );
         })}
+
+        {/* ── Minimalist logout trigger — absolute bottom of scroll ── */}
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="w-full bg-transparent border border-zinc-900 hover:border-red-950 hover:bg-red-950/10 text-zinc-500 hover:text-red-400 py-3 text-xs font-mono font-black tracking-widest uppercase transition-all duration-200 mt-8 rounded-sm cursor-pointer">
+          ↪ CERRAR SESIÓN
+        </button>
 
       </div>
 
@@ -5399,6 +5473,34 @@ const SALA_METRICS: SalaMetric[] = [
   { icon: <Activity size={18} />, label: "ESFUERZO PROM.",   value: "92%",  sub: "INTENSIDAD",     accent: "#00F0FF" },
   { icon: <MapPin   size={18} />, label: "KMs TOTALES",      value: "1.2K", sub: "ESTE MES",       accent: "#00F0FF" },
 ];
+
+// ── Metallic tier badge class resolver ───────────────────────────────────
+function getRosterBadgeClasses(rankTitle: string): string {
+  const t = rankTitle.toUpperCase();
+  if (t.includes("BESTIA"))
+    return "absolute top-3 left-3 bg-lime-950/50 border border-lime-400 text-lime-400 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_12px_rgba(163,230,53,0.15)] z-10";
+  if (t.includes("COMANDANTE"))
+    return "absolute top-3 left-3 bg-yellow-950/40 border border-yellow-500/40 text-yellow-500 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.1)] z-10";
+  if (t.includes("PREDADOR"))
+    return "absolute top-3 left-3 bg-zinc-900 border border-zinc-600/50 text-zinc-200 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+  if (t.includes("TITÁN") || t.includes("TITAN"))
+    return "absolute top-3 left-3 bg-slate-900 border border-slate-400/40 text-slate-200 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_8px_rgba(226,232,240,0.05)] z-10";
+  if (t.includes("GUERRER"))
+    return "absolute top-3 left-3 bg-zinc-900 border border-zinc-700/50 text-zinc-300 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+  // ATLETA INIT — Bronze tier (default)
+  return "absolute top-3 left-3 bg-amber-950/30 border border-amber-800/40 text-amber-500 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+}
+
+// ── Shield container styles per rank level (for Power Rank modal) ─────────
+type ShieldCfg = { bg: string; border: string; shadow?: string; iconColor: string };
+const RANK_SHIELD_CFG: Record<number, ShieldCfg> = {
+  1: { bg: "rgba(120,53,15,0.25)",  border: "1.5px solid rgba(217,119,6,0.65)",    shadow: "0 0 15px rgba(217,119,6,0.2)",    iconColor: "#d97706" },
+  2: { bg: "rgba(24,24,27,0.5)",    border: "1px solid rgba(63,63,70,0.8)",                                                    iconColor: "#71717a" },
+  3: { bg: "rgba(15,23,42,0.5)",    border: "1px solid rgba(100,116,139,0.5)",     shadow: "0 0 8px rgba(226,232,240,0.04)", iconColor: "#94a3b8" },
+  4: { bg: "rgba(66,32,6,0.3)",     border: "1.5px solid rgba(234,179,8,0.5)",    shadow: "0 0 10px rgba(234,179,8,0.1)",   iconColor: "#eab308" },
+  5: { bg: "rgba(24,24,27,0.5)",    border: "1px solid rgba(63,63,70,0.7)",                                                    iconColor: "#71717a" },
+  6: { bg: "rgba(26,46,5,0.5)",     border: "1.5px solid #a3e635",                shadow: "0 0 15px rgba(163,230,53,0.2)",  iconColor: "#a3e635" },
+};
 
 // ── Module-level static datasets ─────────────────────────────────────────
 const SALA_ROSTER: RosterMember[] = [
@@ -5830,8 +5932,8 @@ function TabComunidad({
           <div className="flex flex-col gap-3 mb-8">
             {publicRooms.map(room => (
               <div key={room.id}
-                className="flex items-center justify-between gap-4 p-4 rounded-sm border border-zinc-800 bg-zinc-950">
-                <div className="min-w-0">
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-sm border border-zinc-800 bg-zinc-950">
+                <div className="min-w-0 flex-1">
                   <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 16, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1.1, marginBottom: 3 }}>
                     {room.name}
                   </p>
@@ -5842,7 +5944,7 @@ function TabComunidad({
                 <button
                   onClick={() => { if (!isJoining) executeJoin({ roomId: room.id }); }}
                   disabled={isJoining}
-                  className="shrink-0 px-3 py-2 rounded-sm text-[10px] font-mono font-black tracking-widest transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                  className="w-full sm:w-auto px-3 py-2 rounded-sm text-[10px] font-mono font-black tracking-widest transition-all active:scale-95 disabled:opacity-60 text-center"
                   style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.35)", color: "#CEFF00" }}>
                   ⚡ DESTRABAR ACCESO PÚBLICO
                 </button>
@@ -5936,37 +6038,36 @@ function TabComunidad({
           MOBILE STICKY TOP NAV TRACK (hidden on md+)
       ═══════════════════════════════════════════════════════════ */}
       <div className="md:hidden w-full sticky top-0 z-40 flex flex-col"
-        style={{ background: "rgba(26,26,26,0.97)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        {/* Team header row */}
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <svg width="22" height="22" viewBox="0 0 62 62" fill="none">
+        style={{ background: "rgba(7,7,8,0.97)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(39,39,42,1)" }}>
+        {/* Premium room banner */}
+        <div className="w-full flex items-center justify-between px-4 py-3 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <svg width="20" height="20" viewBox="0 0 62 62" fill="none">
               <polygon points="31,3 59,31 31,59 3,31" stroke="#CEFF00" strokeWidth="2" fill="rgba(206,255,0,0.04)" />
               <text x="31" y="40" textAnchor="middle" fontFamily="'Barlow Condensed',sans-serif" fontWeight="900" fontStyle="italic" fontSize="28" fill="#CEFF00">F</text>
             </svg>
-            <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 13, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em" }}>FELLS TEAM PRO</span>
+            <div>
+              <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 14, color: "#fff", textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1 }}>FELLS TEAM PRO</p>
+              <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.2em", textTransform: "uppercase", color: "#00F0FF", marginTop: 2 }}>HIGH PERFORMANCE UNIT</p>
+            </div>
           </div>
           <button onClick={handleLeave} disabled={isLeaving}
-            style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080", background: "none", border: "none", cursor: "pointer", padding: "2px 0", opacity: isLeaving ? 0.5 : 1 }}>
+            style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#52525b", background: "none", border: "1px solid rgba(63,63,70,0.6)", cursor: "pointer", padding: "4px 8px", borderRadius: 4, opacity: isLeaving ? 0.5 : 1 }}>
             {isLeaving ? "..." : "SALIR ✕"}
           </button>
         </div>
-        {/* Horizontal pill scroll track */}
-        <div className="flex flex-row items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none px-3 pb-2.5">
-          {ROOM_TABS.map(({ id, label, Icon }) => {
+        {/* Flat console tab strip */}
+        <div className="flex overflow-x-auto scrollbar-none" style={{ borderTop: "1px solid rgba(39,39,42,1)" }}>
+          {ROOM_TABS.map(({ id, label }) => {
             const active = currentRoomView === id;
             return (
               <button key={id} onClick={() => setCurrentRoomView(id)}
-                className="flex items-center gap-1.5 flex-shrink-0 active:scale-[0.94] active:opacity-90 transition-all duration-150 ease-out"
-                style={{
-                  background: active ? "#CEFF00" : "rgba(255,255,255,0.05)",
-                  border: active ? "none" : "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 9999,
-                  padding: "6px 14px",
-                  cursor: "pointer",
-                }}>
-                <Icon size={12} style={{ color: active ? "#000" : "#808080", flexShrink: 0 }} />
-                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: active ? "#000" : "#808080", fontWeight: 900 }}>{label}</span>
+                className={`flex-1 text-center py-2.5 font-mono text-[9px] font-black uppercase tracking-widest border-b-2 transition-all duration-200 cursor-pointer whitespace-nowrap px-3 ${
+                  active
+                    ? "text-lime-400 border-lime-400 bg-lime-400/10 shadow-[0_0_15px_rgba(163,230,53,0.1)]"
+                    : "text-zinc-500 border-transparent bg-transparent hover:text-zinc-300 hover:bg-zinc-900/40"
+                }`}>
+                {label}
               </button>
             );
           })}
@@ -6862,38 +6963,56 @@ function TabComunidad({
           {/* 2-col grid */}
           <div className="grid grid-cols-2 gap-4 w-full">
             {filteredRoster.map(member => (
-              <div key={member.id} className="relative flex flex-col rounded-2xl overflow-hidden active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out"
-                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
-                <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded"
-                  style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>{member.rankBadgeTitle}</span>
-                </div>
-                <div className="flex flex-col items-center pt-9 pb-3 px-3">
-                  <div className="relative mb-3">
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-sm"
+              <div key={member.id}
+                className="flex flex-col items-center text-center justify-between min-h-[340px] relative bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden p-5 group hover:border-zinc-800 active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out">
+
+                {/* Metallic rank badge */}
+                <span className={getRosterBadgeClasses(member.rankBadgeTitle)}>
+                  {member.rankBadgeTitle}
+                </span>
+
+                {/* Avatar + identity */}
+                <div className="flex flex-col items-center mt-6">
+                  <div className="relative mb-1">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-sm"
                       style={{ background: member.avatarBgColor, fontFamily: DS, color: "#000" }}>
                       {member.avatarInitials}
                     </div>
-                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-[#1A1A1A]"
-                      style={{ background: member.isOnline ? "#CEFF00" : "#808080", boxShadow: member.isOnline ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
+                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950"
+                      style={{ background: member.isOnline ? "#CEFF00" : "#52525b", boxShadow: member.isOnline ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
                   </div>
-                  <p className="font-bold text-white text-center leading-tight" style={{ fontSize: 12 }}>{member.name.replace(/_/g, " ")}</p>
-                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", marginTop: 3, textAlign: "center" }}>
+                  <p className="text-base font-black tracking-tight text-white uppercase mt-4 mb-0.5">
+                    {member.name.replace(/_/g, " ")}
+                  </p>
+                  <p className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     {member.rankBadgeTitle.split(" ")[0]} · RNK #{member.rnk.toString().padStart(2, "0")}
                   </p>
                 </div>
-                <div className="flex" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <button onClick={() => setSelectedRosterProfile(member)}
-                    className="flex-1 py-2.5 flex items-center justify-center active:opacity-60 transition-opacity"
-                    style={{ background: "none", border: "none", borderRight: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
-                    <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>PERFIL</span>
-                  </button>
-                  <button onClick={() => setCurrentRoomView("retos")}
-                    className="w-12 py-2.5 flex items-center justify-center active:scale-90 transition-transform"
-                    style={{ background: "none", border: "none", cursor: "pointer" }}>
-                    <Zap size={13} fill="#CEFF00" stroke="none" />
-                  </button>
+
+                {/* Mini stats strip */}
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", color: "#52525b", textTransform: "uppercase" }}>RACHA</span>
+                    <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 13, color: "#a1a1aa" }}>{member.rachaActiveDays}D</span>
+                  </div>
+                  <div className="w-px h-5" style={{ background: "rgba(63,63,70,0.5)" }} />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", color: "#52525b", textTransform: "uppercase" }}>PTS</span>
+                    <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 13, color: "#a1a1aa" }}>{member.pts.toLocaleString()}</span>
+                  </div>
                 </div>
+
+                {/* Premium profile trigger */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRosterProfile(member)}
+                  className="self-stretch -mx-5 -mb-5 py-2.5 px-5 flex items-center justify-between text-zinc-400 group-hover:text-white group-hover:bg-zinc-900/20 transition-all"
+                  style={{ background: "transparent", borderTop: "1px solid rgba(39,39,42,1)", cursor: "pointer" }}>
+                  <span className="font-black text-xs tracking-widest uppercase">VER PERFIL</span>
+                  <Zap
+                    size={13} fill="none" stroke="currentColor"
+                    className="group-hover:text-lime-400 group-hover:drop-shadow-[0_0_8px_rgba(163,230,53,0.6)] transition-all" />
+                </button>
               </div>
             ))}
           </div>
@@ -7147,13 +7266,14 @@ function TabComunidad({
         <div className="fixed top-6 left-1/2 z-[65] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
           style={{
             transform: "translateX(-50%)",
+            maxWidth: "calc(100vw - 32px)",
+            overflow: "hidden",
             background: "rgba(206,255,0,0.08)",
             border: "1px solid rgba(206,255,0,0.35)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             boxShadow: "0 0 24px rgba(206,255,0,0.15)",
             animation: "mc-toast-lifecycle 2.4s cubic-bezier(0.16,1,0.3,1) forwards",
-            whiteSpace: "nowrap",
           }}>
           <Zap size={13} fill="#CEFF00" stroke="none" />
           <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
@@ -7167,13 +7287,14 @@ function TabComunidad({
         <div className="fixed top-6 left-1/2 z-[60] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
           style={{
             transform: "translateX(-50%)",
+            maxWidth: "calc(100vw - 32px)",
+            overflow: "hidden",
             background: "rgba(0,240,255,0.1)",
             border: "1px solid rgba(0,240,255,0.45)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             boxShadow: "0 0 28px rgba(0,240,255,0.2)",
             animation: "mc-toast-lifecycle 2s cubic-bezier(0.16,1,0.3,1) forwards",
-            whiteSpace: "nowrap",
           }}>
           <Zap size={15} fill="#00F0FF" stroke="none" />
           <span style={{ fontFamily: "'Courier New',monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900 }}>
@@ -7547,6 +7668,14 @@ export default function PortalPage() {
         localStorage.removeItem("mc:nutrition_history");
         localStorage.removeItem("mc:workout_history");
         localStorage.setItem("mc:active_date", today);
+        // Purge yesterday's session cache keys — scan for mc:session_* entries
+        // whose embedded date no longer matches today.
+        const toRemove: string[] = [];
+        for (let k = 0; k < localStorage.length; k++) {
+          const key = localStorage.key(k);
+          if (key?.startsWith("mc:session_") && !key.endsWith(`_${today}`)) toRemove.push(key);
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
       } catch {}
       // Navigate to today's real weekday slot
       setActiveDayIndex(todayAsDayIndex());
@@ -7819,6 +7948,16 @@ export default function PortalPage() {
     const todayHistory = workoutHistory[activeDayIndex] ?? [];
     if (todayHistory.length === 0) return;
 
+    // If an in-progress session cache exists for today, it is the authoritative
+    // source for exercise state — skip DB re-hydration so it can't overwrite the
+    // correctly restored doneSets/doneEx from the TabWorkout hydration effect.
+    if (student && typeof window !== "undefined") {
+      try {
+        const sessionKey = `mc:session_${student.id}_${realDateForDayIndex(activeDayIndex)}`;
+        if (localStorage.getItem(sessionKey)) return;
+      } catch {}
+    }
+
     const newDoneEx   = new Set<number>();
     const newDoneSets: Record<number, number> = {};
     exercises.forEach((ex, idx) => {
@@ -8037,7 +8176,7 @@ export default function PortalPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center" style={{ background: "#000" }}>
         <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.28)" }}>Tu cuenta aún no tiene una ficha de alumno asociada.</p>
-        <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-[12px] underline" style={{ color: "rgba(255,255,255,0.45)" }}>Cerrar sesión</button>
+        <button onClick={() => signOut({ callbackUrl: "/" })} className="text-[12px] underline" style={{ color: "rgba(255,255,255,0.45)" }}>Cerrar sesión</button>
       </div>
     );
   }
@@ -8218,7 +8357,7 @@ export default function PortalPage() {
 
         {/* Tab content */}
         <div
-          className="flex-1 px-4 pt-3 pb-24"
+          className="flex-1 px-4 pt-3 pb-40"
           style={{
             opacity: animating ? 0 : 1,
             transform: animating ? "translateY(6px)" : "translateY(0)",
@@ -8340,7 +8479,7 @@ export default function PortalPage() {
         <BottomNav
           active={activeTab}
           onChange={switchTab}
-          onSignOut={() => signOut({ callbackUrl: "/login" })}
+          onSignOut={() => signOut({ callbackUrl: "/" })}
         />
 
       {/* Sheets */}

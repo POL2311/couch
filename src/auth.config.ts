@@ -7,7 +7,7 @@ import type { NextAuthConfig } from "next-auth";
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/" },
   providers: [], // los providers reales se inyectan en auth.ts (node)
   callbacks: {
     jwt({ token, user }) {
