@@ -804,6 +804,56 @@ export async function getWorkoutSessions(studentId: string, limit = 20): Promise
   return rows.map(toSession);
 }
 
+// ── Biometric enriched types ───────────────────────────────────────────────
+
+export interface WorkoutBiometricsDTO {
+  id:              string;
+  avgHeartRate:    number | null;
+  maxHeartRate:    number | null;
+  activeCalories:  number | null;
+  totalCalories:   number | null;
+  deviceSource:    string | null;
+  heartRateSeries: { t: string; bpm: number }[] | null;
+  createdAt:       string;
+}
+
+export interface WorkoutSessionWithBiometricsDTO extends WorkoutSessionDTO {
+  biometrics: WorkoutBiometricsDTO | null;
+}
+
+export async function getWorkoutSessionsWithBiometrics(
+  studentId: string,
+  limit = 50,
+): Promise<WorkoutSessionWithBiometricsDTO[]> {
+  const rows = await prisma.workoutSession.findMany({
+    where:   { studentId },
+    orderBy: { date: "desc" },
+    take:    limit,
+    include: { biometrics: true },
+  });
+
+  return rows.map(row => {
+    const bio = row.biometrics;
+    return {
+      ...toSession(row),
+      biometrics: bio
+        ? {
+            id:              bio.id,
+            avgHeartRate:    bio.avgHeartRate,
+            maxHeartRate:    bio.maxHeartRate,
+            activeCalories:  bio.activeCalories,
+            totalCalories:   bio.totalCalories,
+            deviceSource:    bio.deviceSource,
+            heartRateSeries: Array.isArray(bio.heartRateSeries)
+              ? (bio.heartRateSeries as { t: string; bpm: number }[])
+              : null,
+            createdAt:       bio.createdAt.toISOString(),
+          }
+        : null,
+    };
+  });
+}
+
 /* ═══════════════════════════════════════════
    Catálogo de ejercicios recurrentes (por coach)
    ═══════════════════════════════════════════ */
