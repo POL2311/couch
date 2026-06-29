@@ -2719,6 +2719,7 @@ function TabHoy({
       </div>
 
       {/* ── CINEMA BENTO MEAL CARDS ── */}
+      {/* Sort: unchecked (pending) first → checked (done) last */}
       <div className="space-y-4">
         {meals.length === 0 ? (
           <div className="rounded-3xl py-12 flex flex-col items-center gap-3"
@@ -2726,11 +2727,39 @@ function TabHoy({
             <Utensils size={32} strokeWidth={1} style={{ color: "rgba(255,255,255,0.1)" }} />
             <p className="text-[12px]" style={{ color: "#808080" }}>Tu coach aún no asigna tu dieta.</p>
           </div>
-        ) : meals.map((m, i) => {
+        ) : meals
+          .map((_, i) => i)
+          .sort((a, b) => (checkedMeals.has(a) ? 1 : 0) - (checkedMeals.has(b) ? 1 : 0))
+          .map(i => {
+          const m         = meals[i]!;
           const isChecked = checkedMeals.has(i);
           const imgSrc    = getFoodImg(m.name);
           const isSnack   = m.name.toLowerCase().includes("snack") || m.name.toLowerCase().includes("merienda");
           const cardH     = isSnack ? 155 : 225;
+
+          // ── Compact "done" card — shrinks and sinks to bottom ──────────
+          if (isChecked) return (
+            <div key={i}
+              className="rounded-xl overflow-hidden relative transition-all"
+              style={{ background: "rgba(18,18,20,0.55)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="flex items-center gap-3 py-2.5 px-4">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleMeal(i); }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
+                  style={{ background: "#CEFF00", border: "1px solid #CEFF00" }}>
+                  <Check size={11} strokeWidth={3} style={{ color: "#000" }} />
+                </button>
+                <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 15, textTransform: "uppercase", letterSpacing: "0.02em", color: "rgba(255,255,255,0.38)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {m.name}
+                </span>
+                <span style={{ fontFamily: MONO, fontSize: 9, color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>
+                  {m.calories} kcal ✓
+                </span>
+              </div>
+            </div>
+          );
+
+          // ── Full cinematic card — pending meals ────────────────────────
           return (
             <div key={i} className="rounded-3xl overflow-hidden relative cursor-pointer active:scale-[0.99] transition-all"
               style={{ background: "#000", minHeight: cardH }}
@@ -3758,6 +3787,48 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
     };
   }, []);
 
+  // ── MODULE 1: Session persistence cache ────────────────────────────────────
+  // Cache key is bound to student + date so different days never collide.
+  const sessionCacheKey = `mc:session_${student.id}_${workoutDate}`;
+
+  // Mount: restore any in-progress session from localStorage.
+  // Uses functional setters to merge atomically with re-hydration from workoutHistory.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(sessionCacheKey);
+      if (!raw) return;
+      const cache = JSON.parse(raw) as {
+        lifecycle: SessionLifecycle;
+        doneSets: Record<number, number>;
+        duration: number;
+      };
+      if (!cache || cache.lifecycle === "COMPLETED" || cache.lifecycle === "IDLE") return;
+      setSessionLifecycle("ACTIVE_TRACKING");
+      setWDuration(prev => Math.max(prev, cache.duration ?? 0));
+      setDoneSets(prev => {
+        const merged: Record<number, number> = { ...(cache.doneSets ?? {}) };
+        for (const [k, v] of Object.entries(prev)) {
+          merged[Number(k)] = Math.max(merged[Number(k)] ?? 0, v);
+        }
+        return merged;
+      });
+    } catch { /* ignore corrupt or blocked cache */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save on every meaningful state change — fire-and-forget, best-effort.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionLifecycle === "IDLE" || sessionLifecycle === "COMPLETED") return;
+    try {
+      localStorage.setItem(
+        sessionCacheKey,
+        JSON.stringify({ lifecycle: sessionLifecycle, doneSets, duration: wDuration }),
+      );
+    } catch { /* storage full or blocked */ }
+  }, [sessionLifecycle, doneSets, wDuration, sessionCacheKey]);
+
   // Session clock — only runs while ACTIVE_TRACKING, pauses on all other states
   useEffect(() => {
     if (sessionLifecycle !== "ACTIVE_TRACKING") {
@@ -3959,34 +4030,49 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
       </div>
 
       {/* ── EXERCISE CARDS (full-bleed bento) ── */}
+      {/* Sort: pending / active first → completed last (stable, index-preserving).
+          exDone derives from BOTH doneEx Set AND doneSets clamp so cache-restored
+          exercises with doneSets[i] >= ex.sets sort correctly even before workoutHistory
+          re-hydration runs. */}
       <div className="px-4 space-y-3">
-        {exercises.map((ex, i) => {
-          const exDone   = doneEx.has(i);
+        {exercises
+          .map((_, i) => i)
+          .sort((a, b) => {
+            const aDone = doneEx.has(a) || (doneSets[a] ?? 0) >= (exercises[a]?.sets ?? Infinity);
+            const bDone = doneEx.has(b) || (doneSets[b] ?? 0) >= (exercises[b]?.sets ?? Infinity);
+            return (aDone ? 1 : 0) - (bDone ? 1 : 0);
+          })
+          .map(i => {
+          const ex = exercises[i]!;
+          // MODULE 1: derive completion from both sources — doneEx Set OR sets-clamped counter
+          const doneSetsForEx = Math.min(doneSets[i] ?? 0, ex.sets); // ← clamp: never > totalSets
+          const exDone   = doneEx.has(i) || doneSetsForEx >= ex.sets;
           const isActive = i === activeExIdx && !exDone;
           const exRich   = ex as Exercise & { muscleGroup?: string };
           const imgSrc   = GYM_IMGS[i % GYM_IMGS.length];
 
+          // ── Compressed "done" chip ────────────────────────────────────────
           if (exDone) return (
-            <div key={i} className="rounded-3xl overflow-hidden relative" style={{ background: "#000", minHeight: 168 }}>
-              <img src={imgSrc} alt="" className="absolute inset-0 w-full h-full object-cover"
-                style={{ opacity: 0.18, filter: "grayscale(100%) brightness(0.45)" }} />
-              <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.76)" }} />
-              <div className="relative z-10 flex flex-col items-center justify-center py-8 px-5 gap-2.5">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center"
-                  style={{ background: "#CEFF00", boxShadow: "0 0 24px rgba(206,255,0,0.35)" }}>
-                  <Check size={26} strokeWidth={3} style={{ color: "#000" }} />
+            <div key={i}
+              className="relative overflow-hidden bg-zinc-900/20 border border-zinc-800/40 py-2.5 px-4 rounded-md opacity-50 transition-all">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "#CEFF00" }}>
+                    <Check size={10} strokeWidth={3.5} style={{ color: "#000" }} />
+                  </div>
+                  <span style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.02em", color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {ex.name}
+                  </span>
                 </div>
-                <h3 className="font-black italic tracking-wide text-white text-center"
-                  style={{ fontFamily: DS, fontSize: "clamp(22px,6.5vw,28px)", textTransform: "uppercase", marginTop: 4 }}>
-                  {ex.name}
-                </h3>
-                <p className="text-[10px] uppercase tracking-[0.25em] font-mono" style={{ color: "#808080" }}>
-                  COMPLETADO
-                </p>
+                <span style={{ fontFamily: "'Courier New',monospace", fontSize: 8, letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", textTransform: "uppercase", flexShrink: 0 }}>
+                  {ex.sets} SETS ✓
+                </span>
               </div>
             </div>
           );
 
+          // ── Active hero card (currently training) ─────────────────────────
           if (isActive) return (
             <div key={i} className="rounded-3xl overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all"
               style={{ background: "#000", border: "1px solid rgba(206,255,0,0.32)", boxShadow: "0 0 0 1px rgba(206,255,0,0.08), 0 32px 64px -16px rgba(0,0,0,0.9)", minHeight: 200 }}
@@ -4007,6 +4093,22 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
                 <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(30px,9vw,42px)", lineHeight: 0.88, textTransform: "uppercase", letterSpacing: "-0.03em", color: "#fff" }}>
                   {ex.name}
                 </h3>
+
+                {/* MODULE 3: Inline smartwatch HR sync */}
+                {sessionLifecycle !== "IDLE" && biometrics.avgHeartRate > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 13, animation: "mc-hr-pulse 1.1s ease-in-out infinite", display: "inline-block" }}>❤️</span>
+                    <span style={{ fontFamily: "'Courier New',monospace", fontWeight: 900, fontSize: 15, letterSpacing: "0.04em", color: "#ff7676", textTransform: "uppercase" }}>
+                      {biometrics.avgHeartRate} BPM
+                    </span>
+                    {biometrics.maxHeartRate > 0 && (
+                      <span style={{ fontFamily: "'Courier New',monospace", fontSize: 10, color: "rgba(255,118,118,0.5)", textTransform: "uppercase" }}>
+                        MAX {biometrics.maxHeartRate}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mt-auto">
                   <div>
                     <p className="text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ color: "#CEFF00" }}>SERIES</p>
@@ -4025,9 +4127,10 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
             </div>
           );
 
-          // MODULE 3: progress-capsule card for pending exercises
-          const doneSetsForEx = doneSets[i] ?? 0;
-          const fillPct       = Math.round((doneSetsForEx / Math.max(ex.sets, 1)) * 100);
+          // ── Progress capsule (pending, not active) ────────────────────────
+          // MODULE 1: badge flips to COMPLETADO (green) if sets are full
+          const capsuleDone  = doneSetsForEx >= ex.sets;
+          const fillPct      = Math.round((doneSetsForEx / Math.max(ex.sets, 1)) * 100);
           return (
             <div key={i}
               className="relative overflow-hidden bg-zinc-950 border border-zinc-800 p-4 rounded-md cursor-pointer active:scale-[0.98] transition-all"
@@ -4040,7 +4143,10 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
               {/* Content */}
               <div className="relative z-10 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-mono font-black uppercase tracking-widest mb-0.5 text-zinc-500">PENDIENTE</p>
+                  <p className="text-[8px] font-mono font-black uppercase tracking-widest mb-0.5"
+                    style={{ color: capsuleDone ? "#4ade80" : "#71717a" }}>
+                    {capsuleDone ? "COMPLETADO" : "PENDIENTE"}
+                  </p>
                   <h3 style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: "clamp(18px,5.5vw,22px)", textTransform: "uppercase", letterSpacing: "-0.02em", color: "#fff" }}>
                     {ex.name}
                   </h3>
@@ -4123,6 +4229,8 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
               if (durationRef.current) { clearInterval(durationRef.current); durationRef.current = null; }
               setSessionLifecycle("COMPLETED");
               setWorkoutComplete(true);
+              // Clear session cache — progress intentionally finalized by user
+              try { localStorage.removeItem(sessionCacheKey); } catch {}
               // Fire biometric summary to Postgres (upsert — safe to retry)
               fetch("/api/student/workout-session/telemetry", {
                 method:  "POST",
@@ -4513,6 +4621,49 @@ function CancelSubscriptionSheet({
 }
 
 /* ══════════════════════════════════════════════════════════════
+   TAB: PERFIL — helpers
+══════════════════════════════════════════════════════════════ */
+
+/**
+ * MODULE 3: Pure-CSS heart-rate sparkline.
+ * Renders a row of tightly packed bars whose height encodes BPM intensity.
+ * Samples to ≤80 bars to stay pixel-efficient on small screens.
+ * Red = peak zone (≥85% of max), lime = mid zone (≥65%), zinc = rest.
+ */
+function HRSparkline({ series }: { series: { t: string; bpm: number }[] }) {
+  if (!series.length) return null;
+  const maxBpm = Math.max(...series.map(p => p.bpm));
+  const minBpm = Math.min(...series.map(p => p.bpm));
+  const range  = Math.max(maxBpm - minBpm, 1);
+  const SAMPLE = 80;
+  const step   = series.length > SAMPLE ? Math.ceil(series.length / SAMPLE) : 1;
+  const points = series.filter((_, i) => i % step === 0).slice(0, SAMPLE);
+  return (
+    <div className="flex items-end gap-px overflow-hidden" style={{ height: 28, width: "100%" }}>
+      {points.map((p, i) => {
+        const heightPct = Math.max(((p.bpm - minBpm) / range) * 100, 8);
+        const color =
+          p.bpm >= maxBpm * 0.85 ? "#ef4444"
+          : p.bpm >= maxBpm * 0.65 ? "#a3e635"
+          : "#3f3f46";
+        return (
+          <div key={i}
+            style={{
+              flex:       "1 1 0",
+              minWidth:   "2px",
+              maxWidth:   "6px",
+              height:     `${heightPct}%`,
+              background: color,
+              borderRadius: "1px",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    TAB: PERFIL
 ══════════════════════════════════════════════════════════════ */
 
@@ -4536,6 +4687,34 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
   const [settingsSaved,     setSettingsSaved]     = useState(false);
   const [showRankDrawer,    setShowRankDrawer]    = useState(false);
   const settingsSavedRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── MODULE 2: Biometric history state ───────────────────────────────────
+  type BioSession = {
+    id:        string;
+    name:      string;
+    date:      string;
+    completed: boolean;
+    biometrics: {
+      avgHeartRate:    number | null;
+      maxHeartRate:    number | null;
+      activeCalories:  number | null;
+      totalCalories:   number | null;
+      deviceSource:    string | null;
+      heartRateSeries: { t: string; bpm: number }[] | null;
+    } | null;
+  };
+  const [bioHistory, setBioHistory] = useState<BioSession[]>([]);
+  const [bioLoading, setBioLoading] = useState(true);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/student/workout-session/history", { signal: ctrl.signal })
+      .then(r => (r.ok ? r.json() as Promise<BioSession[]> : Promise.resolve([])))
+      .then(data => { setBioHistory(data); setBioLoading(false); })
+      .catch(() => { setBioLoading(false); });
+    return () => ctrl.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const anyOpen = showRankDrawer || showSettings;
@@ -5053,6 +5232,107 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
         </div>,
         document.body
       )}
+
+      {/* ══ MODULE 2 + 3: BIOMETRIC SESSION TIMELINE ══════════════════════ */}
+      <div className="px-4 pb-8 mt-6">
+
+        {/* Section header */}
+        <div className="flex items-center gap-3 mb-4">
+          <p className="text-[9px] font-mono font-black uppercase tracking-[0.22em] shrink-0" style={{ color: "#808080" }}>
+            ▶ SESIONES · REGISTRO TELEMETRÍA
+          </p>
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
+        {/* Skeleton while loading */}
+        {bioLoading && (
+          <div className="space-y-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-full h-20 rounded-sm bg-zinc-900 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!bioLoading && bioHistory.length === 0 && (
+          <div className="bg-zinc-950 border border-zinc-800 p-5 rounded-sm text-center">
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#808080" }}>
+              SIN SESIONES REGISTRADAS
+            </p>
+            <p style={{ fontFamily: MONO, fontSize: 8, color: "rgba(255,255,255,0.2)", marginTop: 4, lineHeight: 1.6 }}>
+              Tus sesiones apareceran aqui tras completar tu primer entrenamiento.
+            </p>
+          </div>
+        )}
+
+        {/* Timeline cards */}
+        {!bioLoading && bioHistory.map(session => {
+          const [y, m, d] = session.date.split("-");
+          const dateLabel  = `${d}/${m}/${y}`;
+          const bio        = session.biometrics;
+          const hrSeries   = bio?.heartRateSeries;
+          const hasHrData  = Array.isArray(hrSeries) && hrSeries.length > 0;
+
+          return (
+            <div key={session.id}
+              className="w-full bg-zinc-950 border border-zinc-900 p-5 mb-4 rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+              {/* ── Left: session summary ── */}
+              <div className="flex-1 min-w-0">
+                <p style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.22em", textTransform: "uppercase", color: "#808080", marginBottom: 4 }}>
+                  {dateLabel}
+                  {session.completed && (
+                    <span style={{ color: "#CEFF00", marginLeft: 10 }}>✓ COMPLETADA</span>
+                  )}
+                </p>
+                <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 20, textTransform: "uppercase", letterSpacing: "0.02em", color: "#fff", lineHeight: 1.1, marginBottom: 2 }}>
+                  {session.name}
+                </p>
+
+                {/* MODULE 3: HR sparkline ─ only when series data exists */}
+                {hasHrData && (
+                  <div className="mt-3">
+                    <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", textTransform: "uppercase", color: "#3f3f46", marginBottom: 3 }}>
+                      HR CURVE · {hrSeries!.length} PUNTOS
+                    </p>
+                    <HRSparkline series={hrSeries!} />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Right: biometrics matrix pills ── */}
+              {bio && (
+                <div className="flex flex-wrap gap-2 shrink-0 md:justify-end">
+                  {bio.avgHeartRate != null && (
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm whitespace-nowrap">
+                        ❤️ {bio.avgHeartRate} BPM PROM
+                      </span>
+                      {bio.maxHeartRate != null && (
+                        <span className="font-mono text-[9px] font-black uppercase text-zinc-500 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 rounded-sm whitespace-nowrap">
+                          MAX: {bio.maxHeartRate} BPM
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {bio.activeCalories != null && (
+                    <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm self-start whitespace-nowrap">
+                      🔥 {bio.activeCalories} KCAL
+                    </span>
+                  )}
+                  {bio.deviceSource && (
+                    <span className="font-mono text-xs font-black uppercase text-zinc-300 tracking-wider bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-sm self-start whitespace-nowrap">
+                      📟 DEV: {bio.deviceSource.slice(0, 24)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+            </div>
+          );
+        })}
+
+      </div>
 
     </div>
   );
