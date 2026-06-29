@@ -16,17 +16,19 @@ export default auth((req) => {
   const session = req.auth;
   const role = session?.user?.role;
 
+  const isRoot  = path === "/";
   const isLogin = path === "/login";
 
-  // No autenticado → al login (excepto si ya está en login)
+  // No autenticado → root gateway and /login are publicly accessible.
+  // All other protected routes bounce back to the root gateway with callbackUrl.
   if (!session) {
-    if (isLogin) return NextResponse.next();
-    const url = new URL("/login", nextUrl);
-    if (path !== "/") url.searchParams.set("callbackUrl", path);
+    if (isRoot || isLogin) return NextResponse.next();
+    const url = new URL("/", nextUrl);
+    url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
   }
 
-  const home = HOME_BY_ROLE[role ?? "CLIENT"] ?? "/login";
+  const home = HOME_BY_ROLE[role ?? "CLIENT"] ?? "/";
 
   // Autenticado en /login o raíz → a su home por rol
   if (isLogin || path === "/") {
