@@ -2740,7 +2740,7 @@ function TabHoy({
           // ── Compact "done" card — shrinks and sinks to bottom ──────────
           if (isChecked) return (
             <div key={i}
-              className="rounded-xl overflow-hidden relative transition-all"
+              className="rounded-xl overflow-hidden relative transition-all duration-300"
               style={{ background: "rgba(18,18,20,0.55)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="flex items-center gap-3 py-2.5 px-4">
                 <button
@@ -4054,7 +4054,7 @@ function TabWorkout({ day, student, waterMl, onAddWater, onFocusMode, memberTier
           // ── Compressed "done" chip ────────────────────────────────────────
           if (exDone) return (
             <div key={i}
-              className="relative overflow-hidden bg-zinc-900/20 border border-zinc-800/40 py-2.5 px-4 rounded-md opacity-50 transition-all">
+              className="relative overflow-hidden bg-zinc-900/20 border border-zinc-800/40 py-2.5 px-4 rounded-md opacity-50 transition-all duration-300">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
@@ -5119,7 +5119,7 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
 
       {/* ── JERARQUÍA Y RANGOS DRAWER — portal-mounted to escape layout stacking ── */}
       {showRankDrawer && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 bg-[#070708]/98 z-[70] flex flex-col overflow-y-auto pb-16"
+        <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto pb-16"
           style={{ animation: "mc-overlay-in 0.25s cubic-bezier(0.16,1,0.3,1) both" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-8 pb-4 flex-shrink-0"
@@ -5188,17 +5188,19 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
                   border: `1.5px solid ${rank.borderColor}`,
                   opacity: rank.active || rank.voltTheme ? 1 : 0.55,
                 }}>
-                {/* Badge icon */}
+                {/* Chromatic shield container */}
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: rank.active
-                      ? "rgba(206,255,0,0.1)"
+                  style={
+                    rank.active
+                      ? { background: RANK_SHIELD_CFG[rank.level]?.bg, border: RANK_SHIELD_CFG[rank.level]?.border, boxShadow: RANK_SHIELD_CFG[rank.level]?.shadow }
                       : rank.voltTheme
-                      ? "rgba(206,255,0,0.04)"
-                      : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${rank.borderColor}`,
-                  }}>
-                  <span style={{ fontSize: 20, color: rank.accentColor, lineHeight: 1 }}>{rank.icon}</span>
+                      ? { background: RANK_SHIELD_CFG[6]?.bg, border: RANK_SHIELD_CFG[6]?.border, boxShadow: RANK_SHIELD_CFG[6]?.shadow }
+                      : { background: "rgba(24,24,27,0.5)", border: "1px solid rgba(63,63,70,0.8)" }
+                  }>
+                  {rank.active || rank.voltTheme
+                    ? <span style={{ fontSize: 20, color: rank.active ? RANK_SHIELD_CFG[rank.level]?.iconColor : "#a3e635", lineHeight: 1 }}>{rank.icon}</span>
+                    : <Lock size={14} style={{ color: "#52525b" }} />
+                  }
                 </div>
                 {/* Text */}
                 <div className="flex-1 min-w-0">
@@ -5399,6 +5401,34 @@ const SALA_METRICS: SalaMetric[] = [
   { icon: <Activity size={18} />, label: "ESFUERZO PROM.",   value: "92%",  sub: "INTENSIDAD",     accent: "#00F0FF" },
   { icon: <MapPin   size={18} />, label: "KMs TOTALES",      value: "1.2K", sub: "ESTE MES",       accent: "#00F0FF" },
 ];
+
+// ── Metallic tier badge class resolver ───────────────────────────────────
+function getRosterBadgeClasses(rankTitle: string): string {
+  const t = rankTitle.toUpperCase();
+  if (t.includes("BESTIA"))
+    return "absolute top-3 left-3 bg-lime-950/50 border border-lime-400 text-lime-400 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_12px_rgba(163,230,53,0.15)] z-10";
+  if (t.includes("COMANDANTE"))
+    return "absolute top-3 left-3 bg-yellow-950/40 border border-yellow-500/40 text-yellow-500 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_10px_rgba(234,179,8,0.1)] z-10";
+  if (t.includes("PREDADOR"))
+    return "absolute top-3 left-3 bg-zinc-900 border border-zinc-600/50 text-zinc-200 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+  if (t.includes("TITÁN") || t.includes("TITAN"))
+    return "absolute top-3 left-3 bg-slate-900 border border-slate-400/40 text-slate-200 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm shadow-[0_0_8px_rgba(226,232,240,0.05)] z-10";
+  if (t.includes("GUERRER"))
+    return "absolute top-3 left-3 bg-zinc-900 border border-zinc-700/50 text-zinc-300 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+  // ATLETA INIT — Bronze tier (default)
+  return "absolute top-3 left-3 bg-amber-950/30 border border-amber-800/40 text-amber-500 font-mono text-[9px] font-black tracking-widest px-2 py-0.5 uppercase rounded-sm z-10";
+}
+
+// ── Shield container styles per rank level (for Power Rank modal) ─────────
+type ShieldCfg = { bg: string; border: string; shadow?: string; iconColor: string };
+const RANK_SHIELD_CFG: Record<number, ShieldCfg> = {
+  1: { bg: "rgba(120,53,15,0.25)",  border: "1.5px solid rgba(217,119,6,0.65)",    shadow: "0 0 15px rgba(217,119,6,0.2)",    iconColor: "#d97706" },
+  2: { bg: "rgba(24,24,27,0.5)",    border: "1px solid rgba(63,63,70,0.8)",                                                    iconColor: "#71717a" },
+  3: { bg: "rgba(15,23,42,0.5)",    border: "1px solid rgba(100,116,139,0.5)",     shadow: "0 0 8px rgba(226,232,240,0.04)", iconColor: "#94a3b8" },
+  4: { bg: "rgba(66,32,6,0.3)",     border: "1.5px solid rgba(234,179,8,0.5)",    shadow: "0 0 10px rgba(234,179,8,0.1)",   iconColor: "#eab308" },
+  5: { bg: "rgba(24,24,27,0.5)",    border: "1px solid rgba(63,63,70,0.7)",                                                    iconColor: "#71717a" },
+  6: { bg: "rgba(26,46,5,0.5)",     border: "1.5px solid #a3e635",                shadow: "0 0 15px rgba(163,230,53,0.2)",  iconColor: "#a3e635" },
+};
 
 // ── Module-level static datasets ─────────────────────────────────────────
 const SALA_ROSTER: RosterMember[] = [
@@ -5830,8 +5860,8 @@ function TabComunidad({
           <div className="flex flex-col gap-3 mb-8">
             {publicRooms.map(room => (
               <div key={room.id}
-                className="flex items-center justify-between gap-4 p-4 rounded-sm border border-zinc-800 bg-zinc-950">
-                <div className="min-w-0">
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-sm border border-zinc-800 bg-zinc-950">
+                <div className="min-w-0 flex-1">
                   <p style={{ fontFamily: DS, fontWeight: 900, fontStyle: "italic", fontSize: 16, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", lineHeight: 1.1, marginBottom: 3 }}>
                     {room.name}
                   </p>
@@ -5842,7 +5872,7 @@ function TabComunidad({
                 <button
                   onClick={() => { if (!isJoining) executeJoin({ roomId: room.id }); }}
                   disabled={isJoining}
-                  className="shrink-0 px-3 py-2 rounded-sm text-[10px] font-mono font-black tracking-widest transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                  className="w-full sm:w-auto px-3 py-2 rounded-sm text-[10px] font-mono font-black tracking-widest transition-all active:scale-95 disabled:opacity-60 text-center"
                   style={{ background: "rgba(206,255,0,0.08)", border: "1px solid rgba(206,255,0,0.35)", color: "#CEFF00" }}>
                   ⚡ DESTRABAR ACCESO PÚBLICO
                 </button>
@@ -6862,38 +6892,56 @@ function TabComunidad({
           {/* 2-col grid */}
           <div className="grid grid-cols-2 gap-4 w-full">
             {filteredRoster.map(member => (
-              <div key={member.id} className="relative flex flex-col rounded-2xl overflow-hidden active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out"
-                style={{ background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.04)" }}>
-                <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded"
-                  style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 6.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}>{member.rankBadgeTitle}</span>
-                </div>
-                <div className="flex flex-col items-center pt-9 pb-3 px-3">
-                  <div className="relative mb-3">
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center font-black text-sm"
+              <div key={member.id}
+                className="flex flex-col items-center text-center justify-between min-h-[340px] relative bg-zinc-950 border border-zinc-900 rounded-sm overflow-hidden p-5 group hover:border-zinc-800 active:scale-[0.97] active:opacity-90 transition-all duration-150 ease-out">
+
+                {/* Metallic rank badge */}
+                <span className={getRosterBadgeClasses(member.rankBadgeTitle)}>
+                  {member.rankBadgeTitle}
+                </span>
+
+                {/* Avatar + identity */}
+                <div className="flex flex-col items-center mt-6">
+                  <div className="relative mb-1">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center font-black text-sm"
                       style={{ background: member.avatarBgColor, fontFamily: DS, color: "#000" }}>
                       {member.avatarInitials}
                     </div>
-                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-[#1A1A1A]"
-                      style={{ background: member.isOnline ? "#CEFF00" : "#808080", boxShadow: member.isOnline ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
+                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950"
+                      style={{ background: member.isOnline ? "#CEFF00" : "#52525b", boxShadow: member.isOnline ? "0 0 6px rgba(206,255,0,0.6)" : "none" }} />
                   </div>
-                  <p className="font-bold text-white text-center leading-tight" style={{ fontSize: 12 }}>{member.name.replace(/_/g, " ")}</p>
-                  <p style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.1em", textTransform: "uppercase", color: "#808080", marginTop: 3, textAlign: "center" }}>
+                  <p className="text-base font-black tracking-tight text-white uppercase mt-4 mb-0.5">
+                    {member.name.replace(/_/g, " ")}
+                  </p>
+                  <p className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     {member.rankBadgeTitle.split(" ")[0]} · RNK #{member.rnk.toString().padStart(2, "0")}
                   </p>
                 </div>
-                <div className="flex" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <button onClick={() => setSelectedRosterProfile(member)}
-                    className="flex-1 py-2.5 flex items-center justify-center active:opacity-60 transition-opacity"
-                    style={{ background: "none", border: "none", borderRight: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}>
-                    <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#808080" }}>PERFIL</span>
-                  </button>
-                  <button onClick={() => setCurrentRoomView("retos")}
-                    className="w-12 py-2.5 flex items-center justify-center active:scale-90 transition-transform"
-                    style={{ background: "none", border: "none", cursor: "pointer" }}>
-                    <Zap size={13} fill="#CEFF00" stroke="none" />
-                  </button>
+
+                {/* Mini stats strip */}
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", color: "#52525b", textTransform: "uppercase" }}>RACHA</span>
+                    <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 13, color: "#a1a1aa" }}>{member.rachaActiveDays}D</span>
+                  </div>
+                  <div className="w-px h-5" style={{ background: "rgba(63,63,70,0.5)" }} />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ fontFamily: MONO, fontSize: 7, letterSpacing: "0.18em", color: "#52525b", textTransform: "uppercase" }}>PTS</span>
+                    <span style={{ fontFamily: MONO, fontWeight: 900, fontSize: 13, color: "#a1a1aa" }}>{member.pts.toLocaleString()}</span>
+                  </div>
                 </div>
+
+                {/* Premium profile trigger */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRosterProfile(member)}
+                  className="self-stretch -mx-5 -mb-5 py-2.5 px-5 flex items-center justify-between text-zinc-400 group-hover:text-white group-hover:bg-zinc-900/20 transition-all"
+                  style={{ background: "transparent", borderTop: "1px solid rgba(39,39,42,1)", cursor: "pointer" }}>
+                  <span className="font-black text-xs tracking-widest uppercase">VER PERFIL</span>
+                  <Zap
+                    size={13} fill="none" stroke="currentColor"
+                    className="group-hover:text-lime-400 group-hover:drop-shadow-[0_0_8px_rgba(163,230,53,0.6)] transition-all" />
+                </button>
               </div>
             ))}
           </div>
@@ -7147,13 +7195,14 @@ function TabComunidad({
         <div className="fixed top-6 left-1/2 z-[65] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
           style={{
             transform: "translateX(-50%)",
+            maxWidth: "calc(100vw - 32px)",
+            overflow: "hidden",
             background: "rgba(206,255,0,0.08)",
             border: "1px solid rgba(206,255,0,0.35)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             boxShadow: "0 0 24px rgba(206,255,0,0.15)",
             animation: "mc-toast-lifecycle 2.4s cubic-bezier(0.16,1,0.3,1) forwards",
-            whiteSpace: "nowrap",
           }}>
           <Zap size={13} fill="#CEFF00" stroke="none" />
           <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "#CEFF00", fontWeight: 900 }}>
@@ -7167,13 +7216,14 @@ function TabComunidad({
         <div className="fixed top-6 left-1/2 z-[60] flex items-center gap-3 px-5 py-3.5 rounded-2xl"
           style={{
             transform: "translateX(-50%)",
+            maxWidth: "calc(100vw - 32px)",
+            overflow: "hidden",
             background: "rgba(0,240,255,0.1)",
             border: "1px solid rgba(0,240,255,0.45)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             boxShadow: "0 0 28px rgba(0,240,255,0.2)",
             animation: "mc-toast-lifecycle 2s cubic-bezier(0.16,1,0.3,1) forwards",
-            whiteSpace: "nowrap",
           }}>
           <Zap size={15} fill="#00F0FF" stroke="none" />
           <span style={{ fontFamily: "'Courier New',monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "#00F0FF", fontWeight: 900 }}>
@@ -8218,7 +8268,7 @@ export default function PortalPage() {
 
         {/* Tab content */}
         <div
-          className="flex-1 px-4 pt-3 pb-24"
+          className="flex-1 px-4 pt-3 pb-40"
           style={{
             opacity: animating ? 0 : 1,
             transform: animating ? "translateY(6px)" : "translateY(0)",
