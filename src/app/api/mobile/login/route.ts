@@ -10,6 +10,7 @@ import { signMobileToken } from "@/lib/mobile-auth";
    header Authorization: Bearer <token> en cada llamada.
    ═══════════════════════════════════════════ */
 export async function POST(request: NextRequest) {
+  console.log("📥 [BACKEND IMPACT] Mobile login endpoint reached!");
   try {
     const { email, password } = await request.json();
     const mail = (email as string)?.trim().toLowerCase();
@@ -17,13 +18,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Correo y contraseña requeridos" }, { status: 400 });
     }
 
+    console.log("🔎 [BACKEND IMPACT] Querying Prisma/Neon for user:", mail);
     const user = await prisma.user.findUnique({
       where: { email: mail },
       include: { coachProfile: true, student: true },
     });
+    console.log("🔎 [BACKEND IMPACT] Prisma query resolved. Found user:", !!user);
     if (!user) return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
 
+    console.log("🔐 [BACKEND IMPACT] Running bcrypt.compare...");
     const ok = await bcrypt.compare(password, user.passwordHash);
+    console.log("🔐 [BACKEND IMPACT] bcrypt.compare resolved:", ok);
     if (!ok) return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
 
     const role = user.role as "ADMIN" | "COACH" | "CLIENT";

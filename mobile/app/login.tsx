@@ -15,19 +15,23 @@ const DEMO_ACCOUNTS = [
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signIn, loading } = useSession();
+  const { signIn } = useSession();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     setError(null);
+    setIsSubmitting(true);
     try {
       const user = await signIn(email, password);
       router.replace(homeForRole(user.role) as any);
     } catch (e: any) {
       setError(e?.message ?? "Ocurrió un error al iniciar sesión.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,11 +84,11 @@ export default function LoginScreen() {
 
           <Pressable
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={isSubmitting}
             className="mt-5 flex-row items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent active:opacity-80"
-            style={{ opacity: loading ? 0.5 : 1 }}
+            style={{ opacity: isSubmitting ? 0.5 : 1 }}
           >
-            {loading ? (
+            {isSubmitting ? (
               <ActivityIndicator color={T.textInverse} />
             ) : (
               <>
