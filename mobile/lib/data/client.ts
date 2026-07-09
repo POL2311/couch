@@ -42,7 +42,18 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const url = `${API_URL}${path}`;
+  console.log("✈️ [MOBILE NETWORK DISPATCH] Target URL:", url, "Method:", init?.method ?? "GET");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     let msg = `Error ${res.status}`;
