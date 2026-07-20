@@ -3,6 +3,10 @@ import { Mail, Clock, ShieldCheck } from "lucide-react";
 import { LegalShell, LegalHero, LegalCard, LegalSectionTitle, DS, MONO, ACCENT } from "../_legal-chrome";
 import { FaqAccordion, type FaqItem } from "./_faq-accordion";
 
+// Fuerza renderizado dinámico en cada request — evita que Vercel sirva un
+// HTML estático cacheado en el edge que ignore el bypass público del proxy.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Soporte — MyCouch",
   description:
