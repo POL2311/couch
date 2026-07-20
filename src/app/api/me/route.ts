@@ -4,6 +4,7 @@ import path from "path";
 import { getSessionUser } from "@/lib/session";
 import { getStudentById, getStudentDetail, updateStudent, addProgressPhoto } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
+import { stripe, stripeEnabled } from "@/lib/stripe";
 
 // Never let Next.js or a CDN cache this route — it must always hit the live DB.
 export const dynamic = "force-dynamic";
@@ -111,4 +112,67 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true }, { headers: NO_STORE });
+}
+
+/**
+ * Borrado de cuenta en auto-servicio (Apple App Store Guideline 5.1.1(v)).
+ * Solo cubre cuentas CLIENT — un Coach/Admin que se borre a sí mismo tendría
+ * que orfanar o reasignar primero a todos sus alumnos, lo cual es un flujo
+ * de negocio aparte y no algo que deba dispararse desde el botón de Perfil.
+ */
+export async function DELETE(request: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401, headers: NO_STORE });
+  }
+  if (user.role !== "CLIENT" || !user.studentId) {
+    return NextResponse.json(
+      { error: "Esta acción solo está disponible para cuentas de alumno" },
+      { status: 403, headers: NO_STORE }
+    );
+  }
+
+  const studentId = user.studentId;
+  const userId = user.id;
+
+  // Cancela cualquier suscripción de Stripe activa antes de borrar — de lo
+  // contrario seguiría cobrando a una tarjeta ligada a una cuenta ya eliminada.
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { stripeSubscriptionId: true },
+  });
+  if (stripeEnabled() && student?.stripeSubscriptionId) {
+    try {
+      await stripe.subscriptions.cancel(student.stripeSubscriptionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[Stripe] No se pudo cancelar ${student.stripeSubscriptionId} al borrar cuenta: ${message} — continuando con el borrado`);
+    }
+  }
+
+  // Todo lo colgado de Student (peso, medidas, fotos, checks diarios, logs de
+  // ejercicio, sesiones de entrenamiento + su telemetría, hidratación) tiene
+  // onDelete: Cascade en el schema — se borra solo al borrar el Student.
+  // GroupMessage no tiene FK (senderId es un string suelto), así que se borra
+  // explícitamente. Carrera sí cascadea al borrar el User.
+  // Student debe borrarse ANTES que User: la FK Student.userId es
+  // onDelete: SetNull, así que borrar User primero solo huérfanaría al Student.
+  await prisma.$transaction([
+    prisma.groupMessage.deleteMany({ where: { senderId: userId } }),
+    prisma.student.delete({ where: { id: studentId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
+
+  const response = NextResponse.json({ success: true }, { headers: NO_STORE });
+
+  // Cierra la sesión del lado del servidor: borra toda cookie de Auth.js
+  // (session-token, csrf-token, callback-url, con y sin prefijo __Secure-/__Host-)
+  // para que el navegador no conserve un JWT válido de una cuenta que ya no existe.
+  for (const c of request.cookies.getAll()) {
+    if (c.name.includes("authjs")) {
+      response.cookies.set(c.name, "", { maxAge: 0, path: "/" });
+    }
+  }
+
+  return response;
 }
