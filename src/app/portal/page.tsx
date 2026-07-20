@@ -4697,6 +4697,93 @@ function CancelSubscriptionSheet({
 }
 
 /* ══════════════════════════════════════════════════════════════
+   DELETE ACCOUNT — irreversible, self-service (Apple 5.1.1(v))
+══════════════════════════════════════════════════════════════ */
+
+const DELETE_CONFIRM_WORD = "ELIMINAR";
+
+function DeleteAccountSheet({
+  confirmText, onConfirmTextChange, onConfirm, status, onClose,
+}: {
+  confirmText: string;
+  onConfirmTextChange: (v: string) => void;
+  onConfirm: () => void;
+  status: "idle" | "loading" | "error";
+  onClose: () => void;
+}) {
+  const DANGER = "#FF3B30";
+  const canConfirm = confirmText.trim().toUpperCase() === DELETE_CONFIRM_WORD && status !== "loading";
+
+  return (
+    <>
+      <div className="flex items-center gap-3 mb-5 mt-1">
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+          style={{ background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.2)" }}>
+          <AlertTriangle size={18} strokeWidth={1.5} style={{ color: DANGER }} />
+        </div>
+        <div>
+          <h2 className="text-[18px] font-semibold" style={{ color: "#fff" }}>Eliminar mi cuenta</h2>
+          <p className="text-[12px]" style={{ color: "#8E8E93" }}>Esta acción es permanente</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl px-4 py-3.5 mb-5" style={{ background: "rgba(255,59,48,0.06)", border: "1px solid rgba(255,59,48,0.18)" }}>
+        <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
+          Se borrarán de forma <strong style={{ color: "#fff" }}>irreversible</strong>: tu perfil, historial de
+          peso y medidas, fotos de progreso, rutinas, dietas, registros de entrenamiento e hidratación, y tus
+          mensajes en las Salas. Tu suscripción activa (si la tienes) se cancelará de inmediato. No podrás
+          recuperar esta información después de confirmar.
+        </p>
+      </div>
+
+      <label className="block mb-5">
+        <span className="text-[11px] font-medium uppercase tracking-wide block mb-2" style={{ color: "#8E8E93" }}>
+          Escribe <strong style={{ color: "#fff" }}>{DELETE_CONFIRM_WORD}</strong> para confirmar
+        </span>
+        <input
+          type="text"
+          value={confirmText}
+          onChange={(e) => onConfirmTextChange(e.target.value)}
+          placeholder={DELETE_CONFIRM_WORD}
+          autoComplete="off"
+          autoCapitalize="characters"
+          disabled={status === "loading"}
+          className="w-full px-4 rounded-2xl text-[14px] outline-none"
+          style={{ height: 52, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }}
+        />
+      </label>
+
+      {status === "error" && (
+        <p className="text-[12px] mb-4 px-4 py-2.5 rounded-xl text-center"
+          style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.15)", color: DANGER }}>
+          No se pudo eliminar tu cuenta. Intenta de nuevo o escríbenos a soporte.
+        </p>
+      )}
+
+      <button
+        onClick={onConfirm}
+        disabled={!canConfirm}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl text-[14px] font-bold uppercase tracking-wide transition-opacity disabled:opacity-40 cursor-pointer"
+        style={{ height: 52, background: DANGER, color: "#fff" }}
+      >
+        {status === "loading"
+          ? <Loader2 size={17} className="animate-spin" />
+          : "Eliminar mi cuenta definitivamente"}
+      </button>
+
+      <button
+        onClick={onClose}
+        disabled={status === "loading"}
+        className="w-full flex items-center justify-center mt-3 rounded-2xl text-[14px] font-medium cursor-pointer transition-opacity hover:opacity-70 disabled:opacity-40"
+        style={{ height: 52, background: "#ffffff", color: "#000000" }}
+      >
+        Cancelar
+      </button>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
    TAB: PERFIL — helpers
 ══════════════════════════════════════════════════════════════ */
 
@@ -4743,10 +4830,11 @@ function HRSparkline({ series }: { series: { t: string; bpm: number }[] }) {
    TAB: PERFIL
 ══════════════════════════════════════════════════════════════ */
 
-function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workoutHistory, activeDayIndex, prs, walletBalance }: {
+function TabPerfil({ student, detail, onCancelRequest, onDeleteAccountRequest, nutritionHistory, workoutHistory, activeDayIndex, prs, walletBalance }: {
   student: Student;
   detail: Detail;
   onCancelRequest: () => void;
+  onDeleteAccountRequest: () => void;
   nutritionHistory: Record<number, Set<number>>;
   workoutHistory: Record<number, string[]>;
   activeDayIndex: number;
@@ -5156,6 +5244,23 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
               style={{ background: settingsSaved ? "rgba(206,255,0,0.12)" : "#CEFF00", border: settingsSaved ? "1.5px solid #CEFF00" : "none", cursor: "pointer", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 18, letterSpacing: "0.1em", textTransform: "uppercase", color: settingsSaved ? "#CEFF00" : "#000", boxShadow: "0 0 28px rgba(206,255,0,0.25)" }}>
               {settingsSaved ? "✓ PREFERENCIAS GUARDADAS" : "GUARDAR CAMBIOS"}
             </button>
+
+            <div className="h-px my-2" style={{ background: "rgba(255,255,255,0.04)" }} />
+
+            {/* ── ZONA PELIGROSA ── */}
+            <p style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: "0.2em", textTransform: "uppercase", color: "#FF3B30", marginBottom: 12 }}>⚠️ ZONA PELIGROSA</p>
+            <div className="rounded-xl p-4 mb-2" style={{ background: "rgba(255,59,48,0.05)", border: "1px solid rgba(255,59,48,0.18)" }}>
+              <p style={{ fontFamily: DS, fontWeight: 900, fontSize: 14, color: "#fff", marginBottom: 4 }}>Eliminar mi cuenta</p>
+              <p style={{ fontFamily: MONO, fontSize: 10.5, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, marginBottom: 14 }}>
+                Borra tu perfil, progreso, rutinas, dietas y mensajes de forma permanente. No se puede deshacer.
+              </p>
+              <button
+                onClick={() => { setShowSettings(false); onDeleteAccountRequest(); }}
+                className="w-full py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                style={{ background: "#FF3B30", border: "none", fontFamily: DS, fontStyle: "italic", fontWeight: 900, fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff" }}>
+                ⚠️ ELIMINAR MI CUENTA
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -8079,6 +8184,33 @@ export default function PortalPage() {
     }
   }, []);
 
+  // Delete account — irreversible, self-service (Apple App Store Guideline 5.1.1(v))
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "loading" | "error">("idle");
+
+  function openDeleteAccountSheet() { setDeleteAccountOpen(true); setDeleteConfirmText(""); setDeleteStatus("idle"); }
+  function closeDeleteAccountSheet() {
+    if (deleteStatus === "loading") return; // never let a mid-flight deletion be dismissed
+    setDeleteAccountOpen(false); setDeleteConfirmText(""); setDeleteStatus("idle");
+  }
+
+  const handleDeleteAccount = useCallback(async () => {
+    setDeleteStatus("loading");
+    try {
+      const res = await fetch("/api/me", { method: "DELETE" });
+      if (res.ok) {
+        // Server already cleared the auth cookies; signOut() flushes client-side
+        // session state too and lands the user back on the welcome/login gateway.
+        await signOut({ callbackUrl: "/" });
+      } else {
+        setDeleteStatus("error");
+      }
+    } catch {
+      setDeleteStatus("error");
+    }
+  }, []);
+
   const fetchMe = useCallback(async () => {
     try {
       const res = await fetch("/api/me");
@@ -8466,6 +8598,7 @@ export default function PortalPage() {
               student={student}
               detail={detail}
               onCancelRequest={openCancelSheet}
+              onDeleteAccountRequest={openDeleteAccountSheet}
               nutritionHistory={nutritionHistory}
               workoutHistory={workoutHistory}
               activeDayIndex={activeDayIndex}
@@ -8515,6 +8648,17 @@ export default function PortalPage() {
           onConfirm={handleCancelSubscription}
           status={cancelStatus}
           onClose={closeCancelSheet}
+        />
+      </BottomSheet>
+
+      {/* Delete account sheet */}
+      <BottomSheet open={deleteAccountOpen} onClose={closeDeleteAccountSheet}>
+        <DeleteAccountSheet
+          confirmText={deleteConfirmText}
+          onConfirmTextChange={setDeleteConfirmText}
+          onConfirm={handleDeleteAccount}
+          status={deleteStatus}
+          onClose={closeDeleteAccountSheet}
         />
       </BottomSheet>
 

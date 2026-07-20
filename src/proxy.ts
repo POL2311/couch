@@ -10,6 +10,11 @@ const HOME_BY_ROLE: Record<string, string> = {
   CLIENT: "/portal",
 };
 
+// Legal/support pages required by App Store Connect review — must be reachable
+// with zero auth, regardless of session state or role, so Apple's reviewer
+// (and any logged-out visitor) can open them directly.
+const PUBLIC_LEGAL_ROUTES = ["/soporte", "/privacidad", "/terminos"];
+
 export default auth((req) => {
   const { nextUrl } = req;
   const path = nextUrl.pathname;
@@ -18,6 +23,13 @@ export default auth((req) => {
 
   const isRoot  = path === "/";
   const isLogin = path === "/login";
+  const isPublicLegal = PUBLIC_LEGAL_ROUTES.some(
+    (r) => path === r || path.startsWith(`${r}/`)
+  );
+
+  // Always public — bypasses both the unauthenticated gate below and the
+  // authenticated role-redirect logic further down.
+  if (isPublicLegal) return NextResponse.next();
 
   // No autenticado → root gateway and /login are publicly accessible.
   // All other protected routes bounce back to the root gateway with callbackUrl.
