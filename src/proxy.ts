@@ -68,5 +68,10 @@ export default auth((req) => {
 export const config = {
   // Protege las páginas; las rutas /api gestionan su propia autorización
   // (devuelven 401/403) para no redirigir por rol las peticiones fetch.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|uploads|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // soporte/privacidad/terminos quedan fuera del matcher a propósito — son
+  // públicas por requisito de App Store Connect y así el proxy ni siquiera
+  // se ejecuta para ellas (no evalúa cookies/tokens de Auth.js). El bypass
+  // explícito dentro del handler (PUBLIC_LEGAL_ROUTES) queda como segunda
+  // capa de defensa por si algún día se relaja este matcher.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|uploads|soporte|privacidad|terminos|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

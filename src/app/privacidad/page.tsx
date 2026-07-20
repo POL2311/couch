@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { LegalShell, LegalHero, LegalCard, LegalSectionTitle, MONO } from "../_legal-chrome";
 
+// Fuerza renderizado dinámico en cada request — evita que Vercel sirva un
+// HTML estático cacheado en el edge que ignore el bypass público del proxy.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Política de Privacidad — MyCouch",
   description:
