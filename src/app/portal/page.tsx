@@ -445,10 +445,13 @@ const todayAsDayIndex = (): number => {
  * Checks for explicit `weekday` fields first; falls back to ordinal (days[dayIdx-1]).
  * Returns undefined when the routine has fewer slots than the requested index.
  */
-const resolveRoutineDay = (dayIdx: number, days: RoutineDay[]): RoutineDay | undefined => {
+const resolveRoutineDay = (dayIdx: number, days: RoutineDay[] = []): RoutineDay | undefined => {
+  if (!days || !Array.isArray(days) || days.length === 0) {
+    return undefined;
+  }
   const jsWeekday = appDayToJsWeekday(dayIdx);
-  const explicit  = days.find(d => d.weekday === jsWeekday);
-  return explicit ?? days[dayIdx - 1];
+  const explicit = days.find((d) => d?.weekday === jsWeekday);
+  return explicit ?? days[dayIdx - 1] ?? days[0];
 };
 
 /** Short weekday labels keyed by app day index (1–7). */
@@ -2947,11 +2950,11 @@ function TabProgreso({
   };
 
   /* ── Weight chart SVG math (inverted: weight drop = ascending success curve) ── */
-  const history = detail.weightHistory;
+  const history = detail.weightHistory ?? [];
   const PW = 320, PH = 80, PAD = 10;
-  const weights = history.map(h => h.weight);
-  const minW = Math.min(...weights) - 0.8;
-  const maxW = Math.max(...weights) + 0.8;
+  const weights = history.map(h => h?.weight).filter((w): w is number => typeof w === "number");
+  const minW = (weights.length ? Math.min(...weights) : 0) - 0.8;
+  const maxW = (weights.length ? Math.max(...weights) : 0) + 0.8;
   // Inverted Y: low weight (fat-loss success) → top of SVG (low Y); high weight → bottom (high Y).
   // This maps a weight-loss timeline to an ascending left→right success curve.
   const toY = (w: number) => PAD + ((w - minW) / Math.max(maxW - minW, 0.01)) * (PH - PAD * 2);
@@ -2964,8 +2967,9 @@ function TabProgreso({
   const latestW = weights[weights.length - 1] ?? maxW;
 
   /* ── Biometric cards ── */
-  const latest = detail.measurements[detail.measurements.length - 1];
-  const prev   = detail.measurements[detail.measurements.length - 2];
+  const measurementsList = detail.measurements ?? [];
+  const latest = measurementsList[measurementsList.length - 1];
+  const prev   = measurementsList[measurementsList.length - 2];
   const bioCards = [
     { label: "BRAZO",   curr: latest?.armR   ?? 28.5, base: prev?.armR   ?? 28,   unit: "cm", goodIfPos: true  },
     { label: "CINTURA", curr: latest?.waist  ?? 68,   base: prev?.waist  ?? 71,   unit: "cm", goodIfPos: false },
@@ -8086,8 +8090,20 @@ export default function PortalPage() {
       }
       if (res.ok) {
         const d = await res.json();
-        setStudent(d.student);
-        setDetail(d.detail);
+        setStudent(d?.student ?? null);
+        // Normalize partial/incomplete payloads so downstream array access never
+        // hits null/undefined regardless of what the API actually returned.
+        setDetail(
+          d?.detail
+            ? {
+                ...d.detail,
+                weightHistory: d.detail.weightHistory ?? [],
+                measurements: d.detail.measurements ?? [],
+                diet: { ...d.detail.diet, meals: d.detail.diet?.meals ?? [] },
+                routine: { ...d.detail.routine, days: d.detail.routine?.days ?? [] },
+              }
+            : null
+        );
         // Hydrate gamification state from DB — fallback to 0 when field is absent
         if (d.student) {
           setPrs({
@@ -8181,21 +8197,21 @@ export default function PortalPage() {
     );
   }
 
-  const startWeight = detail.weightHistory[0]?.weight ?? student.currentWeight;
+  const startWeight = detail.weightHistory?.[0]?.weight ?? student.currentWeight;
   const day: RoutineDay | undefined =
-    resolveRoutineDay(activeDayIndex, detail.routine.days) ?? detail.routine.days[0];
+    resolveRoutineDay(activeDayIndex, detail.routine?.days ?? []) ?? detail.routine?.days?.[0];
 
   // Enrich meals
-  const meals: Meal[] = detail.diet.meals.map((m: any) => ({
+  const meals: Meal[] = (detail.diet?.meals ?? []).map((m: any) => ({
     ...m,
-    macros: m.macros ?? { protein: 32, carbs: 48, fat: 14 },
-    ingredients: m.ingredients ?? m.items.map((item: string, i: number) => ({
+    macros: m?.macros ?? { protein: 32, carbs: 48, fat: 14 },
+    ingredients: m?.ingredients ?? (m?.items ?? []).map((item: string, i: number) => ({
       name: item, grams: [150, 120, 80, 200, 100][i % 5],
-      calories: Math.round(m.calories / m.items.length),
+      calories: Math.round((m?.calories ?? 0) / Math.max(m?.items?.length ?? 1, 1)),
       icon: ["egg", "wheat", "beef", "salad", "apple"][i % 5],
       unitQty: [1, 0.5, 1.5, 2, 1][i % 5],
       unit: ["pieza", "taza", "tazas", "piezas", "porción"][i % 5],
-      macros: { protein: Math.round((m.macros?.protein ?? 32) / m.items.length), carbs: Math.round((m.macros?.carbs ?? 48) / m.items.length), fat: Math.round((m.macros?.fat ?? 14) / m.items.length) },
+      macros: { protein: Math.round((m?.macros?.protein ?? 32) / Math.max(m?.items?.length ?? 1, 1)), carbs: Math.round((m?.macros?.carbs ?? 48) / Math.max(m?.items?.length ?? 1, 1)), fat: Math.round((m?.macros?.fat ?? 14) / Math.max(m?.items?.length ?? 1, 1)) },
     })),
   }));
 
