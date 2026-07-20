@@ -2194,7 +2194,7 @@ function ElitePrintTemplate({ student, detail, meals }: {
                 isFirst={di === 0}
               />
               <PrintColHeaders cols={["DÍA · GRUPO","EJERCICIO","SERIES × REPS","VISUAL","TÉCNICA · COMENTARIOS","DESCANSO"]} />
-              {rDay.exercises.map((ex, ei) => {
+              {(rDay.exercises ?? []).map((ex, ei) => {
                 const ext = ex as Exercise & { rest?: string; weight?: string; tips?: string[] };
                 const c1  = ei === 0 ? `${dayLabel}\n${rDay.muscleGroup?.toUpperCase() ?? ""}` : "";
                 const c3  = `${ex.sets} × ${ex.reps}${ext.weight && ext.weight !== "—" ? `\n${ext.weight}` : ""}`;
@@ -4855,12 +4855,12 @@ function TabPerfil({ student, detail, onCancelRequest, nutritionHistory, workout
           style={{ background: "rgba(7,7,8,0.7)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
             style={{ background: student.avatarColor ?? "linear-gradient(135deg,#8b5cf6,#ec4899)", color: "#fff", fontFamily: DS, border: "1.5px solid rgba(206,255,0,0.5)" }}>
-            {student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+            {(student.name ?? "").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
           <div className="leading-tight">
             <p className="font-black text-white truncate max-w-[110px]"
               style={{ fontFamily: DS, fontStyle: "normal", fontSize: 13 }}>
-              {student.name.split(" ")[0].toUpperCase()}
+              {(student.name ?? "").split(" ")[0]?.toUpperCase() ?? ""}
             </p>
             <p className="font-mono text-[8px] uppercase tracking-widest" style={{ color: "#CEFF00" }}>
               {student.stage} · E{student.stageNumber}
@@ -5748,7 +5748,7 @@ function TabComunidad({
     if (!selectedAthlete || !finalModality) return;
     const ok = await onLaunchDebit(stakeAmount);
     if (!ok) return;
-    const rival = rosterMembers.find(m => m.name === selectedAthlete) ?? rosterMembers[0];
+    const rival = (rosterMembers ?? []).find(m => m.name === selectedAthlete) ?? rosterMembers[0];
     const newStake: LiveStake = {
       id: Date.now(),
       opponent: selectedAthlete,
@@ -6549,7 +6549,7 @@ function TabComunidad({
                     </span>
                     <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: challengeModality ? "#CEFF00" : "#808080", fontWeight: challengeModality ? 900 : 400 }}>
                       {challengeModality
-                        ? CHALLENGE_MODALITIES.find(m => m.id === challengeModality)?.label ?? challengeModality
+                        ? (CHALLENGE_MODALITIES ?? []).find(m => m.id === challengeModality)?.label ?? challengeModality
                         : "SELECCIONAR MODALIDAD"}
                     </span>
                   </div>
@@ -6642,7 +6642,7 @@ function TabComunidad({
                   const myPct    = stake.myMax  > 0 ? Math.min(100, Math.round((stake.myScore    / stake.myMax)    * 100)) : 0;
                   const rivalPct = stake.rivalMax > 0 ? Math.min(100, Math.round((stake.rivalScore / stake.rivalMax) * 100)) : 0;
                   const isLive   = stake.status === "EN COMBATE TÁCTICO";
-                  const myInitials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                  const myInitials = (student.name ?? "").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
                   const rivalInit  = stake.opponent.slice(0, 2);
                   return (
                     <button key={stake.id} onClick={() => setSelectedActiveChallenge(stake)}
@@ -6736,7 +6736,7 @@ function TabComunidad({
             const myPct    = stake.myMax  > 0 ? Math.min(100, Math.round((stake.myScore    / stake.myMax)    * 100)) : 0;
             const rivalPct = stake.rivalMax > 0 ? Math.min(100, Math.round((stake.rivalScore / stake.rivalMax) * 100)) : 0;
             const isLive   = stake.status === "EN COMBATE TÁCTICO";
-            const myInitials = student.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+            const myInitials = (student.name ?? "").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
             const rivalInit  = stake.opponent.slice(0, 2);
             const iWinning   = stake.myScore > stake.rivalScore;
 
@@ -7736,10 +7736,11 @@ export default function PortalPage() {
     setStudent(s => s ? { ...s, currentWeight: kg } : s);
     setDetail(d => {
       if (!d) return d;
-      const existsAt = d.weightHistory.findIndex(e => e.date === date);
+      const prevHistory = d.weightHistory ?? [];
+      const existsAt = prevHistory.findIndex(e => e.date === date);
       const newHistory = existsAt >= 0
-        ? d.weightHistory.map((e, i) => i === existsAt ? { ...e, weight: kg } : e)
-        : [...d.weightHistory, { date, weight: kg }];
+        ? prevHistory.map((e, i) => i === existsAt ? { ...e, weight: kg } : e)
+        : [...prevHistory, { date, weight: kg }];
       return { ...d, weightHistory: newHistory };
     });
     try {
@@ -8139,7 +8140,7 @@ export default function PortalPage() {
         const res = await fetch(`/api/me/checks?date=${realDateForDayIndex(d)}`);
         if (!res.ok) return;
         const { checks } = (await res.json()) as { checks: { kind: string; itemKey: string }[] };
-        const indices = checks.filter(c => c.kind === "meal").map(c => Number(c.itemKey));
+        const indices = (checks ?? []).filter(c => c?.kind === "meal").map(c => Number(c.itemKey));
         setNutritionHistory(prev => ({ ...prev, [d]: new Set(indices) }));
       } catch {}
     };
@@ -8156,7 +8157,7 @@ export default function PortalPage() {
         const next: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
         for (let d = 1; d <= 7; d++) {
           const target = realDateForDayIndex(d);
-          const session = sessions.find(s => s.date === target);
+          const session = (sessions ?? []).find(s => s.date === target);
           if (session) {
             // Guard: already-parsed array (normal) or raw JSON string (legacy edge case)
             const rawLogs = session.exerciseLogs;
